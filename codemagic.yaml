@@ -1,0 +1,70 @@
+workflows:
+  android-debug:
+    name: Kasir Android Debug
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    environment:
+      java: 21
+
+    scripts:
+      - name: Verify Android project and Firebase config
+        script: |
+          set -e
+          test -f app/build.gradle.kts
+          test -f settings.gradle.kts
+          test -f app/google-services.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("app/google-services.json")
+          d = json.loads(p.read_text())
+          clients = d.get("client", [])
+          packages = [c.get("client_info", {}).get("android_client_info", {}).get("package_name") for c in clients]
+          assert "com.pentolrebus.kasir" in packages, packages
+          print("Firebase Android package verified: com.pentolrebus.kasir")
+          PY
+
+      - name: Static build preflight
+        script: |
+          set -eu
+          test ! -e app/google-services.json.example
+          grep -F 'androidx.compose:compose-bom:2025.08.00' app/build.gradle.kts
+          grep -F 'com.google.firebase:firebase-bom:34.15.0' app/build.gradle.kts
+          grep -F 'compileSdk = 36' app/build.gradle.kts
+          grep -F 'sourceCompatibility = JavaVersion.VERSION_21' app/build.gradle.kts
+          grep -F 'targetCompatibility = JavaVersion.VERSION_21' app/build.gradle.kts
+          grep -F 'jvmToolchain(21)' app/build.gradle.kts
+          grep -F 'id("com.android.application") version "8.13.0"' build.gradle.kts
+          ! grep -E 'androidx\.(room|datastore)|play-services-base' app/build.gradle.kts
+          echo "Static dependency/config preflight passed"
+          echo "JVM target: Java 21 / Kotlin 21"
+
+      - name: Comprehensive source preflight
+        script: |
+          set -e
+          bash scripts/preflight.sh
+
+      - name: Set Android SDK location
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
+
+      - name: Prepare Gradle Wrapper
+        script: |
+          set -e
+          if [ ! -x ./gradlew ]; then
+            if ! command -v gradle >/dev/null 2>&1; then
+              echo "Gradle is not available on this Codemagic image and no Gradle Wrapper is present."
+              exit 1
+            fi
+            gradle wrapper --gradle-version 8.13 --distribution-type bin
+          fi
+          chmod +x ./gradlew
+          ./gradlew --version
+
+      - name: Build Debug APK
+        script: |
+          ./gradlew --no-daemon --stacktrace :app:assembleDebug
+
+    artifacts:
+      - app/build/outputs/apk/debug/*.apk

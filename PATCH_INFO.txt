@@ -1,0 +1,29 @@
+KASIR-PATCH-20261004-V19
+
+Basis: V18 source
+Fokus: UI/UX native Compose berdasarkan Mockup UI POS — Pentol Rebus x Es Teh Fresh Brew.html
+
+Sumber desain yang diperiksa:
+- Struktur mockup: navigasi bawah 4 tab, alur Kasir (Login → Shift → Kasir → Checkout → pembayaran → tutup shift), Owner (Laporan/Ringkasan + Pengaturan), flat surfaces, radius 12–16, tombol utama penuh/lebar nyaman, chip/filter, dan halaman kelola terpisah.
+- Warna mockup tidak disalin. Aksen diganti menjadi blue SakuKasir.
+
+Perubahan UI/UX:
+- Bottom navigation tetap tepat 4 item: Kasir, Checkout, Laporan, Pengaturan.
+- Tidak ada horizontal top navigation yang dapat overflow.
+- Header ringkas dengan judul layar, akun/role, Theme, Download Log, dan Keluar.
+- Owner masuk ke Laporan/Ringkasan sebagai layar awal setelah login, mengikuti struktur mockup.
+- Laporan Owner memiliki chip Ringkasan, Outlet, Kasir, Harian, Bulanan.
+- Kasir/POS memiliki status Shift, pencarian, filter chip, katalog produk responsif, kartu produk dengan area foto, keranjang, dan Checkout.
+- Checkout dibuat sebagai layar terpisah dengan ringkasan item, Cash/QRIS, total, dan tombol BAYAR.
+- Pengaturan mengikuti pola daftar ringan mockup dan membuka halaman terpisah untuk Produk, Kategori, Stok, Outlet, Kasir/Pekerja, Owner, Bisnis, QRIS, Printer, Profil, dll.
+- Kategori ditampilkan sebagai kategori yang dibuat Owner sendiri; tidak ada daftar kategori bisnis yang di-hardcode.
+- Stok mengikuti konsep ON/OFF per produk; saat OFF produk tetap dapat dijual tanpa perhitungan stok.
+- Produk memiliki placeholder area foto pada UI tanpa menambahkan Firebase Storage.
+- Light/Dark mode menggunakan blue SakuKasir.
+- Komponen dibuat compact, flat, rounded 12–16dp, dan responsif untuk phone/tablet/landscape.
+- Auth tetap mempertahankan eye toggle untuk Password, Confirm Password, PIN, dan Confirm PIN.
+- Nama aplikasi tetap SakuKasir.
+
+Batasan patch:
+- Firebase, RTDB rules, Auth, FCM, repository, dan schema backend tidak diubah.
+- Fitur kategori/produk/stock management yang belum mempunyai state/repository khusus tetap berupa UI/flow shell; patch ini tidak mengubah backend.
