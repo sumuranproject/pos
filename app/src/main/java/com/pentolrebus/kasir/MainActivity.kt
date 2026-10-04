@@ -1028,7 +1028,7 @@ private fun ProductEditor(initial: Product, categories: List<Category>, onDismis
                 if (step == 1) {
                     step = 2
                 } else {
-                    onSave(initial.copy(name = name, price = price.toLongOrNull() ?: 0, unit = unit, categoryId = category, stockEnabled = stockOn, stock = stock.toLongOrNull() ?: 0, lowStockThreshold = low.toLongOrNull() ?: 5, imagePath = p.imagePath))
+                    onSave(initial.copy(name = name, price = price.toLongOrNull() ?: 0, unit = unit, categoryId = category, stockEnabled = stockOn, stock = stock.toLongOrNull() ?: 0, lowStockThreshold = low.toLongOrNull() ?: 5, imagePath = imagePath.ifBlank { initial.imagePath.orEmpty() }))
                 }
             }) { Text(if (step == 1) "LANJUT" else "SIMPAN") }
         },
