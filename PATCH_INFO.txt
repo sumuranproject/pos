@@ -1,43 +1,31 @@
-SakuKasir V29 — UI Breadth / Real Management Pass
+SakuKasir V30 - V11 Resource Linking Fix
 
-Base: V28
+Base: V29 REAL UI BREADTH
 
-Purpose
-- Replace preview/static management UI with real Compose forms, lists, filters, dialogs and CRUD wiring.
-- Keep Firebase Authentication, RTDB, offline transaction/shift queue and Bluetooth printer behavior.
-- Do not claim 99% pixel verification without a device screenshot comparison.
+V11 root cause:
+- Android resource linking failed in :app:processDebugResources.
+- Several SVG-derived drawable XML files used raw SVG shape attributes that are invalid in Android VectorDrawable.
 
-Implemented
-- Product management: 2-column grid, dynamic category chips, search, stock indicators, two-step product editor, local photo picker.
-- Category management: real list/counts, add/edit dialog and empty state.
-- Stock management: ON/OFF toggle, quantity and low-stock threshold editor.
-- Outlet management: real list and editable outlet form.
-- Worker management: real list and editable worker form.
-- Business management: real business data and edit form.
-- Expense management: real list, add/edit form and totals source for reports.
-- QRIS: configuration state and local proof picker in checkout.
-- Transaction history: search and payment-method filters.
-- Owner reports: functional Ringkasan/Outlet/Kasir/Harian/Bulanan tabs.
-- Cash checkout: uang diterima, validation and kembalian.
-- POS: 2-column product grid and dynamic category data.
-- Transaction detail includes cash received, change, discount and sync status.
-- Firebase repository CRUD added for categories, outlets, workers, business, expenses and product deletion.
-- RTDB expenses path added to rules.
-- Local repository updated for the same CRUD surface.
-- Offline transaction serialization now retains cashReceived/change/discount.
-- SVG/vector assets from the UI pass are retained.
+Fixed:
+- ic_business.xml: rounded rect converted to pathData.
+- ic_category.xml: circle converted to pathData.
+- ic_info.xml: circle converted to pathData.
+- ic_more.xml: circles converted to pathData.
+- ic_people.xml: circles converted to pathData.
+- ic_theme.xml: circle converted to pathData.
+- ic_qris.xml: rounded rectangles converted to pathData.
+- ic_person.xml: circles converted to pathData.
+- Preserved existing SVG geometry/style intent and #1F6FEB stroke styling.
 
-Audit
-- scripts/preflight.sh: PASS
-- database.rules.json JSON parse: PASS
-- Kotlin source delimiter audit: PASS
-- 14 Kotlin files checked
-- Only README.md is Markdown
-- No FormPreview remains
-- No preview hardcoded expense value remains
-- No Firebase schema change outside required CRUD/expenses paths
+Audit:
+- XML parse: PASS.
+- No raw circle/rect/ellipse/polyline/polygon/line drawable shapes remain in res/drawable.
+- No invalid android:cx/cy/r/rx/ry/left/top/right/bottom drawable attributes remain.
+- scripts/preflight.sh: PASS.
+- Kotlin file count: 14.
+- Firebase/backend/offline/printer logic unchanged.
 
-Build status
-- NOT RUN in this environment.
-- No full Gradle/Codemagic success is claimed for V29.
-- Codemagic remains the authoritative Android build verification.
+Build status:
+- V11 Codemagic: FAILED at :app:processDebugResources due to invalid VectorDrawable XML.
+- V30 full Gradle/Codemagic: NOT RUN in this environment.
+- Requires one new Codemagic verification build.
