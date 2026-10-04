@@ -1,22 +1,24 @@
-SakuKasir V34 — Compile Fix After V33 Audit
+SakuKasir V37 — Dropbox UI Integration Shell
 
-Base: KASIR-PATCH-20261004-V33.zip
+Base: KASIR-PATCH-20261004-V36.zip
 
-Changes in V34:
-1. Audited V33 against the Codemagic build log v14.
-2. Fixed LogoBox Box() contentAlignment/modifier argument ordering.
-3. Fixed SuccessNew Icon() modifier/tint argument ordering.
-4. Fixed SettingsGroup Icon() modifier/tint argument ordering.
-5. Fixed ProductManagement LazyColumn PaddingValues overload usage.
-6. Re-audited MainActivity.kt for the same class of Compose API argument-order errors.
-7. Kept Firebase configuration, Authentication, RTDB repository code, FCM service and database rules unchanged.
+Changes in V37:
+1. Added native Dropbox entry under Owner → Pengaturan → Penyimpanan.
+2. Added dedicated Dropbox screen matching the existing Saku Kasir visual language: rounded cards, blue accent, section labels, status card, storage categories, and native navigation.
+3. Added explicit disconnected state for the Dropbox account; no fake connected account or hardcoded Dropbox email is shown.
+4. Added honest OAuth handoff information dialog. The Hubungkan Dropbox button currently explains that OAuth is the next integration stage; it does not simulate a successful connection.
+5. Added Dropbox storage coverage UI for Foto Produk, QRIS, and Logo Bisnis.
+6. Added dedicated cloud icon drawable for the Dropbox UI.
+7. Dropbox is exposed only to Owner settings; Kasir does not receive Dropbox account-management UI.
+8. Existing QRIS, Bluetooth printer, Firebase Authentication, Realtime Database, FCM, offline store/sync, and business data flows were not modified.
 
 Validation:
 - scripts/preflight.sh: PASS
-- Kotlin delimiter audit: PASS
-- V32 vs V34 Firebase-sensitive files: unchanged
-- Codemagic/Gradle build: NOT RUN locally because no Gradle executable/wrapper is available in this environment
+- Kotlin source delimiter/preflight: PASS
+- Firebase-sensitive files unchanged from V36
+- Full Gradle/Codemagic build: NOT RUN locally because no Gradle executable/wrapper is available in this environment
 
 Important:
-- V33 was the audited input.
-- This package is V34 and is the next incremental source version.
+- V36 remains the functional baseline.
+- V37 is the next sequential version and adds only the Dropbox UI/integration shell.
+- Dropbox OAuth/API upload/shared-link functionality is intentionally not simulated in V37.
