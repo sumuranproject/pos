@@ -1,19 +1,27 @@
-KASIR-PATCH-20261004-V21
+V24 — OFFLINE TRANSACTION + SHIFT + CHECKOUT FOUNDATION
 
-Baseline: V16 source (stable build configuration; no Gradle/Firebase/backend changes)
+Based on V23 BUILD-FIX.
 
-UI-only changes:
-- Replaced overflowing horizontal role-dependent top navigation with fixed 4-item bottom navigation:
-  Kasir / Checkout / Laporan / Pengaturan.
-- Owner and Cashier use the same 4-item navigation.
-- Owner can sell from Kasir.
-- Transactions are surfaced through Laporan rather than a fifth navigation item.
-- Product/Category/Stock/Outlet/Worker/Owner/Business/QRIS/Printer are surfaced as dedicated Settings entries.
-- Added compact settings detail UI placeholders without changing repository/backend schema.
-- Kept SakuKasir blue Material theme and existing authentication screens.
-- Kept Download Log functionality.
-- Kept shift start/close behavior and existing ViewModel/repository calls.
+Included:
+- Local-first Transaction ID generated before any Firebase call.
+- Durable offline transaction storage.
+- PENDING_SYNC / SYNCED / SYNC_ERROR status.
+- Idempotent Firebase transaction sync by stable transactionId path; retries reuse the same ID.
+- Offline transaction history and reprint.
+- Durable offline Shift ID/state and sync using the same shift ID.
+- Local PIN login can reuse the cached secure session when offline.
+- Checkout flow: cart -> checkout -> CASH/QRIS -> validation -> transaction success.
+- Transaction success immediately displays the local Transaction ID, even while PENDING_SYNC.
+- Manual sync action in Pengaturan plus sync attempt after login.
+- Existing Bluetooth printer/reprint retained.
 
-Build note:
-- Local source preflight: PASS.
-- Full Gradle/Codemagic build was not run in this environment because the source package does not contain a Gradle wrapper and no Gradle executable is available locally.
+Backend safety:
+- No RTDB rules/schema redesign.
+- No Firestore, Storage, Cloud Functions, Google Sign-In, Phone Auth, or new backend.
+- Existing Firebase transaction path remains outlets/{outletId}/transactions/{transactionId}.
+
+Build:
+- Kept AGP 8.13.0, Kotlin 2.2.20, Java/Kotlin JVM 21, compileSdk 36, Compose BOM 2025.08.00, Firebase BoM 34.15.0.
+- Static source preflight passed.
+- Full Gradle build is intended through Codemagic: ./gradlew --no-daemon --stacktrace :app:assembleDebug.
+- This environment does not contain Gradle/Gradle Wrapper and has no network access, so a real Gradle compile cannot be honestly reported as executed here.

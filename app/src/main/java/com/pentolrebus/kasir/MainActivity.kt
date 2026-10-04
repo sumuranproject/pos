@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -46,6 +47,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pentolrebus.kasir.data.RepositoryProvider
+import com.pentolrebus.kasir.data.OfflineStore
 import com.pentolrebus.kasir.domain.PaymentMethod
 import com.pentolrebus.kasir.domain.Product
 import com.pentolrebus.kasir.domain.Role
@@ -69,9 +71,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val diagnostics = Diagnostics(this)
         val repository = RepositoryProvider.create(this, diagnostics)
+        val offlineStore = OfflineStore(this)
         setContent {
             KasirTheme {
-                val vm: PosViewModel = viewModel(factory = PosViewModelFactory(repository))
+                val vm: PosViewModel = viewModel(factory = PosViewModelFactory(repository, offlineStore))
                 KasirApp(vm, diagnostics)
             }
         }
@@ -513,7 +516,7 @@ private fun AuthTab(
         onClick = onClick ?: {}
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text(label, color = textColor, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+            Text(label, color = textColor, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -645,8 +648,11 @@ private fun MainShell(
     val cart by vm.cart.collectAsState()
     val shift by vm.shift.collectAsState()
     val transactions by vm.transactions.collectAsState()
+    val lastTransaction by vm.lastTransaction.collectAsState()
+    val syncing by vm.syncing.collectAsState()
     val logout = { if (shift == null) vm.logout() else showCloseShift = true }
-    val printer = remember { BluetoothPrinter(androidx.compose.ui.platform.LocalContext.current) }
+    val context = LocalContext.current
+    val printer = remember(context) { BluetoothPrinter(context) }
     val bluetoothPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) showPrinterPicker = true
     }
@@ -669,15 +675,15 @@ private fun MainShell(
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when (screen) {
                 "kasir" -> PosScreen(vm, products, cart, shift) { screen = "checkout" }
-                "checkout" -> CheckoutScreen(vm, cart) { screen = "kasir" }
-                "laporan" -> ReportsScreen(transactions, shift, printer, {
-                    if (Build.VERSION.SDK_INT >= 31 && !printer.hasConnectPermission()) {
+                "checkout" -> CheckoutScreen(vm, cart) { screen = "success" }
+                "success" -> TransactionSuccessScreen(lastTransaction, printer) { screen = "kasir" }
+                "laporan" -> ReportsScreen(transactions, shift, printer, { if (Build.VERSION.SDK_INT >= 31 && !printer.hasConnectPermission()) {
                         bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT)
                     } else showPrinterPicker = true
                 })
                 "pengaturan" -> SettingsScreen(session, diagnostics, onTheme, logout, settingsPage, { settingsPage = it }, { settingsPage = null }, printer, {
                     if (Build.VERSION.SDK_INT >= 31 && !printer.hasConnectPermission()) bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT) else showPrinterPicker = true
-                })
+                }, { vm.syncPending() }, syncing)
             }
         }
         NavigationBar {
@@ -694,7 +700,12 @@ private fun MainShell(
 
 @Composable
 private fun BottomNavItem(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, selected: Boolean, onClick: () -> Unit) {
-    androidx.compose.material3.NavigationBarItem(selected, onClick, icon = { Icon(icon, label) }, label = { Text(label, maxLines = 1) })
+    NavigationBarItem(
+        selected = selected,
+        onClick = onClick,
+        icon = { Icon(icon, contentDescription = label) },
+        label = { Text(label, maxLines = 1) }
+    )
 }
 
 @Composable
@@ -797,21 +808,53 @@ private fun ProductRow(product: Product, onAdd: () -> Unit) {
 @Composable
 private fun CheckoutScreen(vm: PosViewModel, cart: List<com.pentolrebus.kasir.domain.CartItem>, onDone: () -> Unit) {
     var method by remember { mutableStateOf(PaymentMethod.CASH) }
+    var cashPaid by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
     val total = cart.sumOf { it.product.price * it.quantity }
+    val paid = cashPaid.toLongOrNull() ?: 0L
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Checkout", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text("Total ${money(total)}")
+        Text("Total ${money(total)}", style = MaterialTheme.typography.titleLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (method == PaymentMethod.CASH) Button(onClick = { method = PaymentMethod.CASH }) { Text("CASH") }
-            else OutlinedButton(onClick = { method = PaymentMethod.CASH }) { Text("CASH") }
-            if (method == PaymentMethod.QRIS) Button(onClick = { method = PaymentMethod.QRIS }) { Text("QRIS") }
-            else OutlinedButton(onClick = { method = PaymentMethod.QRIS }) { Text("QRIS") }
+            if (method == PaymentMethod.CASH) Button(onClick = { method = PaymentMethod.CASH }) { Text("CASH") } else OutlinedButton(onClick = { method = PaymentMethod.CASH }) { Text("CASH") }
+            if (method == PaymentMethod.QRIS) Button(onClick = { method = PaymentMethod.QRIS }) { Text("QRIS") } else OutlinedButton(onClick = { method = PaymentMethod.QRIS }) { Text("QRIS") }
         }
-        Button(onClick = { vm.checkout(method); onDone() }, modifier = Modifier.fillMaxWidth(), enabled = cart.isNotEmpty()) {
-            Icon(Icons.Default.Payment, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text("BAYAR")
+        if (method == PaymentMethod.CASH) {
+            OutlinedTextField(value=cashPaid,onValueChange={cashPaid=it.filter(Char::isDigit)},label={Text("Uang diterima")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),modifier=Modifier.fillMaxWidth())
+            if (paid >= total && total > 0) Text("Kembalian ${money(paid-total)}", fontWeight=FontWeight.SemiBold)
+        } else {
+            Text("Konfirmasi pembayaran QRIS setelah pelanggan menyelesaikan pembayaran.")
         }
+        error?.let { Text(it, color=MaterialTheme.colorScheme.error) }
+        Button(onClick={
+            if (cart.isEmpty()) { error="Keranjang kosong" }
+            else if (method==PaymentMethod.CASH && paid < total) { error="Uang diterima belum cukup" }
+            else { error=null; vm.checkout(method); onDone() }
+        },modifier=Modifier.fillMaxWidth(),enabled=cart.isNotEmpty()){Icon(Icons.Default.Payment,contentDescription=null);Spacer(Modifier.width(8.dp));Text("BAYAR") }
+    }
+}
+
+@Composable
+private fun TransactionSuccessScreen(transaction: com.pentolrebus.kasir.domain.Transaction?, printer: BluetoothPrinter, onDone: () -> Unit) {
+    val context = LocalContext.current
+    Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Icon(Icons.Default.CheckCircle, contentDescription=null, modifier=Modifier.width(72.dp).height(72.dp), tint=MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(14.dp))
+        Text("Transaksi Berhasil", style=MaterialTheme.typography.headlineSmall, fontWeight=FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        if (transaction != null) {
+            Text(transaction.transactionId, style=MaterialTheme.typography.titleMedium, fontWeight=FontWeight.SemiBold)
+            Text(if (transaction.syncStatus == com.pentolrebus.kasir.domain.SyncStatus.SYNCED) "Tersinkron" else "Tersimpan offline • PENDING_SYNC", color=MaterialTheme.colorScheme.primary)
+            Text("Total ${money(transaction.total)}", style=MaterialTheme.typography.titleLarge)
+        }
+        Spacer(Modifier.height(20.dp))
+        Button(onClick=onDone, modifier=Modifier.fillMaxWidth()) { Text("SELESAI") }
+        OutlinedButton(onClick={
+            if (transaction != null) {
+                val devices=printer.pairedDevices()
+                if (devices.isNotEmpty()) printer.print(transaction,devices.first().address)
+            }
+        }, modifier=Modifier.fillMaxWidth(), enabled=transaction!=null) { Icon(Icons.Default.Print,null); Spacer(Modifier.width(8.dp)); Text("CETAK ULANG") }
     }
 }
 
@@ -843,7 +886,9 @@ private fun ReportsScreen(
     transactions: List<com.pentolrebus.kasir.domain.Transaction>,
     shift: com.pentolrebus.kasir.domain.Shift?,
     printer: BluetoothPrinter,
-    onOpenPrinter: () -> Unit
+    onOpenPrinter: () -> Unit,
+    onSync: () -> Unit,
+    syncing: Boolean
 ) {
     var selected by remember { mutableStateOf<com.pentolrebus.kasir.domain.Transaction?>(null) }
     val cash = transactions.filter { it.paymentMethod == PaymentMethod.CASH }.sumOf { it.total }
@@ -865,7 +910,7 @@ private fun ReportsScreen(
         item { StatCard("Shift", if (shift == null) "Tidak aktif" else "Aktif") }
         item { Text("Riwayat Transaksi", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
         items(transactions.sortedByDescending { it.createdAt }) { transaction ->
-            OutlinedCard(Modifier.fillMaxWidth(), onClick = { selected = transaction }) {
+            OutlinedCard(onClick = { selected = transaction }, modifier = Modifier.fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(money(transaction.total), fontWeight = FontWeight.Bold)
@@ -963,7 +1008,9 @@ private fun SettingsScreen(
     onOpenDetail: (String) -> Unit,
     onBackDetail: () -> Unit,
     printer: BluetoothPrinter,
-    onOpenPrinter: () -> Unit
+    onOpenPrinter: () -> Unit,
+    onSync: () -> Unit,
+    syncing: Boolean
 ) {
     if (detail != null) {
         Column(Modifier.fillMaxSize().padding(16.dp)) {
@@ -996,7 +1043,7 @@ private fun SettingsScreen(
         item { SettingsRow("Printer", "Printer Bluetooth", Icons.Default.Print, onOpenPrinter) }
         item { Text("APLIKASI", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) }
         item { SettingsRow("Tema", "Terang / Gelap", Icons.Default.Brightness4, onTheme) }
-        item { SettingsRow("Sinkronisasi", "Status koneksi", Icons.Default.Sync) { onOpenDetail("Sinkronisasi") } }
+        item { SettingsRow("Sinkronisasi", if (syncing) "Menyinkronkan transaksi offline…" else "Kirim data PENDING_SYNC tanpa duplikasi", Icons.Default.Sync, onSync) }
         item { OutlinedButton({ diagnostics.exportToDownloads() }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Icon(Icons.Default.Download, null); Spacer(Modifier.width(7.dp)); Text("Download Log") } }
         item { OutlinedButton(onLogout, Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Icon(Icons.Default.Logout, null); Spacer(Modifier.width(7.dp)); Text("Keluar") } }
     }
