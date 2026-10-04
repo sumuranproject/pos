@@ -1,27 +1,16 @@
-V24 — OFFLINE TRANSACTION + SHIFT + CHECKOUT FOUNDATION
+SakuKasir V26 - V9 Build Hardening Patch
 
-Based on V23 BUILD-FIX.
+Base: V25 BUILD-FIX
 
-Included:
-- Local-first Transaction ID generated before any Firebase call.
-- Durable offline transaction storage.
-- PENDING_SYNC / SYNCED / SYNC_ERROR status.
-- Idempotent Firebase transaction sync by stable transactionId path; retries reuse the same ID.
-- Offline transaction history and reprint.
-- Durable offline Shift ID/state and sync using the same shift ID.
-- Local PIN login can reuse the cached secure session when offline.
-- Checkout flow: cart -> checkout -> CASH/QRIS -> validation -> transaction success.
-- Transaction success immediately displays the local Transaction ID, even while PENDING_SYNC.
-- Manual sync action in Pengaturan plus sync attempt after login.
-- Existing Bluetooth printer/reprint retained.
+Changes:
+- Removed direct dependency on Material3 NavigationBarItem from the bottom navigation implementation.
+- Replaced BottomNavItem with a simple Compose Column/clickable implementation inside NavigationBar.
+- Preserved the existing four navigation destinations: Kasir, Checkout, Laporan, Pengaturan.
+- Preserved V25 offline checkout, PENDING_SYNC, sync/reprint/shift/printer/backend logic.
+- No Firebase schema/rules/backend changes.
+- Only README.md is retained as Markdown documentation.
 
-Backend safety:
-- No RTDB rules/schema redesign.
-- No Firestore, Storage, Cloud Functions, Google Sign-In, Phone Auth, or new backend.
-- Existing Firebase transaction path remains outlets/{outletId}/transactions/{transactionId}.
-
-Build:
-- Kept AGP 8.13.0, Kotlin 2.2.20, Java/Kotlin JVM 21, compileSdk 36, Compose BOM 2025.08.00, Firebase BoM 34.15.0.
-- Static source preflight passed.
-- Full Gradle build is intended through Codemagic: ./gradlew --no-daemon --stacktrace :app:assembleDebug.
-- This environment does not contain Gradle/Gradle Wrapper and has no network access, so a real Gradle compile cannot be honestly reported as executed here.
+Build note:
+- Source/static audit completed.
+- Full Gradle build was not executed in this environment because the Gradle wrapper/executable and external dependency access are unavailable here.
+- Codemagic V9 previously failed only at MainActivity.kt NavigationBarItem-related compilation errors.
