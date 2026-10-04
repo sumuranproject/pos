@@ -1,25 +1,22 @@
-SakuKasir V33 — Native Compose UI Mockup Implementation
+SakuKasir V34 — Compile Fix After V33 Audit
 
-Base: KASIR-PATCH-20261004-V32.zip
+Base: KASIR-PATCH-20261004-V33.zip
 
-Changes in V33:
-1. Reworked the native Jetpack Compose UI to follow the supplied Saku Kasir HTML mockup direction.
-2. Added the mockup visual language: light/dark surfaces, blue primary accent, rounded cards, chips, segmented controls, compact header and bottom navigation.
-3. Reworked authentication/role selection screens to follow the mockup flow.
-4. Reworked POS product search, category filters, product grid and cart summary.
-5. Reworked Cash/QRIS checkout, transaction success and receipt actions.
-6. Reworked reports and transaction history presentation.
-7. Reworked owner/cashier settings and management entry points.
-8. Kept the existing ViewModel/repository/Firebase architecture intact.
-9. Firebase configuration, Authentication, Realtime Database repository code, FCM service and database rules were not modified.
+Changes in V34:
+1. Audited V33 against the Codemagic build log v14.
+2. Fixed LogoBox Box() contentAlignment/modifier argument ordering.
+3. Fixed SuccessNew Icon() modifier/tint argument ordering.
+4. Fixed SettingsGroup Icon() modifier/tint argument ordering.
+5. Fixed ProductManagement LazyColumn PaddingValues overload usage.
+6. Re-audited MainActivity.kt for the same class of Compose API argument-order errors.
+7. Kept Firebase configuration, Authentication, RTDB repository code, FCM service and database rules unchanged.
 
 Validation:
 - scripts/preflight.sh: PASS
 - Kotlin delimiter audit: PASS
-- 14 Kotlin files checked
-- Firebase-sensitive files compared with V32: unchanged
-- Gradle/Codemagic build: NOT RUN in this environment because no Gradle executable/wrapper is available locally
+- V32 vs V34 Firebase-sensitive files: unchanged
+- Codemagic/Gradle build: NOT RUN locally because no Gradle executable/wrapper is available in this environment
 
 Important:
-- V32 remains the frozen baseline.
-- This package is V33 and is intended to be the next incremental source version.
+- V33 was the audited input.
+- This package is V34 and is the next incremental source version.

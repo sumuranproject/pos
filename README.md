@@ -1,12 +1,12 @@
-# SakuKasir V33
+# SakuKasir V34
 
-V33 is the native Jetpack Compose UI implementation pass based on the supplied Saku Kasir HTML mockup.
+V34 is the native Jetpack Compose UI implementation pass based on the supplied Saku Kasir HTML mockup.
 
 ## Baseline
 
-- Base source: `KASIR-PATCH-20261004-V32.zip`
+- Base source: `KASIR-PATCH-20261004-V33.zip`
 - V32 remains the frozen baseline.
-- V33 changes the native UI layer only; the existing backend/data architecture is retained.
+- V34 changes the native UI layer only; the existing backend/data architecture is retained.
 
 ## UI scope
 
