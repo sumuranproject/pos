@@ -1,37 +1,41 @@
-# SakuKasir V29
+# SakuKasir V33
 
-V29 is the UI-breadth pass after the V28 build baseline.
+V33 is the native Jetpack Compose UI implementation pass based on the supplied Saku Kasir HTML mockup.
 
-## Current status
+## Baseline
 
-- UI implementation: expanded from preview pages to real Compose management screens.
-- Build verification: **NOT RUN** in this environment.
-- Firebase/Auth/RTDB architecture: retained.
-- Offline transaction/shift queue: retained.
-- Bluetooth printer/reprint: retained.
-- SVG/vector UI assets: retained.
+- Base source: `KASIR-PATCH-20261004-V32.zip`
+- V32 remains the frozen baseline.
+- V33 changes the native UI layer only; the existing backend/data architecture is retained.
 
-## V29 UI scope
+## UI scope
 
-- POS product grid and dynamic category chips
-- Checkout Cash/QRIS, discount, cash received and change
-- Transaction success/detail/history and filters
-- Product list/grid, search, categories, stock, two-step editor and local photo picker
-- Category list/add/edit/empty
-- Stock ON/OFF and low-stock threshold
-- Outlet list/form
-- Worker list/form
-- Owner/business profile and business form
-- QRIS configuration and proof picker
-- Printer settings/dialog
-- Reports: Ringkasan, Outlet, Kasir, Harian, Bulanan
-- Expenses and financial summary
-- Theme, sync and about
-- Responsive Compose layout foundation
-- Native vector assets for the UI icon set
+- Mockup-aligned light/dark visual system
+- Role selection and authentication flow
+- Compact app header and bottom navigation
+- Shift status strip
+- Product search and category chips
+- Product grid and cart summary
+- Cash/QRIS checkout
+- Transaction success and printing entry point
+- Reports and transaction history
+- Owner/cashier settings and management entry points
+- Product/category/stock/business/outlet/worker management views
+- Sync, QRIS, theme and printer entry points
+
+## Firebase protection
+
+The following V32 Firebase-related files were left unchanged:
+
+- `app/google-services.json`
+- `app/src/main/java/com/pentolrebus/kasir/data/PosRepository.kt`
+- `app/src/main/java/com/pentolrebus/kasir/data/RepositoryProvider.kt`
+- `app/src/main/java/com/pentolrebus/kasir/util/OwnerMessagingService.kt`
+- `database.rules.json`
+- Firebase dependencies and Gradle configuration
 
 ## Validation
 
 `bash scripts/preflight.sh` passes.
 
-The final visual fidelity claim must be verified with an actual Codemagic build and device/emulator screenshots against the mockup. V29 therefore does **not** mark itself as build-success or pixel-perfect.
+A full Gradle/Codemagic build was not run in this environment because no Gradle executable or wrapper is available locally. The final visual fidelity and device behavior should be verified with the Codemagic build/device or emulator.

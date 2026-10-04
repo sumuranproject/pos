@@ -1,30 +1,25 @@
-SakuKasir V31 — V12 Kotlin Compile Fix
+SakuKasir V33 — Native Compose UI Mockup Implementation
 
-Base: V30-V11-RESOURCE-FIX
+Base: KASIR-PATCH-20261004-V32.zip
 
-V12 Codemagic root task:
-  :app:compileDebugKotlin
-
-Fixes applied from V12 log and source audit:
-1. Opt-in ExperimentalMaterial3Api for MainShell/TopAppBar.
-2. Reworked TransactionRow into explicit multiline Compose structure to eliminate the parser cascade around the reported Text/syntax errors.
-3. Added missing PrinterPage.
-4. Added missing ThemePage.
-5. Added missing SyncPage.
-6. Added missing AboutPage.
-7. Added missing ShiftHistoryPage.
-8. Added missing settingsSubtitle() used by OwnerSettingsPage.
-9. Fixed StockEditor imagePath scope to preserve p.imagePath.
-10. Fixed ExpenseEditor Long-vs-Int comparison (0 -> 0L).
-11. Added explicit generic return types for Firebase repository loaders:
-    loadProducts, loadCategories, loadWorkers, loadExpenses.
+Changes in V33:
+1. Reworked the native Jetpack Compose UI to follow the supplied Saku Kasir HTML mockup direction.
+2. Added the mockup visual language: light/dark surfaces, blue primary accent, rounded cards, chips, segmented controls, compact header and bottom navigation.
+3. Reworked authentication/role selection screens to follow the mockup flow.
+4. Reworked POS product search, category filters, product grid and cart summary.
+5. Reworked Cash/QRIS checkout, transaction success and receipt actions.
+6. Reworked reports and transaction history presentation.
+7. Reworked owner/cashier settings and management entry points.
+8. Kept the existing ViewModel/repository/Firebase architecture intact.
+9. Firebase configuration, Authentication, Realtime Database repository code, FCM service and database rules were not modified.
 
 Validation:
 - scripts/preflight.sh: PASS
 - Kotlin delimiter audit: PASS
 - 14 Kotlin files checked
-- No Gradle executable / wrapper available in local environment
-- Codemagic verification: NOT RUN after V31 patch
+- Firebase-sensitive files compared with V32: unchanged
+- Gradle/Codemagic build: NOT RUN in this environment because no Gradle executable/wrapper is available locally
 
-Backend/Firebase/offline/printer architecture is unchanged.
-V11 VectorDrawable resource fixes are preserved.
+Important:
+- V32 remains the frozen baseline.
+- This package is V33 and is intended to be the next incremental source version.
