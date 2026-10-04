@@ -1,26 +1,19 @@
-KASIR-PATCH-20261004-V20
+KASIR-PATCH-20261004-V21
 
-Basis: V19 source ZIP actually attached to the conversation.
-Focus: Resolve the Kotlin compile errors reported for V19 without changing Firebase/backend architecture.
+Baseline: V16 source (stable build configuration; no Gradle/Firebase/backend changes)
 
-Verified fixes in the V20 source:
-- MainActivity uses coroutine-safe ViewModel methods; no direct suspend signOut call from a non-coroutine UI callback.
-- KeyboardOptions is imported from androidx.compose.foundation.text.KeyboardOptions.
-- The source no longer contains the reported Screens.kt/rememberSaveable issue; V20 contains the consolidated Compose UI in MainActivity.kt and has no Screens.kt.
-- No erroneous String/collection .length usage remains in the reported area; registration validation uses String.length correctly.
-- No ExperimentalFoundationApi usage is present in the V20 source.
-- Kotlin source syntax preflight passes.
-- Gradle/Firebase/Codemagic configuration preflight passes.
+UI-only changes:
+- Replaced overflowing horizontal role-dependent top navigation with fixed 4-item bottom navigation:
+  Kasir / Checkout / Laporan / Pengaturan.
+- Owner and Cashier use the same 4-item navigation.
+- Owner can sell from Kasir.
+- Transactions are surfaced through Laporan rather than a fifth navigation item.
+- Product/Category/Stock/Outlet/Worker/Owner/Business/QRIS/Printer are surfaced as dedicated Settings entries.
+- Added compact settings detail UI placeholders without changing repository/backend schema.
+- Kept SakuKasir blue Material theme and existing authentication screens.
+- Kept Download Log functionality.
+- Kept shift start/close behavior and existing ViewModel/repository calls.
 
-Backend constraints:
-- Firebase Auth, RTDB, FCM, repository architecture, rules, and schema are unchanged.
-- No Firebase Storage, Firestore, Cloud Functions, Google Sign-In, or custom backend added.
-
-Build status:
-- Local Gradle compilation could not be executed because the source ZIP intentionally has no gradlew wrapper and this environment has no Gradle executable.
-- Source preflight: PASSED.
-- Kotlin parser/syntax check with kotlinc: PASSED (no syntax-error diagnostics).
-- Codemagic remains the build environment; its Prepare Gradle Wrapper step is expected to generate the wrapper before assembleDebug.
-
-Next command in Codemagic:
-./gradlew :app:assembleDebug
+Build note:
+- Local source preflight: PASS.
+- Full Gradle/Codemagic build was not run in this environment because the source package does not contain a Gradle wrapper and no Gradle executable is available locally.

@@ -11,7 +11,7 @@ class LocalPosRepository(private val secure:SecureLocalStore, private val log:(S
   Product("p4","demo-owner","demo-outlet","c2","Es Teh Lemon",7000,"gelas",true,64,true)
  )
  private val tx=mutableListOf<Transaction>(); private var active:Shift?=null
- override suspend fun registerOwner(email:String,password:String,username:String,pin:CharArray,businessName:String,outletName:String,whatsapp:String?):Result<Session>{val s=Session("demo-owner",username,Role.OWNER,"demo-business","demo-outlet");secure.saveCredential(username,s.uid,pin);secure.saveSession(s.uid,username,s.role.name,s.businessId,s.outletId);log("REGISTRATION","REGISTRATION_SUCCESS local development state");return Result.success(s)}
+ override suspend fun registerOwner(email:String,password:String,username:String,pin:CharArray,businessName:String?,outletName:String?,whatsapp:String?):Result<Session>{val s=Session("demo-owner",username,Role.OWNER,"demo-business","demo-outlet");secure.saveCredential(username,s.uid,pin);secure.saveSession(s.uid,username,s.role.name,s.businessId,s.outletId);log("REGISTRATION","REGISTRATION_SUCCESS local development state");return Result.success(s)}
  override suspend fun emailLogin(email:String,password:String)=Result.success(Session("demo-owner","owner",Role.OWNER,"demo-business","demo-outlet"))
  override suspend fun localPinLogin(username:String,pin:CharArray)=runCatching{if(secure.verify(username,pin)==null) error("Username/PIN perangkat tidak valid");Session("demo-owner",username,Role.OWNER,"demo-business","demo-outlet")}
  override suspend fun loadProducts(outletId:String)=products.toList()

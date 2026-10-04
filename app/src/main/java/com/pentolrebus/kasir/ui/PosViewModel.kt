@@ -62,8 +62,8 @@ class PosViewModel(private val repo: PosRepository) : ViewModel() {
         password: String,
         username: String,
         pin: String,
-        business: String,
-        outlet: String,
+        business: String?,
+        outlet: String?,
         whatsapp: String?
     ) {
         _auth.value = AuthState.Loading

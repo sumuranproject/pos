@@ -9,7 +9,7 @@ import kotlinx.coroutines.withTimeout
 import java.util.UUID
 
 interface PosRepository {
- suspend fun registerOwner(email:String,password:String,username:String,pin:CharArray,businessName:String,outletName:String,whatsapp:String?):Result<Session>
+ suspend fun registerOwner(email:String,password:String,username:String,pin:CharArray,businessName:String?,outletName:String?,whatsapp:String?):Result<Session>
  suspend fun emailLogin(email:String,password:String):Result<Session>
  suspend fun localPinLogin(username:String,pin:CharArray):Result<Session>
  suspend fun loadProducts(outletId:String):List<Product>
@@ -24,35 +24,7 @@ interface PosRepository {
 
 class FirebasePosRepository(private val auth:FirebaseAuth=FirebaseAuth.getInstance(), private val root:DatabaseReference=FirebaseDatabase.getInstance().reference, private val secure:SecureLocalStore, private val log:(String,String)->Unit):PosRepository {
  private suspend fun <T> timed(block:suspend()->T)=withTimeout(15_000){block()}
- override suspend fun registerOwner(email:String,password:String,username:String,pin:CharArray,businessName:String,outletName:String,whatsapp:String?):Result<Session> = runCatching {
-  require(businessName.isNotBlank()) { "Nama bisnis wajib diisi" }
-  require(outletName.isNotBlank()) { "Nama cabang pertama wajib diisi" }
-  log("REGISTRATION","OWNER_REGISTRATION_STARTED")
-  log("REGISTRATION","AUTH_CREATE_STARTED")
-  val result=timed{auth.createUserWithEmailAndPassword(email,password).await()}
-  val uid=result.user?.uid ?: error("Firebase UID tidak tersedia")
-  log("REGISTRATION","AUTH_CREATE_SUCCESS")
-  val businessId=UUID.randomUUID().toString()
-  val outletId=UUID.randomUUID().toString()
-  log("RTDB","RTDB_BOOTSTRAP_STARTED")
-  val profile=mapOf("uid" to uid,"ownerUid" to uid,"username" to username,"role" to "OWNER","displayName" to username,"businessId" to businessId,"outletId" to outletId,"whatsapp" to whatsapp)
-  val business=mapOf("id" to businessId,"ownerUid" to uid,"name" to businessName)
-  val outlet=mapOf("id" to outletId,"ownerUid" to uid,"businessId" to businessId,"name" to outletName)
-  val bootstrap=mapOf<String,Any?>(
-   "users/$uid" to profile,
-   "businesses/$businessId" to business,
-   "outlets/$outletId" to outlet
-  )
-  timed{root.updateChildren(bootstrap).await()}
-  log("REGISTRATION","PROFILE_CREATED")
-  log("REGISTRATION","BUSINESS_CREATED")
-  log("REGISTRATION","OUTLET_CREATED")
-  secure.saveCredential(username,uid,pin)
-  secure.saveSession(uid,username,"OWNER",businessId,outletId)
-  log("REGISTRATION","SESSION_CREATED")
-  log("REGISTRATION","REGISTRATION_SUCCESS")
-  Session(uid,username,Role.OWNER,businessId,outletId)
- }.also{if(it.isFailure)log("ERROR","OWNER_REGISTRATION_ERROR stage=registration")}
+ override suspend fun registerOwner(email:String,password:String,username:String,pin:CharArray,businessName:String?,outletName:String?,whatsapp:String?):Result<Session> = runCatching { log("REGISTRATION","OWNER_REGISTRATION_STARTED"); log("REGISTRATION","AUTH_CREATE_STARTED"); val result=timed{auth.createUserWithEmailAndPassword(email,password).await()}; val uid=result.user?.uid ?: error("Firebase UID tidak tersedia"); log("REGISTRATION","AUTH_CREATE_SUCCESS"); val businessId=businessName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}; val outletId=outletName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}; log("RTDB","RTDB_BOOTSTRAP_STARTED"); val profile=mapOf("uid" to uid,"ownerUid" to uid,"username" to username,"role" to "OWNER","displayName" to username,"businessId" to businessId,"outletId" to outletId,"whatsapp" to whatsapp); timed{root.child("users").child(uid).setValue(profile).await()}; log("REGISTRATION","PROFILE_CREATED"); if(businessId!=null){timed{root.child("businesses").child(businessId).setValue(mapOf("id" to businessId,"ownerUid" to uid,"name" to businessName)).await()};log("REGISTRATION","BUSINESS_CREATED")}; if(outletId!=null){timed{root.child("outlets").child(outletId).setValue(mapOf("id" to outletId,"ownerUid" to uid,"businessId" to businessId,"name" to outletName)).await()};log("REGISTRATION","OUTLET_CREATED")}; secure.saveCredential(username,uid,pin); secure.saveSession(uid,username,"OWNER",businessId,outletId);log("REGISTRATION","SESSION_CREATED");log("REGISTRATION","REGISTRATION_SUCCESS");Session(uid,username,Role.OWNER,businessId,outletId) }.also{if(it.isFailure)log("ERROR","OWNER_REGISTRATION_ERROR stage=registration")}
  override suspend fun emailLogin(email:String,password:String)=runCatching{val r=timed{auth.signInWithEmailAndPassword(email,password).await()};val uid=r.user?.uid?:error("UID missing");val snap=timed{root.child("users").child(uid).get().await()};val username=snap.child("username").getValue(String::class.java)?:email;val role=Role.valueOf(snap.child("role").getValue(String::class.java)?:"OWNER");val b=snap.child("businessId").getValue(String::class.java);val o=snap.child("outletId").getValue(String::class.java);secure.saveSession(uid,username,role.name,b,o);Session(uid,username,role,b,o)}
  override suspend fun localPinLogin(username:String,pin:CharArray)=runCatching{val uid=secure.verify(username,pin)?:error("Username/PIN perangkat tidak valid");val snap=timed{root.child("users").child(uid).get().await()};val role=Role.valueOf(snap.child("role").getValue(String::class.java)?:"CASHIER");val b=snap.child("businessId").getValue(String::class.java);val o=snap.child("outletId").getValue(String::class.java);secure.saveSession(uid,username,role.name,b,o);Session(uid,username,role,b,o)}
  override suspend fun loadProducts(outletId:String)=runCatching{val s=timed{root.child("outlets/$outletId/products").get().await()};s.children.mapNotNull{it.getValue(Product::class.java)}}.getOrDefault(emptyList())
