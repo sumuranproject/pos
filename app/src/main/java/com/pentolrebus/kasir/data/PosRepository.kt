@@ -14,6 +14,21 @@ interface PosRepository {
  suspend fun localPinLogin(username:String,pin:CharArray):Result<Session>
  suspend fun loadProducts(outletId:String):List<Product>
  suspend fun saveProduct(product:Product):Result<Unit>
+ suspend fun deleteProduct(product:Product):Result<Unit>
+ suspend fun loadCategories(outletId:String):List<Category>
+ suspend fun saveCategory(category:Category):Result<Unit>
+ suspend fun deleteCategory(category:Category):Result<Unit>
+ suspend fun loadOutlets(ownerUid:String):List<Outlet>
+ suspend fun saveOutlet(outlet:Outlet):Result<Unit>
+ suspend fun deleteOutlet(outlet:Outlet):Result<Unit>
+ suspend fun loadWorkers(outletId:String):List<Worker>
+ suspend fun saveWorker(worker:Worker):Result<Unit>
+ suspend fun deleteWorker(worker:Worker):Result<Unit>
+ suspend fun loadBusiness(ownerUid:String):Business?
+ suspend fun saveBusiness(business:Business):Result<Unit>
+ suspend fun loadExpenses(outletId:String):List<Expense>
+ suspend fun saveExpense(expense:Expense):Result<Unit>
+ suspend fun deleteExpense(expense:Expense):Result<Unit>
  suspend fun startShift(session:Session,openingCash:Long):Result<Shift>
  suspend fun closeShift(shift:Shift,closingCash:Long):Result<Shift>
  suspend fun saveShift(shift:Shift):Result<Unit>
@@ -25,33 +40,35 @@ interface PosRepository {
 
 class FirebasePosRepository(private val auth:FirebaseAuth=FirebaseAuth.getInstance(), private val root:DatabaseReference=FirebaseDatabase.getInstance().reference, private val secure:SecureLocalStore, private val log:(String,String)->Unit):PosRepository {
  private suspend fun <T> timed(block:suspend()->T)=withTimeout(15_000){block()}
- override suspend fun registerOwner(email:String,password:String,username:String,pin:CharArray,businessName:String?,outletName:String?,whatsapp:String?):Result<Session> = runCatching { log("REGISTRATION","OWNER_REGISTRATION_STARTED"); log("REGISTRATION","AUTH_CREATE_STARTED"); val result=timed{auth.createUserWithEmailAndPassword(email,password).await()}; val uid=result.user?.uid ?: error("Firebase UID tidak tersedia"); log("REGISTRATION","AUTH_CREATE_SUCCESS"); val businessId=businessName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}; val outletId=outletName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}; log("RTDB","RTDB_BOOTSTRAP_STARTED"); val profile=mapOf("uid" to uid,"ownerUid" to uid,"username" to username,"role" to "OWNER","displayName" to username,"businessId" to businessId,"outletId" to outletId,"whatsapp" to whatsapp); timed{root.child("users").child(uid).setValue(profile).await()}; log("REGISTRATION","PROFILE_CREATED"); if(businessId!=null){timed{root.child("businesses").child(businessId).setValue(mapOf("id" to businessId,"ownerUid" to uid,"name" to businessName)).await()};log("REGISTRATION","BUSINESS_CREATED")}; if(outletId!=null){timed{root.child("outlets").child(outletId).setValue(mapOf("id" to outletId,"ownerUid" to uid,"businessId" to businessId,"name" to outletName)).await()};log("REGISTRATION","OUTLET_CREATED")}; secure.saveCredential(username,uid,pin); secure.saveSession(uid,username,"OWNER",businessId,outletId);log("REGISTRATION","SESSION_CREATED");log("REGISTRATION","REGISTRATION_SUCCESS");Session(uid,username,Role.OWNER,businessId,outletId) }.also{if(it.isFailure)log("ERROR","OWNER_REGISTRATION_ERROR stage=registration")}
- override suspend fun emailLogin(email:String,password:String)=runCatching{val r=timed{auth.signInWithEmailAndPassword(email,password).await()};val uid=r.user?.uid?:error("UID missing");val snap=timed{root.child("users").child(uid).get().await()};val username=snap.child("username").getValue(String::class.java)?:email;val role=Role.valueOf(snap.child("role").getValue(String::class.java)?:"OWNER");val b=snap.child("businessId").getValue(String::class.java);val o=snap.child("outletId").getValue(String::class.java);secure.saveSession(uid,username,role.name,b,o);Session(uid,username,role,b,o)}
- override suspend fun localPinLogin(username:String,pin:CharArray)=runCatching{
-  val uid=secure.verify(username,pin)?:error("Username/PIN perangkat tidak valid")
-  val cached=secure.session()
-  if (cached?.get("uid")==uid && cached["username"]==username) {
-   val role=Role.valueOf(cached["role"]?:"CASHIER")
-   return@runCatching Session(uid,username,role,cached["businessId"],cached["outletId"])
-  }
-  val snap=timed{root.child("users").child(uid).get().await()}
-  val role=Role.valueOf(snap.child("role").getValue(String::class.java)?:"CASHIER")
-  val b=snap.child("businessId").getValue(String::class.java); val o=snap.child("outletId").getValue(String::class.java)
-  secure.saveSession(uid,username,role.name,b,o); Session(uid,username,role,b,o)
-}
- override suspend fun loadProducts(outletId:String)=runCatching{val s=timed{root.child("outlets/$outletId/products").get().await()};s.children.mapNotNull{it.getValue(Product::class.java)}}.getOrDefault(emptyList())
- override suspend fun saveProduct(product: Product): Result<Unit> = runCatching {
-  timed { root.child("outlets/${product.outletId}/products/${product.id}").setValue(product).await() }
-  Unit
-}
- override suspend fun startShift(session:Session,openingCash:Long)=runCatching{val s=Shift(ownerUid=session.uid,businessId=session.businessId.orEmpty(),outletId=session.outletId.orEmpty(),cashierUid=session.uid,startAt=System.currentTimeMillis(),openingCash=openingCash);timed{root.child("outlets/${s.outletId}/shifts/${s.id}").setValue(s).await()};s}
- override suspend fun closeShift(shift:Shift,closingCash:Long)=runCatching{val s=shift.copy(closedAt=System.currentTimeMillis(),closingCash=closingCash,syncStatus=SyncStatus.SYNCED);timed{root.child("outlets/${s.outletId}/shifts/${s.id}").setValue(s).await()};s}
- override suspend fun saveShift(shift:Shift):Result<Unit> = runCatching { timed { root.child("outlets/${shift.outletId}/shifts/${shift.id}").setValue(shift).await() }; Unit }
- override suspend fun saveTransaction(t: Transaction): Result<Unit> = runCatching {
-  timed { root.child("outlets/${t.outletId}/transactions/${t.transactionId}").setValue(t).await() }
-  Unit
-}
- override suspend fun loadTransactions(session:Session)=runCatching{val s=timed{root.child("outlets/${session.outletId}/transactions").get().await()};s.children.mapNotNull{it.getValue(Transaction::class.java)}}.getOrDefault(emptyList())
- override suspend fun loadActiveShift(session:Session):Shift?=runCatching{val s=timed{root.child("outlets/${session.outletId}/shifts").get().await()};s.children.mapNotNull{it.getValue(Shift::class.java)}.firstOrNull{it.cashierUid==session.uid&&it.closedAt==null}}.getOrNull()
+ private suspend inline fun <reified T> readList(path:String):List<T> = runCatching { timed{root.child(path).get().await()}.children.mapNotNull{it.getValue(T::class.java)} }.getOrDefault(emptyList())
+ private suspend inline fun <reified T> readOne(path:String):T? = runCatching { timed{root.child(path).get().await()}.getValue(T::class.java) }.getOrNull()
+ private suspend fun write(path:String,value:Any):Result<Unit> = runCatching{timed{root.child(path).setValue(value).await()};Unit}
+ private suspend fun remove(path:String):Result<Unit> = runCatching{timed{root.child(path).removeValue().await()};Unit}
+ override suspend fun registerOwner(email:String,password:String,username:String,pin:CharArray,businessName:String?,outletName:String?,whatsapp:String?):Result<Session> = runCatching { val result=timed{auth.createUserWithEmailAndPassword(email,password).await()}; val uid=result.user?.uid?:error("Firebase UID tidak tersedia"); val businessId=businessName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}; val outletId=outletName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}; root.child("users/$uid").setValue(mapOf("uid" to uid,"ownerUid" to uid,"username" to username,"role" to "OWNER","displayName" to username,"businessId" to businessId,"outletId" to outletId,"whatsapp" to whatsapp)).await(); if(businessId!=null) saveBusiness(Business(businessId,uid,businessName!!,whatsapp)); if(outletId!=null) saveOutlet(Outlet(outletId,uid,businessId,outletName!!)); secure.saveCredential(username,uid,pin); secure.saveSession(uid,username,"OWNER",businessId,outletId); Session(uid,username,Role.OWNER,businessId,outletId) }
+ override suspend fun emailLogin(email:String,password:String)=runCatching{val r=timed{auth.signInWithEmailAndPassword(email,password).await()};val uid=r.user?.uid?:error("UID missing");val snap=timed{root.child("users/$uid").get().await()};val username=snap.child("username").getValue(String::class.java)?:email;val role=Role.valueOf(snap.child("role").getValue(String::class.java)?:("OWNER"));val b=snap.child("businessId").getValue(String::class.java);val o=snap.child("outletId").getValue(String::class.java);secure.saveSession(uid,username,role.name,b,o);Session(uid,username,role,b,o)}
+ override suspend fun localPinLogin(username:String,pin:CharArray)=runCatching{val uid=secure.verify(username,pin)?:error("Username/PIN perangkat tidak valid");val cached=secure.session();if(cached?.get("uid")==uid&&cached["username"]==username)return@runCatching Session(uid,username,Role.valueOf(cached["role"]?:"CASHIER"),cached["businessId"],cached["outletId"]);val snap=timed{root.child("users/$uid").get().await()};val role=Role.valueOf(snap.child("role").getValue(String::class.java)?:"CASHIER");val b=snap.child("businessId").getValue(String::class.java);val o=snap.child("outletId").getValue(String::class.java);secure.saveSession(uid,username,role.name,b,o);Session(uid,username,role,b,o)}
+ override suspend fun loadProducts(outletId:String)=readList("outlets/$outletId/products")
+ override suspend fun saveProduct(product:Product):Result<Unit> = write("outlets/${product.outletId}/products/${product.id}",product)
+ override suspend fun deleteProduct(product:Product)=remove("outlets/${product.outletId}/products/${product.id}")
+ override suspend fun loadCategories(outletId:String)=readList("outlets/$outletId/categories")
+ override suspend fun saveCategory(category:Category)=write("outlets/${category.outletId}/categories/${category.id}",category)
+ override suspend fun deleteCategory(category:Category)=remove("outlets/${category.outletId}/categories/${category.id}")
+ override suspend fun loadOutlets(ownerUid:String)=readList<Outlet>("outlets").filter{it.ownerUid==ownerUid}
+ override suspend fun saveOutlet(outlet:Outlet)=write("outlets/${outlet.id}",outlet)
+ override suspend fun deleteOutlet(outlet:Outlet)=remove("outlets/${outlet.id}")
+ override suspend fun loadWorkers(outletId:String)=readList("outlets/$outletId/workers")
+ override suspend fun saveWorker(worker:Worker)=write("outlets/${worker.outletId}/workers/${worker.id}",worker)
+ override suspend fun deleteWorker(worker:Worker)=remove("outlets/${worker.outletId}/workers/${worker.id}")
+ override suspend fun loadBusiness(ownerUid:String):Business?=readList<Business>("businesses").firstOrNull{it.ownerUid==ownerUid}
+ override suspend fun saveBusiness(business:Business)=write("businesses/${business.id}",business)
+ override suspend fun loadExpenses(outletId:String)=readList("outlets/$outletId/expenses")
+ override suspend fun saveExpense(expense:Expense)=write("outlets/${expense.outletId}/expenses/${expense.id}",expense)
+ override suspend fun deleteExpense(expense:Expense)=remove("outlets/${expense.outletId}/expenses/${expense.id}")
+ override suspend fun startShift(session:Session,openingCash:Long)=runCatching{val s=Shift(ownerUid=session.uid,businessId=session.businessId.orEmpty(),outletId=session.outletId.orEmpty(),cashierUid=session.uid,startAt=System.currentTimeMillis(),openingCash=openingCash);write("outlets/${s.outletId}/shifts/${s.id}",s).getOrThrow();s}
+ override suspend fun closeShift(shift:Shift,closingCash:Long)=runCatching{val s=shift.copy(closedAt=System.currentTimeMillis(),closingCash=closingCash,syncStatus=SyncStatus.SYNCED);write("outlets/${s.outletId}/shifts/${s.id}",s).getOrThrow();s}
+ override suspend fun saveShift(shift:Shift)=write("outlets/${shift.outletId}/shifts/${shift.id}",shift)
+ override suspend fun saveTransaction(t:Transaction):Result<Unit> = write("outlets/${t.outletId}/transactions/${t.transactionId}",t)
+ override suspend fun loadTransactions(session:Session)=readList<Transaction>("outlets/${session.outletId}/transactions").filter{session.role==Role.OWNER||it.cashierUid==session.uid}
+ override suspend fun loadActiveShift(session:Session):Shift?=readList<Shift>("outlets/${session.outletId}/shifts").filter{it.cashierUid==session.uid&&it.closedAt==null}.maxByOrNull{it.startAt}
  override fun logout(){auth.signOut();secure.clearSession()}
 }

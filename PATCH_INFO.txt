@@ -1,29 +1,43 @@
-SakuKasir V27 - V10 Build Fix
+SakuKasir V29 — UI Breadth / Real Management Pass
 
-Base: V26 V9 HARDENED
+Base: V28
 
-Changes:
-- Fixed MainActivity bottom-navigation BottomNavItem weight scope.
-- Changed BottomNavItem to a RowScope extension so Modifier.weight(1f) is valid inside NavigationBar's RowScope content.
-- Added explicit RowScope import.
-- Preserved the existing four navigation destinations: Kasir, Checkout, Laporan, Pengaturan.
-- Preserved V26 offline checkout, PENDING_SYNC, sync/reprint/shift/printer/backend logic.
-- No Firebase schema/rules/backend changes.
-- Only README.md is retained as Markdown documentation.
+Purpose
+- Replace preview/static management UI with real Compose forms, lists, filters, dialogs and CRUD wiring.
+- Keep Firebase Authentication, RTDB, offline transaction/shift queue and Bluetooth printer behavior.
+- Do not claim 99% pixel verification without a device screenshot comparison.
 
-V10 root cause:
-- MainActivity.kt:707:14 Unresolved reference 'weight'.
-- The previous BottomNavItem was a normal function, so it did not have RowScope receiver required by Modifier.weight.
+Implemented
+- Product management: 2-column grid, dynamic category chips, search, stock indicators, two-step product editor, local photo picker.
+- Category management: real list/counts, add/edit dialog and empty state.
+- Stock management: ON/OFF toggle, quantity and low-stock threshold editor.
+- Outlet management: real list and editable outlet form.
+- Worker management: real list and editable worker form.
+- Business management: real business data and edit form.
+- Expense management: real list, add/edit form and totals source for reports.
+- QRIS: configuration state and local proof picker in checkout.
+- Transaction history: search and payment-method filters.
+- Owner reports: functional Ringkasan/Outlet/Kasir/Harian/Bulanan tabs.
+- Cash checkout: uang diterima, validation and kembalian.
+- POS: 2-column product grid and dynamic category data.
+- Transaction detail includes cash received, change, discount and sync status.
+- Firebase repository CRUD added for categories, outlets, workers, business, expenses and product deletion.
+- RTDB expenses path added to rules.
+- Local repository updated for the same CRUD surface.
+- Offline transaction serialization now retains cashReceived/change/discount.
+- SVG/vector assets from the UI pass are retained.
 
-Audit:
-- V10 contained only one Kotlin compiler error.
-- No new NavigationBarItem error.
-- No dependency/Firebase/Gradle root error in V10.
-- All existing .weight usages were checked for their surrounding Row/RowScope or Column/ColumnScope context.
-- Duplicate override pattern check passed.
-- Only README.md remains as Markdown.
+Audit
+- scripts/preflight.sh: PASS
+- database.rules.json JSON parse: PASS
+- Kotlin source delimiter audit: PASS
+- 14 Kotlin files checked
+- Only README.md is Markdown
+- No FormPreview remains
+- No preview hardcoded expense value remains
+- No Firebase schema change outside required CRUD/expenses paths
 
-Build note:
-- Source/static audit completed.
-- Full Gradle build was not executed in this environment because the Gradle wrapper/executable and external dependency access are unavailable here.
-- Codemagic V10 is the authoritative build result; V11/V27 must be verified by a new Codemagic build.
+Build status
+- NOT RUN in this environment.
+- No full Gradle/Codemagic success is claimed for V29.
+- Codemagic remains the authoritative Android build verification.

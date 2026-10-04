@@ -67,7 +67,7 @@ class OfflineStore(context: Context) {
         put("outletId", t.outletId); put("shiftId", t.shiftId); put("cashierUid", t.cashierUid)
         put("subtotal", t.subtotal); put("total", t.total); put("paymentMethod", t.paymentMethod.name)
         put("paymentStatus", t.paymentStatus); put("createdAt", t.createdAt)
-        put("qrisProofPath", t.qrisProofPath ?: JSONObject.NULL); put("syncStatus", t.syncStatus.name)
+        put("qrisProofPath", t.qrisProofPath ?: JSONObject.NULL); put("cashReceived", t.cashReceived); put("change", t.change); put("discount", t.discount); put("syncStatus", t.syncStatus.name)
         val items = JSONArray(); t.items.forEach { item ->
             items.put(JSONObject().apply {
                 put("productId", item.productId); put("name", item.name); put("price", item.price)
@@ -89,6 +89,7 @@ class OfflineStore(context: Context) {
             paymentMethod = PaymentMethod.valueOf(o.optString("paymentMethod", PaymentMethod.CASH.name)),
             paymentStatus = o.optString("paymentStatus", "PAID"), createdAt = o.optLong("createdAt"),
             qrisProofPath = if (o.isNull("qrisProofPath")) null else o.optString("qrisProofPath"),
+            cashReceived = o.optLong("cashReceived"), change = o.optLong("change"), discount = o.optLong("discount"),
             syncStatus = SyncStatus.valueOf(o.optString("syncStatus", SyncStatus.PENDING_SYNC.name))
         )
     }.getOrNull()
