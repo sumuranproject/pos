@@ -646,6 +646,7 @@ private fun AlertBox(message: String) {
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainShell(
     vm: PosViewModel,
@@ -904,7 +905,33 @@ private fun ReportsFull(session: Session, transactions: List<com.pentolrebus.kas
 }
 
 @Composable private fun StatCardCompact(title:String,value:String,modifier:Modifier=Modifier){ OutlinedCard(modifier, shape=RoundedCornerShape(14.dp)){Column(Modifier.padding(12.dp)){Text(title,style=MaterialTheme.typography.labelSmall);Text(value,fontWeight=FontWeight.Bold,style=MaterialTheme.typography.titleMedium)}}}
-@Composable private fun TransactionRow(t: com.pentolrebus.kasir.domain.Transaction,onClick:()->Unit){ Surface(onClick=onClick,modifier=Modifier.fillMaxWidth().padding(vertical=4.dp),shape=RoundedCornerShape(12.dp),color=MaterialTheme.colorScheme.surfaceVariant){Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("#${t.transactionId.takeLast(6)}",fontWeight=FontWeight.SemiBold);Text("${t.paymentMethod} · ${t.items.sumOf{it.quantity}} item",style=MaterialTheme.typography.labelSmall)}Text(money(t.total),fontWeight=FontWeight.Bold);Icon(Icons.Default.ChevronRight,null)}}}
+@Composable
+private fun TransactionRow(
+    t: com.pentolrebus.kasir.domain.Transaction,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("#${t.transactionId.takeLast(6)}", fontWeight = FontWeight.SemiBold)
+                Text(
+                    "${t.paymentMethod} · ${t.items.sumOf { item -> item.quantity }} item",
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+            Text(money(t.total), fontWeight = FontWeight.Bold)
+            Icon(Icons.Default.ChevronRight, contentDescription = null)
+        }
+    }
+}
 
 @Composable
 
@@ -939,6 +966,19 @@ private fun ManagementPage(page:String, vm:PosViewModel, session:Session, produc
 
 private fun pageSubtitle(page:String)=when(page){"Produk","Kategori","Stok"->"Kelola data operasional";"QRIS","Printer"->"Pembayaran & perangkat";"Tema","Sinkronisasi"->"Preferensi aplikasi";else->"SakuKasir"}
 private fun pageIcon(page:String)=when{page.contains("Produk")->R.drawable.ic_product;page.contains("Kategori")->R.drawable.ic_category;page.contains("Stok")->R.drawable.ic_stock;page.contains("Outlet")->R.drawable.ic_store;page.contains("Pekerja")||page.contains("Kasir")->R.drawable.ic_people;page.contains("QRIS")->R.drawable.ic_qris;page.contains("Printer")->R.drawable.ic_printer;page.contains("Sinkron")->R.drawable.ic_sync;page.contains("Bisnis")->R.drawable.ic_business;page.contains("Owner")||page.contains("Profil")->R.drawable.ic_owner;else->R.drawable.ic_more}
+
+private fun settingsSubtitle(page: String): String = when (page) {
+    "Produk" -> "Kelola daftar produk dan harga"
+    "Kategori" -> "Kelola kategori produk"
+    "Stok" -> "Atur stok dan batas minimum"
+    "Outlet" -> "Kelola outlet bisnis"
+    "Kasir / Pekerja" -> "Kelola akun dan akses kasir"
+    "Owner" -> "Profil pemilik usaha"
+    "Bisnis" -> "Informasi dan identitas bisnis"
+    "Profil" -> "Profil akun kasir"
+    "Shift" -> "Shift aktif dan riwayat shift"
+    else -> "Kelola pengaturan"
+}
 
 @Composable private fun OwnerSettingsPage(session:Session,onOpen:(String)->Unit,onSync:()->Unit,syncing:Boolean,onPrinter:()->Unit,onTheme:()->Unit,onLogout:()->Unit){LazyColumn(Modifier.fillMaxSize().padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){item{Text(if(session.role==Role.OWNER)"Owner · Bisnis" else session.username,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)};item{SectionLabel("OPERASIONAL")};if(session.role==Role.OWNER){listOf("Produk","Kategori","Stok","Outlet","Kasir / Pekerja","Owner","Bisnis").forEach{p->item{SettingsRowPainter(p,settingsSubtitle(p),pageIcon(p)){onOpen(p)}}}}else listOf("Profil","Shift").forEach{p->item{SettingsRowPainter(p,settingsSubtitle(p),pageIcon(p)){onOpen(p)}}};item{SectionLabel("PEMBAYARAN & PERANGKAT")};item{SettingsRowPainter("QRIS","Atur pembayaran QRIS",R.drawable.ic_qris){onOpen("QRIS")}};item{SettingsRowPainter("Printer","Bluetooth",R.drawable.ic_printer,onPrinter)};item{SectionLabel("APLIKASI")};item{SettingsRowPainter("Tema","Terang / Gelap",R.drawable.ic_theme,onTheme)};item{SettingsRowPainter("Sinkronisasi",if(syncing)"Menyinkronkan…" else "Tersinkron",R.drawable.ic_sync,onSync)};item{SettingsRowPainter("Tentang aplikasi","Versi 0.1",R.drawable.ic_info){onOpen("Tentang aplikasi")}};item{Spacer(Modifier.height(4.dp));Button(onClick=onLogout,Modifier.fillMaxWidth()){Text("KELUAR")}}}}
 @Composable private fun SectionLabel(t:String){Text(t,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary)}
@@ -988,7 +1028,7 @@ private fun ProductEditor(initial: Product, categories: List<Category>, onDismis
                 if (step == 1) {
                     step = 2
                 } else {
-                    onSave(initial.copy(name = name, price = price.toLongOrNull() ?: 0, unit = unit, categoryId = category, stockEnabled = stockOn, stock = stock.toLongOrNull() ?: 0, lowStockThreshold = low.toLongOrNull() ?: 5, imagePath = imagePath))
+                    onSave(initial.copy(name = name, price = price.toLongOrNull() ?: 0, unit = unit, categoryId = category, stockEnabled = stockOn, stock = stock.toLongOrNull() ?: 0, lowStockThreshold = low.toLongOrNull() ?: 5, imagePath = p.imagePath))
                 }
             }) { Text(if (step == 1) "LANJUT" else "SIMPAN") }
         },
@@ -1018,7 +1058,7 @@ private fun StockEditor(p: Product, onDismiss: () -> Unit, onSave: (Product) -> 
                 }
             }
         },
-        confirmButton = { Button(onClick = { onSave(p.copy(stockEnabled = enabled, stock = qty.toLongOrNull() ?: 0, lowStockThreshold = low.toLongOrNull() ?: 5, imagePath = imagePath)) }) { Text("SIMPAN") } },
+        confirmButton = { Button(onClick = { onSave(p.copy(stockEnabled = enabled, stock = qty.toLongOrNull() ?: 0, lowStockThreshold = low.toLongOrNull() ?: 5, imagePath = p.imagePath)) }) { Text("SIMPAN") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("BATAL") } }
     )
 }
@@ -1134,10 +1174,47 @@ private fun TransactionDetailReal(transaction: com.pentolrebus.kasir.domain.Tran
     }
 }
 
+@Composable private fun PrinterPage(onPrinter: () -> Unit) {
+    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Printer", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        SettingsRowPainter("Printer Bluetooth", "Kelola perangkat printer", R.drawable.ic_printer, onPrinter)
+        Text("Hubungkan printer Bluetooth untuk mencetak dan mencetak ulang struk.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable private fun ThemePage(onTheme: () -> Unit) {
+    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Tema", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        SettingsRowPainter("Mode tampilan", "Terang / Gelap", R.drawable.ic_theme, onTheme)
+    }
+}
+
+@Composable private fun SyncPage(syncing: Boolean, onSync: () -> Unit) {
+    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Sinkronisasi", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(if (syncing) "Sinkronisasi sedang berjalan…" else "Data siap disinkronkan.", style = MaterialTheme.typography.bodyMedium)
+        Button(onClick = onSync, Modifier.fillMaxWidth()) { Text(if (syncing) "MENYINKRONKAN…" else "SINKRONKAN SEKARANG") }
+    }
+}
+
+@Composable private fun AboutPage() {
+    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Tentang aplikasi", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text("SakuKasir", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text("Versi 0.1", style = MaterialTheme.typography.bodySmall)
+        Text("Aplikasi kasir untuk pengelolaan penjualan, shift, transaksi, printer, dan sinkronisasi.", style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable private fun ShiftHistoryPage(shift: com.pentolrebus.kasir.domain.Shift?) {
+    if (shift == null) EmptyState("Belum ada riwayat shift", "Riwayat shift akan muncul setelah shift dibuat.", R.drawable.ic_report)
+    else DetailCard("Riwayat Shift", listOf("Shift ID" to shift.id, "Mulai" to shift.startAt.toString(), "Modal awal" to money(shift.openingCash), "Transaksi" to shift.transactionCount.toString(), "Status" to shift.syncStatus.name), null, null)
+}
+
 @Composable private fun TransactionHistoryReal(transactions:List<com.pentolrebus.kasir.domain.Transaction>){var q by remember{mutableStateOf("")};var method by remember{mutableStateOf<PaymentMethod?>(null)};Column(Modifier.fillMaxSize().padding(16.dp)){OutlinedTextField(q,{q=it},Modifier.fillMaxWidth(),singleLine=true,placeholder={Text("Cari ID / produk…")},leadingIcon={Icon(Icons.Default.Search,null)});LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.padding(vertical=8.dp)){item{FilterChip(method==null,{method=null},{Text("Semua")})};item{FilterChip(method==PaymentMethod.CASH,{method=PaymentMethod.CASH},{Text("Cash")})};item{FilterChip(method==PaymentMethod.QRIS,{method=PaymentMethod.QRIS},{Text("QRIS")})}};val list=transactions.filter{(q.isBlank()||it.transactionId.contains(q,true)||it.items.any{item->item.name.contains(q,true)})&&(method==null||it.paymentMethod==method)};if(list.isEmpty())EmptyState("Belum ada transaksi","Coba ubah filter atau lakukan transaksi.",R.drawable.ic_report)else LazyColumn(Modifier.weight(1f)){items(list){TransactionRow(it){}}}}}
 @Composable private fun OwnerReportReal(page:String,transactions:List<com.pentolrebus.kasir.domain.Transaction>,expenses:List<com.pentolrebus.kasir.domain.Expense>,workers:List<com.pentolrebus.kasir.domain.Worker>,outlets:List<com.pentolrebus.kasir.domain.Outlet>){val total=transactions.sumOf{it.total};val expense=expenses.sumOf{it.amount};Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)){Text(page,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Spacer(Modifier.height(10.dp));Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){StatCardCompact("Penjualan",money(total),Modifier.weight(1f));StatCardCompact("Transaksi",transactions.size.toString(),Modifier.weight(1f))};Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){StatCardCompact("Cash",money(transactions.filter{it.paymentMethod==PaymentMethod.CASH}.sumOf{it.total}),Modifier.weight(1f));StatCardCompact("QRIS",money(transactions.filter{it.paymentMethod==PaymentMethod.QRIS}.sumOf{it.total}),Modifier.weight(1f))};Spacer(Modifier.height(12.dp));when{page.contains("Kasir")->workers.forEach{w->SummaryRow(w.displayName,transactions.filter{it.cashierUid==w.id}.size.toString()+" transaksi")};page.contains("Harian")->SummaryRow("Hari ini",money(total));page.contains("Bulanan")->SummaryRow("Bulan berjalan",money(total));else->{SummaryRow("Pengeluaran",money(expense));SummaryRow("Laba bersih",money(total-expense))}}}}
 @Composable private fun ExpenseReal(vm:PosViewModel,session:Session,expenses:List<com.pentolrebus.kasir.domain.Expense>,page:String){var editing by remember{mutableStateOf<com.pentolrebus.kasir.domain.Expense?>(if(page.contains("tambah"))com.pentolrebus.kasir.domain.Expense(ownerUid=session.uid,outletId=session.outletId.orEmpty())else null)};Column(Modifier.fillMaxSize().padding(16.dp)){if(expenses.isEmpty())EmptyState("Belum ada pengeluaran","Catat pengeluaran operasional Anda.",R.drawable.ic_report)else LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)){items(expenses){e->SettingsRowPainter(e.title,"${money(e.amount)} · ${e.category}",R.drawable.ic_report){editing=e}}};Button(onClick={editing=com.pentolrebus.kasir.domain.Expense(ownerUid=session.uid,outletId=session.outletId.orEmpty())},Modifier.fillMaxWidth()){Text("TAMBAH PENGELUARAN")}};editing?.let{ExpenseEditor(it,onDismiss={editing=null}){vm.saveExpense(it);editing=null}}}
-@Composable private fun ExpenseEditor(initial:Expense,onDismiss:()->Unit,onSave:(Expense)->Unit){var title by remember{mutableStateOf(initial.title)};var amount by remember{mutableStateOf(if(initial.amount==0)"" else initial.amount.toString())};var category by remember{mutableStateOf(initial.category)};var note by remember{mutableStateOf(initial.note)};AlertDialog(onDismissRequest=onDismiss,title={Text(if(initial.title.isBlank())"Tambah Pengeluaran" else "Ubah Pengeluaran")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){OutlinedTextField(title,{title=it},Modifier.fillMaxWidth(),label={Text("Nama pengeluaran")});OutlinedTextField(amount,{amount=it.filter(Char::isDigit)},Modifier.fillMaxWidth(),label={Text("Nominal")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number));OutlinedTextField(category,{category=it},Modifier.fillMaxWidth(),label={Text("Kategori")});OutlinedTextField(note,{note=it},Modifier.fillMaxWidth(),label={Text("Catatan")})}},confirmButton={Button({if(title.isNotBlank())onSave(initial.copy(title=title,amount=amount.toLongOrNull()?:0,category=category,note=note))}){Text("SIMPAN")}},dismissButton={TextButton(onClick=onDismiss){Text("BATAL")}})}
+@Composable private fun ExpenseEditor(initial:Expense,onDismiss:()->Unit,onSave:(Expense)->Unit){var title by remember{mutableStateOf(initial.title)};var amount by remember{mutableStateOf(if(initial.amount==0L)"" else initial.amount.toString())};var category by remember{mutableStateOf(initial.category)};var note by remember{mutableStateOf(initial.note)};AlertDialog(onDismissRequest=onDismiss,title={Text(if(initial.title.isBlank())"Tambah Pengeluaran" else "Ubah Pengeluaran")},text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){OutlinedTextField(title,{title=it},Modifier.fillMaxWidth(),label={Text("Nama pengeluaran")});OutlinedTextField(amount,{amount=it.filter(Char::isDigit)},Modifier.fillMaxWidth(),label={Text("Nominal")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number));OutlinedTextField(category,{category=it},Modifier.fillMaxWidth(),label={Text("Kategori")});OutlinedTextField(note,{note=it},Modifier.fillMaxWidth(),label={Text("Catatan")})}},confirmButton={Button({if(title.isNotBlank())onSave(initial.copy(title=title,amount=amount.toLongOrNull()?:0,category=category,note=note))}){Text("SIMPAN")}},dismissButton={TextButton(onClick=onDismiss){Text("BATAL")}})}
 
 @Composable private fun DetailCard(title:String,rows:List<Pair<String,String>>,onOpen:(()->Unit)?=null,next:String?=null){Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)){Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)){Column(Modifier.padding(16.dp)){Text(title,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold);Spacer(Modifier.height(8.dp));rows.forEach{(a,b)->SummaryRow(a,b)}}};if(onOpen!=null&&next!=null){Spacer(Modifier.height(12.dp));Button(onClick=onOpen,Modifier.fillMaxWidth()){Text(if(next.contains("Form")||next.contains("Ubah"))"UBAH" else next)}}}}
 @Composable private fun AuthPreviewPage(page:String){Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){Text(page,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);when{page.contains("Pilih")->{SettingsRowPainter("Owner","Kelola bisnis dan outlet",R.drawable.ic_owner){};SettingsRowPainter("Kasir","Penjualan dan shift",R.drawable.ic_people){}};page.contains("Daftar")->{listOf("Email","Password","Konfirmasi password","Username","PIN","Konfirmasi PIN","Bisnis","Outlet pertama").forEach{OutlinedTextField("",{},Modifier.fillMaxWidth(),label={Text(it)},singleLine=true)};Button({},Modifier.fillMaxWidth()){Text("DAFTAR")}};page.contains("Username")->{OutlinedTextField("",{},Modifier.fillMaxWidth(),label={Text("Username")});OutlinedTextField("",{},Modifier.fillMaxWidth(),label={Text("PIN")});Button({},Modifier.fillMaxWidth()){Text("MASUK")}};else->{OutlinedTextField("",{},Modifier.fillMaxWidth(),label={Text("Email")});OutlinedTextField("",{},Modifier.fillMaxWidth(),label={Text("Password")});Button({},Modifier.fillMaxWidth()){Text("MASUK")}}}}}

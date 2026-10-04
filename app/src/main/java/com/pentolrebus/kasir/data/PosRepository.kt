@@ -47,21 +47,21 @@ class FirebasePosRepository(private val auth:FirebaseAuth=FirebaseAuth.getInstan
  override suspend fun registerOwner(email:String,password:String,username:String,pin:CharArray,businessName:String?,outletName:String?,whatsapp:String?):Result<Session> = runCatching { val result=timed{auth.createUserWithEmailAndPassword(email,password).await()}; val uid=result.user?.uid?:error("Firebase UID tidak tersedia"); val businessId=businessName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}; val outletId=outletName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}; root.child("users/$uid").setValue(mapOf("uid" to uid,"ownerUid" to uid,"username" to username,"role" to "OWNER","displayName" to username,"businessId" to businessId,"outletId" to outletId,"whatsapp" to whatsapp)).await(); if(businessId!=null) saveBusiness(Business(businessId,uid,businessName!!,whatsapp)); if(outletId!=null) saveOutlet(Outlet(outletId,uid,businessId,outletName!!)); secure.saveCredential(username,uid,pin); secure.saveSession(uid,username,"OWNER",businessId,outletId); Session(uid,username,Role.OWNER,businessId,outletId) }
  override suspend fun emailLogin(email:String,password:String)=runCatching{val r=timed{auth.signInWithEmailAndPassword(email,password).await()};val uid=r.user?.uid?:error("UID missing");val snap=timed{root.child("users/$uid").get().await()};val username=snap.child("username").getValue(String::class.java)?:email;val role=Role.valueOf(snap.child("role").getValue(String::class.java)?:("OWNER"));val b=snap.child("businessId").getValue(String::class.java);val o=snap.child("outletId").getValue(String::class.java);secure.saveSession(uid,username,role.name,b,o);Session(uid,username,role,b,o)}
  override suspend fun localPinLogin(username:String,pin:CharArray)=runCatching{val uid=secure.verify(username,pin)?:error("Username/PIN perangkat tidak valid");val cached=secure.session();if(cached?.get("uid")==uid&&cached["username"]==username)return@runCatching Session(uid,username,Role.valueOf(cached["role"]?:"CASHIER"),cached["businessId"],cached["outletId"]);val snap=timed{root.child("users/$uid").get().await()};val role=Role.valueOf(snap.child("role").getValue(String::class.java)?:"CASHIER");val b=snap.child("businessId").getValue(String::class.java);val o=snap.child("outletId").getValue(String::class.java);secure.saveSession(uid,username,role.name,b,o);Session(uid,username,role,b,o)}
- override suspend fun loadProducts(outletId:String)=readList("outlets/$outletId/products")
+ override suspend fun loadProducts(outletId:String):List<Product> = readList<Product>("outlets/$outletId/products")
  override suspend fun saveProduct(product:Product):Result<Unit> = write("outlets/${product.outletId}/products/${product.id}",product)
  override suspend fun deleteProduct(product:Product)=remove("outlets/${product.outletId}/products/${product.id}")
- override suspend fun loadCategories(outletId:String)=readList("outlets/$outletId/categories")
+ override suspend fun loadCategories(outletId:String):List<Category> = readList<Category>("outlets/$outletId/categories")
  override suspend fun saveCategory(category:Category)=write("outlets/${category.outletId}/categories/${category.id}",category)
  override suspend fun deleteCategory(category:Category)=remove("outlets/${category.outletId}/categories/${category.id}")
  override suspend fun loadOutlets(ownerUid:String)=readList<Outlet>("outlets").filter{it.ownerUid==ownerUid}
  override suspend fun saveOutlet(outlet:Outlet)=write("outlets/${outlet.id}",outlet)
  override suspend fun deleteOutlet(outlet:Outlet)=remove("outlets/${outlet.id}")
- override suspend fun loadWorkers(outletId:String)=readList("outlets/$outletId/workers")
+ override suspend fun loadWorkers(outletId:String):List<Worker> = readList<Worker>("outlets/$outletId/workers")
  override suspend fun saveWorker(worker:Worker)=write("outlets/${worker.outletId}/workers/${worker.id}",worker)
  override suspend fun deleteWorker(worker:Worker)=remove("outlets/${worker.outletId}/workers/${worker.id}")
  override suspend fun loadBusiness(ownerUid:String):Business?=readList<Business>("businesses").firstOrNull{it.ownerUid==ownerUid}
  override suspend fun saveBusiness(business:Business)=write("businesses/${business.id}",business)
- override suspend fun loadExpenses(outletId:String)=readList("outlets/$outletId/expenses")
+ override suspend fun loadExpenses(outletId:String):List<Expense> = readList<Expense>("outlets/$outletId/expenses")
  override suspend fun saveExpense(expense:Expense)=write("outlets/${expense.outletId}/expenses/${expense.id}",expense)
  override suspend fun deleteExpense(expense:Expense)=remove("outlets/${expense.outletId}/expenses/${expense.id}")
  override suspend fun startShift(session:Session,openingCash:Long)=runCatching{val s=Shift(ownerUid=session.uid,businessId=session.businessId.orEmpty(),outletId=session.outletId.orEmpty(),cashierUid=session.uid,startAt=System.currentTimeMillis(),openingCash=openingCash);write("outlets/${s.outletId}/shifts/${s.id}",s).getOrThrow();s}

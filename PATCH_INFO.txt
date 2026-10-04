@@ -1,31 +1,30 @@
-SakuKasir V30 - V11 Resource Linking Fix
+SakuKasir V31 — V12 Kotlin Compile Fix
 
-Base: V29 REAL UI BREADTH
+Base: V30-V11-RESOURCE-FIX
 
-V11 root cause:
-- Android resource linking failed in :app:processDebugResources.
-- Several SVG-derived drawable XML files used raw SVG shape attributes that are invalid in Android VectorDrawable.
+V12 Codemagic root task:
+  :app:compileDebugKotlin
 
-Fixed:
-- ic_business.xml: rounded rect converted to pathData.
-- ic_category.xml: circle converted to pathData.
-- ic_info.xml: circle converted to pathData.
-- ic_more.xml: circles converted to pathData.
-- ic_people.xml: circles converted to pathData.
-- ic_theme.xml: circle converted to pathData.
-- ic_qris.xml: rounded rectangles converted to pathData.
-- ic_person.xml: circles converted to pathData.
-- Preserved existing SVG geometry/style intent and #1F6FEB stroke styling.
+Fixes applied from V12 log and source audit:
+1. Opt-in ExperimentalMaterial3Api for MainShell/TopAppBar.
+2. Reworked TransactionRow into explicit multiline Compose structure to eliminate the parser cascade around the reported Text/syntax errors.
+3. Added missing PrinterPage.
+4. Added missing ThemePage.
+5. Added missing SyncPage.
+6. Added missing AboutPage.
+7. Added missing ShiftHistoryPage.
+8. Added missing settingsSubtitle() used by OwnerSettingsPage.
+9. Fixed StockEditor imagePath scope to preserve p.imagePath.
+10. Fixed ExpenseEditor Long-vs-Int comparison (0 -> 0L).
+11. Added explicit generic return types for Firebase repository loaders:
+    loadProducts, loadCategories, loadWorkers, loadExpenses.
 
-Audit:
-- XML parse: PASS.
-- No raw circle/rect/ellipse/polyline/polygon/line drawable shapes remain in res/drawable.
-- No invalid android:cx/cy/r/rx/ry/left/top/right/bottom drawable attributes remain.
-- scripts/preflight.sh: PASS.
-- Kotlin file count: 14.
-- Firebase/backend/offline/printer logic unchanged.
+Validation:
+- scripts/preflight.sh: PASS
+- Kotlin delimiter audit: PASS
+- 14 Kotlin files checked
+- No Gradle executable / wrapper available in local environment
+- Codemagic verification: NOT RUN after V31 patch
 
-Build status:
-- V11 Codemagic: FAILED at :app:processDebugResources due to invalid VectorDrawable XML.
-- V30 full Gradle/Codemagic: NOT RUN in this environment.
-- Requires one new Codemagic verification build.
+Backend/Firebase/offline/printer architecture is unchanged.
+V11 VectorDrawable resource fixes are preserved.
