@@ -53,5 +53,5 @@ class FirebasePosRepository(private val auth:FirebaseAuth=FirebaseAuth.getInstan
 }
  override suspend fun loadTransactions(session:Session)=runCatching{val s=timed{root.child("outlets/${session.outletId}/transactions").get().await()};s.children.mapNotNull{it.getValue(Transaction::class.java)}}.getOrDefault(emptyList())
  override suspend fun loadActiveShift(session:Session):Shift?=runCatching{val s=timed{root.child("outlets/${session.outletId}/shifts").get().await()};s.children.mapNotNull{it.getValue(Shift::class.java)}.firstOrNull{it.cashierUid==session.uid&&it.closedAt==null}}.getOrNull()
- override override fun logout(){auth.signOut();secure.clearSession()}
+ override fun logout(){auth.signOut();secure.clearSession()}
 }

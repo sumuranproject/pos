@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -680,7 +681,7 @@ private fun MainShell(
                 "laporan" -> ReportsScreen(transactions, shift, printer, { if (Build.VERSION.SDK_INT >= 31 && !printer.hasConnectPermission()) {
                         bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT)
                     } else showPrinterPicker = true
-                })
+                }, { vm.syncPending() }, syncing)
                 "pengaturan" -> SettingsScreen(session, diagnostics, onTheme, logout, settingsPage, { settingsPage = it }, { settingsPage = null }, printer, {
                     if (Build.VERSION.SDK_INT >= 31 && !printer.hasConnectPermission()) bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT) else showPrinterPicker = true
                 }, { vm.syncPending() }, syncing)

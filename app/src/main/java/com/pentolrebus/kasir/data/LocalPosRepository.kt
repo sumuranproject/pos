@@ -21,6 +21,7 @@ class LocalPosRepository(private val secure:SecureLocalStore, private val log:(S
   Unit
 }
  override suspend fun startShift(session:Session,openingCash:Long)=runCatching{Shift(ownerUid=session.uid,businessId=session.businessId.orEmpty(),outletId=session.outletId.orEmpty(),cashierUid=session.uid,startAt=System.currentTimeMillis(),openingCash=openingCash,syncStatus=SyncStatus.PENDING_SYNC).also{active=it}}
+ override suspend fun saveShift(shift:Shift):Result<Unit> = runCatching { active = if (shift.closedAt == null) shift else null; Unit }
  override suspend fun closeShift(shift:Shift,closingCash:Long)=runCatching{shift.copy(closedAt=System.currentTimeMillis(),closingCash=closingCash,syncStatus=SyncStatus.PENDING_SYNC).also{active=null}}
  override suspend fun saveTransaction(t:Transaction):Result<Unit> = runCatching {
   tx.add(t)
