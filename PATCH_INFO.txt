@@ -1,16 +1,29 @@
-SakuKasir V26 - V9 Build Hardening Patch
+SakuKasir V27 - V10 Build Fix
 
-Base: V25 BUILD-FIX
+Base: V26 V9 HARDENED
 
 Changes:
-- Removed direct dependency on Material3 NavigationBarItem from the bottom navigation implementation.
-- Replaced BottomNavItem with a simple Compose Column/clickable implementation inside NavigationBar.
+- Fixed MainActivity bottom-navigation BottomNavItem weight scope.
+- Changed BottomNavItem to a RowScope extension so Modifier.weight(1f) is valid inside NavigationBar's RowScope content.
+- Added explicit RowScope import.
 - Preserved the existing four navigation destinations: Kasir, Checkout, Laporan, Pengaturan.
-- Preserved V25 offline checkout, PENDING_SYNC, sync/reprint/shift/printer/backend logic.
+- Preserved V26 offline checkout, PENDING_SYNC, sync/reprint/shift/printer/backend logic.
 - No Firebase schema/rules/backend changes.
 - Only README.md is retained as Markdown documentation.
+
+V10 root cause:
+- MainActivity.kt:707:14 Unresolved reference 'weight'.
+- The previous BottomNavItem was a normal function, so it did not have RowScope receiver required by Modifier.weight.
+
+Audit:
+- V10 contained only one Kotlin compiler error.
+- No new NavigationBarItem error.
+- No dependency/Firebase/Gradle root error in V10.
+- All existing .weight usages were checked for their surrounding Row/RowScope or Column/ColumnScope context.
+- Duplicate override pattern check passed.
+- Only README.md remains as Markdown.
 
 Build note:
 - Source/static audit completed.
 - Full Gradle build was not executed in this environment because the Gradle wrapper/executable and external dependency access are unavailable here.
-- Codemagic V9 previously failed only at MainActivity.kt NavigationBarItem-related compilation errors.
+- Codemagic V10 is the authoritative build result; V11/V27 must be verified by a new Codemagic build.
