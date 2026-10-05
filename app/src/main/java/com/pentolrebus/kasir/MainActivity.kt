@@ -97,7 +97,7 @@ private fun KasirApp(vm: PosViewModel, diagnostics: Diagnostics) {
     var themeMode by remember { mutableStateOf(prefs.getInt("theme", 0)) }
     val dark = when (themeMode) { 1 -> false; 2 -> true; else -> androidx.compose.foundation.isSystemInDarkTheme() }
     KasirTheme(dark = dark) {
-        Surface(Modifier.fillMaxSize()) {
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             val auth by vm.auth.collectAsState()
             when (val state = auth) {
                 AuthState.LoggedOut -> AuthScreen(vm)

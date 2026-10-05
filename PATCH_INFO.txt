@@ -1,23 +1,14 @@
-Saku Kasir — V42
-Base: V41
-Date: 2026-10-05
+Saku Kasir V43 — V42 baseline + saku-kasir-dpi HTML reference alignment
 
-Fixes from V17 Kotlin build audit:
-- Added missing Compose layout imports for Modifier.size and Modifier.heightIn in MainActivity.kt.
-- Added explicit KSegmented import in MainActivity.kt.
-- Added Alignment and BasicTextField imports in ManageScreens.kt.
-- Added the missing Close icon import in KasirScreens.kt.
-- Extended Session with optional ownerUid so cashier worker sessions can carry the Owner UID expected by PosViewModel/repositories.
-- Fixed KSecretField call to use named onValue because numeric is a later default parameter; this removes the V17 trailing-lambda/type cascade.
+Base: KASIR-PATCH-20261005-V42.zip
+Reference: saku-kasir-dpi.html, split into reference/index.html, style.css, app.js
 
-Derived-error audit:
-- Re-audited all V17 reported Kotlin error sites after the fixes.
-- Kotlin source brace/parenthesis/bracket balance: PASS.
-- Standalone Kotlin parser pass produced no syntax/parser diagnostics; Android/Compose classpath is unavailable locally, so this is not a substitute for Gradle.
-- All 19 drawable XML files parse successfully; no invalid viewport dp or SVG geometry attributes remain.
-- Firebase google-services.json and database.rules.json hashes remain identical to V41.
-- scripts/preflight.sh: PASS.
+Changes:
+- Use exact HTML light/dark palette as the Compose visual source.
+- Preserve non-white light outer background (#E8EEF7) and card surface (#FFFFFF).
+- Preserve dark outer/background/card separation (#0A0E16 / #111722 / #1B2332).
+- Apply the HTML 110% root typography scale to Compose typography.
+- Keep existing V42/V43 functional architecture and Firebase configuration intact.
+- Add the split HTML reference under reference/saku-kasir-dpi-complete/ for future UI audits.
 
-Build status:
-- Local full Gradle build could not be executed because the source package does not include gradlew and the local environment has no Gradle executable.
-- Therefore V42 is NOT claimed as a confirmed APK build until Codemagic (or another Gradle environment) runs assembleDebug. The next Codemagic log is required to expose any downstream compiler errors after the V17 blockers are removed.
+Build status: static/preflight only; full Gradle/Codemagic build must still be run externally.

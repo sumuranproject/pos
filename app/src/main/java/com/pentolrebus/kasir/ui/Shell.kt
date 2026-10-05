@@ -85,7 +85,7 @@ fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (
         if (stack.isEmpty() && pay != Pay.SUCCESS) Surface(color = MaterialTheme.colorScheme.surface) {
             Row(Modifier.fillMaxWidth().navigationBarsPadding()) {
                 val labels = listOf("Kasir", "Checkout", "Laporan", "Pengaturan")
-                val icons = listOf(R.drawable.ic_cart, R.drawable.ic_grid, R.drawable.ic_report, R.drawable.ic_more)
+                val icons = listOf(R.drawable.ic_grid, R.drawable.ic_cart, R.drawable.ic_report, R.drawable.ic_more)
                 labels.forEachIndexed { i, l ->
                     val selected = tab == i
                     val c = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant

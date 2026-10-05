@@ -324,9 +324,10 @@ private fun WorkerFormBody(vm: PosViewModel, old: Worker?, onDone: () -> Unit) {
     var name by remember { mutableStateOf(old?.displayName ?: "") }
     var user by remember { mutableStateOf(old?.username ?: "") }
     var pin by remember { mutableStateOf("") }
-    var outletId by remember { mutableStateOf(old?.outletId ?: activeOutlet ?: "") }
+    var outletId by remember { mutableStateOf(old?.outletId ?: activeOutlet ?: outlets.firstOrNull()?.id.orEmpty()) }
     var wa by remember { mutableStateOf(old?.whatsapp ?: "") }
     var act by remember { mutableStateOf(old?.active ?: true) }
+    LaunchedEffect(activeOutlet, outlets) { if (outletId.isBlank()) outletId = activeOutlet ?: outlets.firstOrNull()?.id.orEmpty() }
     val u = user.trim().lowercase().replace(" ", "")
     val dup = workers.any { it.username == u && it.id != old?.id }
     val err = when { u.isBlank() -> null; dup -> "Username sudah dipakai"; old == null && pin.isNotEmpty() && pin.length < 4 -> "PIN 4–6 angka"; else -> null }

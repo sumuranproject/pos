@@ -114,7 +114,13 @@ class PosViewModel(private val repo:PosRepository, private val offline:OfflineSt
  fun adjustStock(productId:String,delta:Long){val s=session()?:return;mutate("Stok diperbarui"){repo.adjustStock(outletOf(s),productId,delta)}}
  fun saveOutlet(name:String,address:String,active:Boolean,id:String?){val s=session()?:return;val o=Outlet(id=id?:java.util.UUID.randomUUID().toString(),ownerUid=ownerOf(s),businessId=s.businessId,name=name.trim(),address=address.trim().ifBlank{null},active=active);mutate("Outlet disimpan"){repo.saveOutlet(o)}}
  fun saveWorker(w:Worker,pin:String){val s=session()?:return;val q=w.copy(ownerUid=ownerOf(s),businessId=s.businessId.orEmpty(),outletId=w.outletId.ifBlank{outletOf(s)});mutate("Pekerja disimpan"){repo.saveWorker(q,pin.toCharArray().takeIf{it.isNotEmpty()})}}
- fun saveBusiness(name:String,type:String,phone:String){val s=session()?:return;val b=Business(id=s.businessId?:java.util.UUID.randomUUID().toString(),ownerUid=ownerOf(s),name=name.trim(),type=type.trim().ifBlank{null},phone=phone.trim().ifBlank{null});mutate("Bisnis disimpan"){repo.saveBusiness(b)}}
+ fun saveBusiness(name:String,type:String,phone:String){
+  val s=session()?:return
+  val b=Business(id=s.businessId?:java.util.UUID.randomUUID().toString(),ownerUid=ownerOf(s),name=name.trim(),type=type.trim().ifBlank{null},phone=phone.trim().ifBlank{null})
+  if(s.businessId==null && s.role==Role.OWNER){ _auth.value=AuthState.LoggedIn(s.copy(businessId=b.id)) }
+  _business.value=b
+  mutate("Bisnis disimpan"){repo.saveBusiness(b)}
+}
  fun saveProfile(displayName:String,whatsapp:String){val s=session()?:return;mutate("Profil disimpan"){repo.updateProfile(s,displayName.trim(),whatsapp.trim().ifBlank{null})}}
 
  // ---- Expenses (offline-first) ----
