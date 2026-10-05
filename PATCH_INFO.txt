@@ -1,53 +1,15 @@
-Patch ID: KASIR-PATCH-20261005-V39
+Saku Kasir — V40
+Base: V39
+Date: 2026-10-05
 
-Base: KASIR-PATCH-20261005-V38.zip
-Visual source of truth: SakuKasir-UI-FIX.html
+Fix:
+- Fixed Android Vector Drawable resource format errors that caused V15/V15-style AAPT2 resource linking failures.
+- Converted invalid SVG-style <circle>/<rect> elements and unsupported circle/rect attributes into Android Vector Drawable <path> data.
+- Preserved icon geometry, 24dp viewport, blue stroke style, stroke width, caps, joins, and intended proportions.
+- Normalized ic_notification viewportHeight from 24dp to 24 (resource syntax only).
+- Audited all drawable XMLs for the same invalid SVG constructs.
 
-Tujuan V39:
-- Menyelesaikan UI fidelity patch terhadap SakuKasir-UI-FIX.html tanpa mengganti arsitektur modular V29/V38.
-- Mempertahankan seluruh fitur dan backend yang sudah ada.
-- Mengurangi ketergantungan pada default Material3 pada komponen visual utama.
-
-Perubahan UI utama:
-1. Theme
-   - Palet light/dark diselaraskan dengan CSS mockup: background, surface, muted, border, primary, success, error.
-   - Typography Compose dibuat lebih dekat dengan ukuran/weight HTML.
-2. Common UI primitives
-   - KPage header dipadatkan.
-   - KCard, KRow, KItem, KPrimary, KSecondary diselaraskan radius/padding/ukuran.
-   - KField dibuat flat-surface seperti `.fld` HTML, bukan field ber-outline tebal.
-   - KChips dibuat custom pill seperti `.chip` HTML.
-   - KSegmented ditambahkan untuk pola `.seg` HTML.
-3. Kasir
-   - Search dibuat flat rounded search bar.
-   - Filter kategori memakai custom pill chips.
-   - Checkout/payment selector memakai segmented control.
-   - Quick cash chips diselaraskan dengan pill UI.
-4. Navigasi
-   - Bottom navigation dibuat custom 4-item untuk mendekati `nav` HTML.
-5. Auth
-   - Role selection dibuat mengikuti struktur logo/header, welcome text, role cards, dan spacing HTML.
-   - Login owner selector memakai segmented control yang sama.
-6. Management / laporan
-   - Search management dan filter laporan menggunakan komponen visual yang sama.
-   - Day/report chips diselaraskan dengan pill HTML.
-7. Fitur V38 yang dipertahankan
-   - Dropbox UI shell.
-   - Notifikasi stok menipis.
-   - Edit Struk.
-   - QRIS local upload V29.
-   - Bluetooth paired-device/RFCOMM V29.
-   - Firebase Auth/RTDB/FCM, repository, offline store, transaksi, laporan, master data dan shift.
-
-Yang sengaja TIDAK diubah:
-- Firebase configuration/rules.
-- Model/domain dan alur repository.
-- Dropbox OAuth nyata; V39 tetap UI shell dan tidak membuat status koneksi palsu.
-- Product image backend; model Product V38 belum memiliki imageUrl, sehingga thumbnail placeholder tetap digunakan.
-
-Verifikasi:
-- scripts/preflight.sh: PASS
-- Delimiter/source sanity check: PASS
-- Full Gradle/Codemagic build: BELUM DIJALANKAN karena environment ini tidak menyediakan Gradle wrapper/executable.
-- google-services.json SHA-256: 8783109e5c43eb451f2382401ea4e41bd5349e5f6c8f9991e7460939c559e756 (sama dengan V38)
-- database.rules.json SHA-256: aa51299f44a8a6e8dd275be3b17e7c8d98ce7eef916c09800a85dd82385b6f76 (sama dengan V38)
+Downstream audit:
+- Current V39 source already contains valid imports/usages for rememberSaveable and KeyboardOptions; historical errors for those symbols came from older builds/source and are not present in this V39 base.
+- No Firebase configuration or database rules were changed.
+- Full Gradle/Codemagic build was not available in this local environment; therefore this package is not claimed as a confirmed successful APK build.
