@@ -167,7 +167,7 @@ fun KField(label: String, value: String, onValue: (String) -> Unit, number: Bool
 }
 
 @Composable
-fun KSecretField(label: String, value: String, onValue: (String) -> Unit, numeric: Boolean = true) {
+fun KSecretField(label: String, value: String, onValue: (String) -> Unit, numeric: Boolean = false) {
     var show by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth()) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 2.dp, bottom = 4.dp))

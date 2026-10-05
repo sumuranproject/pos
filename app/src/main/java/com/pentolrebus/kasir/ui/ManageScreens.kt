@@ -343,25 +343,25 @@ private fun WorkerFormBody(vm: PosViewModel, old: Worker?, onDone: () -> Unit) {
     val outlets by vm.outlets.collectAsState(); val workers by vm.workers.collectAsState(); val activeOutlet by vm.activeOutlet.collectAsState()
     var name by remember { mutableStateOf(old?.displayName ?: "") }
     var user by remember { mutableStateOf(old?.username ?: "") }
-    var pin by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var outletId by remember { mutableStateOf(old?.outletId ?: activeOutlet ?: outlets.firstOrNull()?.id.orEmpty()) }
     var wa by remember { mutableStateOf(old?.whatsapp ?: "") }
     var act by remember { mutableStateOf(old?.active ?: true) }
     LaunchedEffect(activeOutlet, outlets) { if (outletId.isBlank()) outletId = activeOutlet ?: outlets.firstOrNull()?.id.orEmpty() }
     val u = user.trim().lowercase().replace(" ", "")
     val dup = workers.any { it.username == u && it.id != old?.id }
-    val err = when { u.isBlank() -> null; dup -> "Username sudah dipakai"; old == null && pin.isNotEmpty() && pin.length < 4 -> "PIN 4–6 angka"; else -> null }
+    val err = when { u.isBlank() -> null; dup -> "Username sudah dipakai"; old == null && password.isNotEmpty() && password.length < 8 -> "Password minimal 8 karakter"; else -> null }
     KField("Nama", name, { name = it }); KField("Username", user, { user = it })
-    KSecretField(if (old == null) "PIN (4–6 angka)" else "PIN baru (kosongkan jika tidak diganti)", pin, onValue = { pin = it })
+    KSecretField(if (old == null) "Password" else "Password (hanya saat membuat akun)", password, onValue = { password = it }, numeric = false)
     KField("WhatsApp (opsional)", wa, { wa = it })
     KLabel("Outlet"); KChips(outlets.map { it.name }, outlets.firstOrNull { it.id == outletId }?.name ?: "") { n -> outletId = outlets.firstOrNull { it.name == n }?.id ?: outletId }
     if (old != null) KSwitchRow("Akun aktif", act) { act = it }
     err?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelMedium) }
-    val pinOk = if (old == null) pin.length in 4..6 else pin.isEmpty() || pin.length in 4..6
+    val passwordOk = if (old == null) password.length >= 8 else password.isEmpty() || password.length >= 8
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         KSecondary("BATAL", modifier = Modifier.weight(1f), onClick = onDone)
-        KPrimary("SIMPAN", enabled = name.isNotBlank() && u.isNotBlank() && !dup && pinOk && outletId.isNotBlank(), modifier = Modifier.weight(1f)) {
-            vm.saveWorker((old ?: Worker()).copy(displayName = name.trim(), username = u, outletId = outletId, whatsapp = wa.trim().ifBlank { null }, active = act), pin); onDone()
+        KPrimary("SIMPAN", enabled = name.isNotBlank() && u.isNotBlank() && !dup && passwordOk && outletId.isNotBlank(), modifier = Modifier.weight(1f)) {
+            vm.saveWorker((old ?: Worker()).copy(displayName = name.trim(), username = u, outletId = outletId, whatsapp = wa.trim().ifBlank { null }, active = act), password); onDone()
         }
     }
 }
@@ -380,10 +380,9 @@ fun WorkerDetailScreen(vm: PosViewModel, id: String?, nav: Nav) {
     KPage("Detail Pekerja", nav) {
         if (w == null) { KEmpty("Pekerja tidak ditemukan", "", R.drawable.ic_people); return@KPage }
         KCard { Text(w.displayName.ifBlank { w.username }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold); Text("Kasir · " + (outlets.firstOrNull { it.id == w.outletId }?.name ?: "—")) }
-        KCard { KRow("Username", w.username); KRow("PIN", "••••"); KRow("WhatsApp", w.whatsapp ?: "—"); KRow("Status", if (w.active) "Aktif" else "Nonaktif") }
+        KCard { KRow("Username", w.username); KRow("Password", "••••••••"); KRow("WhatsApp", w.whatsapp ?: "—"); KRow("Status", if (w.active) "Aktif" else "Nonaktif") }
         KPrimary("UBAH PEKERJA") { nav.open("Pekerja:form", w.id) }
         KSecondary(if (w.active) "NONAKTIFKAN" else "AKTIFKAN", danger = w.active) { vm.saveWorker(w.copy(active = !w.active), "") }
-        Text("Catatan: PIN kasir disimpan terenkripsi di perangkat tempat akun dibuat/diubah.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

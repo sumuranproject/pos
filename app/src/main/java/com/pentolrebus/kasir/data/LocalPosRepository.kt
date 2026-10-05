@@ -11,10 +11,9 @@ class LocalPosRepository(private val secure:SecureLocalStore, private val log:(S
   Product("p4","demo-owner","demo-outlet","c2","Es Teh Lemon",7000,"gelas",true,64,true)
  )
  private val tx=mutableListOf<Transaction>(); private var active:Shift?=null
- override suspend fun registerOwner(email:String,password:String,username:String,pin:CharArray,businessName:String?,outletName:String?,whatsapp:String?):Result<Session>{val s=Session("demo-owner",username,Role.OWNER,"demo-business","demo-outlet");secure.saveCredential(username,s.uid,pin);secure.saveSession(s.uid,username,s.role.name,s.businessId,s.outletId);log("REGISTRATION","REGISTRATION_SUCCESS local development state");return Result.success(s)}
- override suspend fun emailLogin(email:String,password:String)=Result.success(Session("demo-owner","owner",Role.OWNER,"demo-business","demo-outlet"))
- override suspend fun sendPasswordReset(email:String):Result<Unit> = Result.failure(IllegalStateException("Reset password memerlukan koneksi Firebase"))
- override suspend fun localPinLogin(username:String,pin:CharArray)=runCatching{if(secure.verify(username,pin)==null) error("Username/PIN perangkat tidak valid");secure.workerSession(username)?.let{w->return@runCatching Session(w[0],username,Role.CASHIER,w[2],w[3],w[1])};Session("demo-owner",username,Role.OWNER,"demo-business","demo-outlet")}
+ override suspend fun registerOwner(email:String,password:String,username:String,displayName:String,businessName:String?,outletName:String?,whatsapp:String?):Result<Session>{val s=Session("demo-owner",username,Role.OWNER,"demo-business","demo-outlet");secure.saveSession(s.uid,username,s.role.name,s.businessId,s.outletId);log("REGISTRATION","REGISTRATION_SUCCESS local development state");return Result.success(s)}
+ override suspend fun usernameLogin(username:String,password:String)=Result.success(Session("demo-owner",username.trim(),Role.OWNER,"demo-business","demo-outlet"))
+ override suspend fun sendPasswordReset(username:String):Result<Unit> = Result.success(Unit)
  override suspend fun loadProducts(outletId:String)=products.toList()
  override suspend fun saveProduct(product:Product):Result<Unit> = runCatching {
   products.removeAll { it.id == product.id }
@@ -39,7 +38,7 @@ class LocalPosRepository(private val secure:SecureLocalStore, private val log:(S
  override suspend fun loadOutlets(session:Session)=outs.toList()
  override suspend fun saveOutlet(o:Outlet)=runCatching{outs.removeAll{it.id==o.id};outs.add(o);Unit}
  override suspend fun loadWorkers(session:Session)=wks.toList()
- override suspend fun saveWorker(w:Worker,pin:CharArray?)=runCatching{wks.removeAll{it.id==w.id};wks.add(w);if(pin!=null&&pin.isNotEmpty())secure.saveCredential(w.username,w.id,pin);secure.saveWorkerSession(w.username,w.id,w.ownerUid,w.businessId,w.outletId);Unit}
+ override suspend fun saveWorker(w:Worker,password:String?)=runCatching{wks.removeAll{it.id==w.id};wks.add(w);Unit}
  override suspend fun loadBusiness(session:Session)=biz
  override suspend fun saveBusiness(b:Business)=runCatching{biz=b;Unit}
  override suspend fun loadOutletTransactions(outletId:String)=tx.filter{it.outletId==outletId}

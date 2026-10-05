@@ -1,5 +1,7 @@
 package com.pentolrebus.kasir.data
 
+import android.util.Base64
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
@@ -9,10 +11,9 @@ import kotlinx.coroutines.withTimeout
 import java.util.UUID
 
 interface PosRepository {
- suspend fun registerOwner(email:String,password:String,username:String,pin:CharArray,businessName:String?,outletName:String?,whatsapp:String?):Result<Session>
- suspend fun emailLogin(email:String,password:String):Result<Session>
- suspend fun sendPasswordReset(email:String):Result<Unit>
- suspend fun localPinLogin(username:String,pin:CharArray):Result<Session>
+ suspend fun registerOwner(email:String,password:String,username:String,displayName:String,businessName:String?,outletName:String?,whatsapp:String?):Result<Session>
+ suspend fun usernameLogin(username:String,password:String):Result<Session>
+ suspend fun sendPasswordReset(username:String):Result<Unit>
  suspend fun loadProducts(outletId:String):List<Product>
  suspend fun saveProduct(product:Product):Result<Unit>
  suspend fun startShift(session:Session,openingCash:Long):Result<Shift>
@@ -29,7 +30,7 @@ interface PosRepository {
  suspend fun loadOutlets(session:Session):List<Outlet>
  suspend fun saveOutlet(o:Outlet):Result<Unit>
  suspend fun loadWorkers(session:Session):List<Worker>
- suspend fun saveWorker(w:Worker,pin:CharArray?):Result<Unit>
+ suspend fun saveWorker(w:Worker,password:String?):Result<Unit>
  suspend fun loadBusiness(session:Session):Business?
  suspend fun saveBusiness(b:Business):Result<Unit>
  suspend fun loadOutletTransactions(outletId:String):List<Transaction>
@@ -43,26 +44,37 @@ interface PosRepository {
 
 class FirebasePosRepository(private val auth:FirebaseAuth=FirebaseAuth.getInstance(), private val root:DatabaseReference=FirebaseDatabase.getInstance().reference, private val secure:SecureLocalStore, private val log:(String,String)->Unit):PosRepository {
  private suspend fun <T> timed(block:suspend()->T)=withTimeout(15_000){block()}
- override suspend fun registerOwner(email:String,password:String,username:String,pin:CharArray,businessName:String?,outletName:String?,whatsapp:String?):Result<Session> = runCatching { log("REGISTRATION","OWNER_REGISTRATION_STARTED"); log("REGISTRATION","AUTH_CREATE_STARTED"); val result=timed{auth.createUserWithEmailAndPassword(email,password).await()}; val uid=result.user?.uid ?: error("Firebase UID tidak tersedia"); log("REGISTRATION","AUTH_CREATE_SUCCESS"); val businessId=businessName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}; val outletId=outletName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}; log("RTDB","RTDB_BOOTSTRAP_STARTED"); val profile=mapOf("uid" to uid,"ownerUid" to uid,"username" to username,"role" to "OWNER","displayName" to username,"businessId" to businessId,"outletId" to outletId,"whatsapp" to whatsapp); timed{root.child("users").child(uid).setValue(profile).await()}; log("REGISTRATION","PROFILE_CREATED"); if(businessId!=null){timed{root.child("businesses").child(businessId).setValue(mapOf("id" to businessId,"ownerUid" to uid,"name" to businessName)).await()};log("REGISTRATION","BUSINESS_CREATED")}; if(outletId!=null){timed{root.child("outlets").child(outletId).setValue(mapOf("id" to outletId,"ownerUid" to uid,"businessId" to businessId,"name" to outletName)).await()};log("REGISTRATION","OUTLET_CREATED")}; secure.saveCredential(username,uid,pin); secure.saveSession(uid,username,"OWNER",businessId,outletId);log("REGISTRATION","SESSION_CREATED");log("REGISTRATION","REGISTRATION_SUCCESS");Session(uid,username,Role.OWNER,businessId,outletId) }.also{if(it.isFailure)log("ERROR","OWNER_REGISTRATION_ERROR stage=registration")}
- override suspend fun emailLogin(email:String,password:String)=runCatching{val r=timed{auth.signInWithEmailAndPassword(email,password).await()};val uid=r.user?.uid?:error("UID missing");val snap=timed{root.child("users").child(uid).get().await()};val username=snap.child("username").getValue(String::class.java)?:email;val role=Role.valueOf(snap.child("role").getValue(String::class.java)?:"OWNER");val b=snap.child("businessId").getValue(String::class.java);val o=snap.child("outletId").getValue(String::class.java);secure.saveSession(uid,username,role.name,b,o);Session(uid,username,role,b,o)}
- override suspend fun sendPasswordReset(email:String)=runCatching{timed{auth.sendPasswordResetEmail(email).await()};Unit}
- override suspend fun localPinLogin(username:String,pin:CharArray)=runCatching{
-  val cleanUsername=username.trim()
-  if(cleanUsername.isBlank()) error("Username wajib diisi")
-  if(pin.isEmpty()) error("PIN wajib diisi")
-  val uid=secure.verify(cleanUsername,pin)?:error("Username/PIN perangkat tidak valid. Pastikan akun kasir sudah dibuat di perangkat ini.")
-  secure.workerSession(cleanUsername)?.let{w->return@runCatching Session(w[0],cleanUsername,Role.CASHIER,w[2].ifBlank{null},w[3].ifBlank{null},w[1])}
-  val cached=secure.session()
-  if (cached?.get("uid")==uid && cached["username"]==cleanUsername) {
-   val role=Role.valueOf(cached["role"]?:"CASHIER")
-   return@runCatching Session(uid,cleanUsername,role,cached["businessId"],cached["outletId"])
-  }
-  val snap=timed{root.child("users").child(uid).get().await()}
-  val role=Role.valueOf(snap.child("role").getValue(String::class.java)?:"CASHIER")
-  val b=snap.child("businessId").getValue(String::class.java); val o=snap.child("outletId").getValue(String::class.java)
-  secure.saveSession(uid,cleanUsername,role.name,b,o); Session(uid,cleanUsername,role,b,o)
-}
+ override suspend fun registerOwner(email:String,password:String,username:String,displayName:String,businessName:String?,outletName:String?,whatsapp:String?):Result<Session> = runCatching {
+  val clean=username.trim().lowercase().replace(" ",""); if(clean.length<3) error("Username minimal 3 karakter")
+  val existing=timed{root.child("loginIndex").child(clean).get().await()}; if(existing.exists()) error("Username sudah dipakai")
+  val result=timed{auth.createUserWithEmailAndPassword(email.trim(),password).await()}; val uid=result.user?.uid ?: error("Firebase UID tidak tersedia")
+  val businessId=businessName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}; val outletId=outletName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}
+  val profile=mapOf("uid" to uid,"ownerUid" to uid,"username" to clean,"role" to "OWNER","displayName" to displayName.trim().ifBlank{clean},"businessId" to businessId,"outletId" to outletId,"whatsapp" to whatsapp,"email" to email.trim())
+  timed{root.child("users").child(uid).setValue(profile).await()}
+  timed{root.child("loginIndex").child(clean).setValue(mapOf("authEmail" to email.trim(),"uid" to uid,"role" to "OWNER","active" to true,"recoveryEmail" to email.trim())).await()}
+  if(businessId!=null) timed{root.child("businesses").child(businessId).setValue(mapOf("id" to businessId,"ownerUid" to uid,"name" to businessName)).await()}
+  if(outletId!=null) timed{root.child("outlets").child(outletId).setValue(mapOf("id" to outletId,"ownerUid" to uid,"businessId" to businessId,"name" to outletName)).await()}
+  secure.saveSession(uid,clean,"OWNER",businessId,outletId); Session(uid,clean,Role.OWNER,businessId,outletId)
+ }.also{if(it.isFailure)log("ERROR","OWNER_REGISTRATION_ERROR stage=registration")}
+ override suspend fun usernameLogin(username:String,password:String)=runCatching{
+  val clean=username.trim().lowercase().replace(" ",""); if(clean.isBlank()) error("Username wajib diisi"); if(password.isBlank()) error("Password wajib diisi")
+  val idx=timed{root.child("loginIndex").child(clean).get().await()}; if(!idx.exists()) error("Username atau password salah")
+  if(idx.child("active").getValue(Boolean::class.java)==false) error("Akun dinonaktifkan")
+  val email=idx.child("authEmail").getValue(String::class.java)?:error("Data akun tidak lengkap")
+  val r=timed{auth.signInWithEmailAndPassword(email,password).await()}; val uid=r.user?.uid?:error("UID missing")
+  val snap=timed{root.child("users").child(uid).get().await()}; val stored=snap.child("username").getValue(String::class.java)?:clean
+  val role=Role.valueOf(snap.child("role").getValue(String::class.java)?:(idx.child("role").getValue(String::class.java)?:("CASHIER")))
+  val b=snap.child("businessId").getValue(String::class.java); val o=snap.child("outletId").getValue(String::class.java); val owner=snap.child("ownerUid").getValue(String::class.java)
+  secure.saveSession(uid,stored,role.name,b,o); Session(uid,stored,role,b,o,owner)
+ }
+ override suspend fun sendPasswordReset(username:String)=runCatching{
+  val clean=username.trim().lowercase().replace(" ",""); val idx=timed{root.child("loginIndex").child(clean).get().await()}; if(!idx.exists()) error("Username tidak ditemukan")
+  val role=idx.child("role").getValue(String::class.java)?:("CASHIER"); if(role!="OWNER") error("Untuk akun Kasir, reset password dilakukan oleh Owner")
+  val email=idx.child("recoveryEmail").getValue(String::class.java)?:error("Email pemulihan belum tersedia")
+  timed{auth.sendPasswordResetEmail(email).await()}; Unit
+ }
  override suspend fun loadProducts(outletId:String)=runCatching{val s=timed{root.child("outlets/$outletId/products").get().await()};s.children.mapNotNull{it.getValue(Product::class.java)}}.getOrDefault(emptyList())
+
  override suspend fun saveProduct(product: Product): Result<Unit> = runCatching {
   timed { root.child("outlets/${product.outletId}/products/${product.id}").setValue(product).await() }
   Unit
@@ -92,11 +104,24 @@ class FirebasePosRepository(private val auth:FirebaseAuth=FirebaseAuth.getInstan
   val outlets=loadOutlets(session)
   outlets.flatMap{o->timed{root.child("outlets/${o.id}/workers").get().await()}.children.mapNotNull{it.getValue(Worker::class.java)}}
  }.getOrDefault(emptyList())
- override suspend fun saveWorker(w:Worker,pin:CharArray?)=runCatching{
-  timed{root.child("outlets/${w.outletId}/workers/${w.id}").setValue(w).await()}
-  if(pin!=null&&pin.isNotEmpty()) secure.saveCredential(w.username,w.id,pin)
-  secure.saveWorkerSession(w.username,w.id,w.ownerUid,w.businessId,w.outletId)
-  if(!w.active) secure.removeWorker(w.username)
+ override suspend fun saveWorker(w:Worker,password:String?)=runCatching{
+  val clean=w.username.trim().lowercase().replace(" ",""); if(clean.length<3) error("Username minimal 3 karakter")
+  val idx=timed{root.child("loginIndex").child(clean).get().await()}
+  val existing=if(idx.exists()) idx.child("uid").getValue(String::class.java) else null
+  if(existing!=null && existing!=w.authUid) error("Username sudah dipakai")
+  var authUid=w.authUid
+  if(authUid==null){
+    val defaultApp=FirebaseApp.getInstance(); val name="worker-${UUID.randomUUID()}"; val secondary=FirebaseApp.initializeApp(defaultApp.applicationContext,defaultApp.options,name) ?: error("Firebase App sekunder gagal dibuat")
+    try {
+      val secondaryAuth=FirebaseAuth.getInstance(secondary); val authEmail=authEmailForUsername(clean)
+      val created=timed{secondaryAuth.createUserWithEmailAndPassword(authEmail,password?.takeIf{it.isNotBlank()}?:error("Password wajib diisi")).await()}; authUid=created.user?.uid?:error("UID Kasir tidak tersedia")
+    } finally { secondary.delete() }
+  }
+  val q=w.copy(id=w.id,username=clean,authUid=authUid)
+  timed{root.child("outlets/${q.outletId}/workers/${q.id}").setValue(q).await()}
+  val profile=mapOf("uid" to authUid,"ownerUid" to q.ownerUid,"username" to clean,"role" to "CASHIER","displayName" to q.displayName,"businessId" to q.businessId,"outletId" to q.outletId,"whatsapp" to q.whatsapp,"active" to q.active)
+  timed{root.child("users").child(authUid!!).setValue(profile).await()}
+  timed{root.child("loginIndex").child(clean).setValue(mapOf("authEmail" to authEmailForUsername(clean),"uid" to authUid,"role" to "CASHIER","active" to q.active,"ownerUid" to q.ownerUid,"outletId" to q.outletId)).await()}
   Unit
  }
  override suspend fun loadBusiness(session:Session)=runCatching{session.businessId?.let{timed{root.child("businesses/$it").get().await()}.getValue(Business::class.java)}}.getOrNull()
@@ -107,5 +132,11 @@ class FirebasePosRepository(private val auth:FirebaseAuth=FirebaseAuth.getInstan
  override suspend fun saveExpense(e:Expense)=runCatching{timed{root.child("outlets/${e.outletId}/expenses/${e.id}").setValue(e).await()};Unit}
  override suspend fun deleteExpense(outletId:String,id:String)=runCatching{timed{root.child("outlets/$outletId/expenses/$id").removeValue().await()};Unit}
  override suspend fun updateProfile(session:Session,displayName:String,whatsapp:String?)=runCatching{timed{root.child("users/${session.uid}").updateChildren(mapOf("displayName" to displayName,"whatsapp" to whatsapp)).await()};Unit}
+ private fun authEmailForUsername(username:String):String {
+  val bytes=username.toByteArray(Charsets.UTF_8)
+  val encoded=Base64.encodeToString(bytes,Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING).replace("-","_").replace("_","x")
+  return "u-$encoded@login.sakukasir.invalid"
+ }
+
  override fun logout(){auth.signOut();secure.clearSession()}
 }

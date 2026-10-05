@@ -34,13 +34,13 @@ class PosViewModel(private val repo:PosRepository, private val offline:OfflineSt
  private fun ownerOf(s:Session)=s.ownerUid?:s.uid
  private fun outletOf(s:Session)=_activeOutlet.value?:s.outletId.orEmpty()
 
- fun loginLocal(username:String,pin:String,expectedRole:Role?=null){_auth.value=AuthState.Loading;viewModelScope.launch{repo.localPinLogin(username,pin.toCharArray()).onSuccess{acceptSession(it,expectedRole)}.onFailure{_auth.value=AuthState.Error(it.message?:"Login gagal")}}}
- fun loginEmail(email:String,password:String,expectedRole:Role?=null){_auth.value=AuthState.Loading;viewModelScope.launch{repo.emailLogin(email,password).onSuccess{acceptSession(it,expectedRole)}.onFailure{_auth.value=AuthState.Error(it.message?:"Login gagal")}}}
- fun resetPassword(email:String){
-  if(!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()){ _message.value="Masukkan email yang valid terlebih dahulu"; return }
-  viewModelScope.launch{ repo.sendPasswordReset(email).onSuccess{_message.value="Link reset password sudah dikirim ke email Anda"}.onFailure{_message.value=it.message?:"Gagal mengirim reset password"} }
+ fun login(username:String,password:String){_auth.value=AuthState.Loading;viewModelScope.launch{repo.usernameLogin(username,password).onSuccess{loginSuccess(it)}.onFailure{_auth.value=AuthState.Error(it.message?:"Login gagal")}}}
+ 
+ fun resetPassword(username:String){
+  if(username.trim().isBlank()){ _message.value="Masukkan username terlebih dahulu"; return }
+  viewModelScope.launch{ repo.sendPasswordReset(username).onSuccess{_message.value="Link reset password Owner sudah dikirim ke email terdaftar"}.onFailure{_message.value=it.message?:"Gagal mengirim reset password"} }
  }
- fun register(email:String,password:String,username:String,pin:String,business:String?,outlet:String?,whatsapp:String?){_auth.value=AuthState.Loading;viewModelScope.launch{repo.registerOwner(email,password,username,pin.toCharArray(),business,outlet,whatsapp).onSuccess(::loginSuccess).onFailure{_auth.value=AuthState.Error(it.message?:"Registrasi gagal")}}}
+ fun register(email:String,password:String,username:String,displayName:String,business:String?,outlet:String?,whatsapp:String?){_auth.value=AuthState.Loading;viewModelScope.launch{repo.registerOwner(email,password,username,displayName,business,outlet,whatsapp).onSuccess(::loginSuccess).onFailure{_auth.value=AuthState.Error(it.message?:"Registrasi gagal")}}}
  private fun acceptSession(s:Session,e:Role?){if(e!=null&&s.role!=e){_auth.value=AuthState.Error("Akun ini bukan akun ${if(e==Role.OWNER)"Owner" else "Kasir"}.");return};loginSuccess(s)}
  private fun loginSuccess(s:Session){_auth.value=AuthState.LoggedIn(s);_activeOutlet.value=s.outletId;viewModelScope.launch{loadMaster(s);syncPending(s)}}
 
@@ -140,7 +140,7 @@ class PosViewModel(private val repo:PosRepository, private val offline:OfflineSt
  fun deleteProduct(id:String){val s=session()?:return;mutate("Produk dihapus"){repo.deleteProduct(outletOf(s),id)}}
  fun adjustStock(productId:String,delta:Long){val s=session()?:return;mutate("Stok diperbarui"){repo.adjustStock(outletOf(s),productId,delta)}}
  fun saveOutlet(name:String,address:String,active:Boolean,id:String?){val s=session()?:return;val o=Outlet(id=id?:java.util.UUID.randomUUID().toString(),ownerUid=ownerOf(s),businessId=s.businessId,name=name.trim(),address=address.trim().ifBlank{null},active=active);mutate("Outlet disimpan"){repo.saveOutlet(o)}}
- fun saveWorker(w:Worker,pin:String){val s=session()?:return;val q=w.copy(ownerUid=ownerOf(s),businessId=s.businessId.orEmpty(),outletId=w.outletId.ifBlank{outletOf(s)});mutate("Pekerja disimpan"){repo.saveWorker(q,pin.toCharArray().takeIf{it.isNotEmpty()})}}
+ fun saveWorker(w:Worker,password:String){val s=session()?:return;val q=w.copy(ownerUid=ownerOf(s),businessId=s.businessId.orEmpty(),outletId=w.outletId.ifBlank{outletOf(s)});mutate("Pekerja disimpan"){repo.saveWorker(q,password.takeIf{it.isNotBlank()})}}
  fun saveBusiness(name:String,type:String,phone:String){
   val s=session()?:return
   val b=Business(id=s.businessId?:java.util.UUID.randomUUID().toString(),ownerUid=ownerOf(s),name=name.trim(),type=type.trim().ifBlank{null},phone=phone.trim().ifBlank{null})
