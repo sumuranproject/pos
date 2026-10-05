@@ -92,20 +92,20 @@ fun SettingsScreen(vm: PosViewModel, session: Session, nav: Nav, themeMode: Int,
         if (owner) {
             Text("Owner · Bisnis ${business?.name ?: "—"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             KListGroup {
-                KListItem("Produk", icon = R.drawable.ic_product) { nav.open("Produk", null) }
-                KListItem("Kategori", icon = R.drawable.ic_category) { nav.open("Kategori", null) }
-                KListItem("Stok", icon = R.drawable.ic_stock) { nav.open("Stok", null) }
-                KListItem("Outlet", icon = R.drawable.ic_store) { nav.open("Outlet", null) }
-                KListItem("Kasir / Pekerja", icon = R.drawable.ic_people) { nav.open("Pekerja", null) }
-                KListItem("Owner", icon = R.drawable.ic_owner) { nav.open("Owner", null) }
-                KListItem("Bisnis", icon = R.drawable.ic_business, divider = false) { nav.open("Bisnis", null) }
+                KListItem("Produk", icon = R.drawable.ic_product, onClick = { nav.open("Produk", null) })
+                KListItem("Kategori", icon = R.drawable.ic_category, onClick = { nav.open("Kategori", null) })
+                KListItem("Stok", icon = R.drawable.ic_stock, onClick = { nav.open("Stok", null) })
+                KListItem("Outlet", icon = R.drawable.ic_store, onClick = { nav.open("Outlet", null) })
+                KListItem("Kasir / Pekerja", icon = R.drawable.ic_people, onClick = { nav.open("Pekerja", null) })
+                KListItem("Owner", icon = R.drawable.ic_owner, onClick = { nav.open("Owner", null) })
+                KListItem("Bisnis", icon = R.drawable.ic_business, divider = false, onClick = { nav.open("Bisnis", null) })
             }
             KLabel("PEMBAYARAN & PERANGKAT")
             KListGroup {
-                KListItem("QRIS", trailing = if (qrisReady) "Aktif" else "Belum diatur", icon = R.drawable.ic_qris) { nav.open("QRIS", null) }
-                KListItem("Printer", trailing = if (printerReady) "Siap" else "Belum dipasang", icon = R.drawable.ic_printer) { nav.open("Printer", null) }
-                KListItem("Dropbox", icon = R.drawable.ic_cloud) { nav.open("Dropbox", null) }
-                KListItem("Edit Struk", icon = R.drawable.ic_edit_struk, divider = false) { nav.open("Edit Struk", null) }
+                KListItem("QRIS", trailing = if (qrisReady) "Aktif" else "Belum diatur", icon = R.drawable.ic_qris, onClick = { nav.open("QRIS", null) })
+                KListItem("Printer", trailing = if (printerReady) "Siap" else "Belum dipasang", icon = R.drawable.ic_printer, onClick = { nav.open("Printer", null) })
+                KListItem("Dropbox", icon = R.drawable.ic_cloud, onClick = { nav.open("Dropbox", null) })
+                KListItem("Edit Struk", icon = R.drawable.ic_edit_struk, divider = false, onClick = { nav.open("Edit Struk", null) })
             }
         } else {
             KCard {
@@ -121,17 +121,17 @@ fun SettingsScreen(vm: PosViewModel, session: Session, nav: Nav, themeMode: Int,
                 }
             }
             KListGroup {
-                KListItem("Profil", icon = R.drawable.ic_person) { nav.open("Profil", null) }
+                KListItem("Profil", icon = R.drawable.ic_person, onClick = { nav.open("Profil", null) })
                 KListItem("Outlet", trailing = outlets.firstOrNull()?.name ?: "Outlet", icon = R.drawable.ic_store, onClick = null)
-                KListItem("Printer Bluetooth", trailing = if (printerReady) "Siap" else "Terputus", icon = R.drawable.ic_printer) { nav.open("Printer", null) }
+                KListItem("Printer Bluetooth", trailing = if (printerReady) "Siap" else "Terputus", icon = R.drawable.ic_printer, onClick = { nav.open("Printer", null) })
             }
         }
         KLabel("APLIKASI")
         KListGroup {
-            KListItem("Tema", trailing = when (themeMode) { 1 -> "Terang"; 2 -> "Gelap"; else -> "Sistem" }, icon = R.drawable.ic_theme) { nav.open("Tema", null) }
-            KListItem("Sinkronisasi", trailing = if (syncing) "Menyinkronkan…" else "Tersinkron", icon = R.drawable.ic_sync) { nav.open("Sinkron", null) }
-            KListItem("Notifikasi", icon = R.drawable.ic_notification) { nav.open("Notifikasi", null) }
-            KListItem("Tentang aplikasi", icon = R.drawable.ic_info, divider = false) { nav.open("Tentang", null) }
+            KListItem("Tema", trailing = when (themeMode) { 1 -> "Terang"; 2 -> "Gelap"; else -> "Sistem" }, icon = R.drawable.ic_theme, onClick = { nav.open("Tema", null) })
+            KListItem("Sinkronisasi", trailing = if (syncing) "Menyinkronkan…" else "Tersinkron", icon = R.drawable.ic_sync, onClick = { nav.open("Sinkron", null) })
+            KListItem("Notifikasi", icon = R.drawable.ic_notification, onClick = { nav.open("Notifikasi", null) })
+            KListItem("Tentang aplikasi", icon = R.drawable.ic_info, divider = false, onClick = { nav.open("Tentang", null) })
         }
         KSecondary("KELUAR", danger = true, onClick = onLogout)
     }

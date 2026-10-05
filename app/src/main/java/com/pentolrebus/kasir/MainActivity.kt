@@ -30,7 +30,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RectangleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -102,8 +101,8 @@ private fun KasirApp(vm: PosViewModel, diagnostics: Diagnostics) {
             BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 val wide = maxWidth >= 520.dp
                 Surface(
-                    Modifier.fillMaxWidth().fillMaxHeight().widthIn(max = 992.dp),
-                    shape = if (wide) RoundedCornerShape(28.dp) else RectangleShape,
+                    Modifier.fillMaxSize().widthIn(max = 992.dp),
+                    shape = if (wide) RoundedCornerShape(28.dp) else RoundedCornerShape(0.dp),
                     color = MaterialTheme.colorScheme.background,
                     border = if (wide) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null
                 ) {

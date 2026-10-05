@@ -1,34 +1,11 @@
-Saku Kasir — V44 visual parity revision
-Date: 2026-10-05
+Saku Kasir — V46
 
-This remains VERSION 44. No V45 was created.
+Base: V45
+Purpose: Fix all compile errors reported by build_log_v19.txt and remove directly-derived Compose call-site issues.
 
-Visual revision based on:
-- KASIR-SAKU-DPI-REFERENCE-FIXED.zip
-- screenshot-acuan.zip (48 Kiwi Browser screenshots)
-- existing V44 functionality/Firebase baseline
-
-Visual fixes in this V44 revision:
-- Page back control now uses the circular card-style back button from the reference.
-- Segmented controls restore the selected primary-blue state.
-- Owner/Kasir login screens now follow the reference hero layout: centered logo, welcome copy, role pill, compact auth fields.
-- Management list pages use floating + FABs instead of full-width add buttons for Produk, Kategori, Outlet, Kasir/Pekerja, and Pengeluaran.
-- Settings grouping was aligned with the reference while retaining Dropbox, notification, sync, printer, QRIS, and Edit Struk functionality.
-- About screen was visually rebuilt around the Saku Kasir logo and metadata card.
-- FAB size/position is aligned more closely to the reference and kept above the bottom navigation area.
-- Bottom navigation remains visible while browsing submenu/detail/form pages; switching tabs clears the page stack.
-- Owner Start Shift no longer shows a duplicate Outlet label; the outlet field keeps a single label while cashier outlet behavior remains owner-controlled.
-
-Preserved:
-- Firebase configuration and rules.
-- Existing repository/auth/RTDB/FCM architecture.
-- Dropbox integration shell.
-- QRIS, Bluetooth printer, Edit Struk, receipt preview, tax, reports, notifications.
-- Fixed DPI/color reference files remain byte-identical.
-
-Validation:
-- Source preflight: PASS (22 Kotlin files).
-- Firebase/Codemagic configuration preflight: PASS.
-- Kotlin delimiter audit: PASS.
-- Generic Icons.Default audit: PASS.
-- Full Gradle/Codemagic build: NOT RUN in this environment (no Android SDK/Gradle wrapper available).
+Changes:
+- MainActivity.kt: remove RectangleShape/fillMaxHeight dependency from the responsive shell; use fillMaxSize and zero-radius RoundedCornerShape for narrow layout.
+- Common.kt: correct invalid Modifier.padding argument combination by using explicit start/end/top/bottom.
+- ManageScreens.kt: make KListItem onClick arguments explicit in SettingsScreen so trailing lambdas cannot bind to divider:Boolean.
+- No Firebase/Auth/RTDB/FCM configuration changes.
+- No Repository/domain/business-logic changes.

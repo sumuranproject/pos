@@ -76,7 +76,7 @@ fun KPage(title: String, nav: Nav?, subtitle: String? = null, actions: @Composab
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             Column(
-                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = HTML_REM_DP.dp, top = (HTML_REM_DP * .25f).dp, bottom = if (fab != null) 96.dp else (HTML_REM_DP * .25f).dp),
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = HTML_REM_DP.dp, top = (HTML_REM_DP * .25f).dp, end = HTML_REM_DP.dp, bottom = if (fab != null) 96.dp else (HTML_REM_DP * .25f).dp),
                 verticalArrangement = Arrangement.spacedBy((HTML_REM_DP * .5f).dp),
                 content = content
             )
