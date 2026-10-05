@@ -45,7 +45,7 @@ fun KasirScreen(vm: PosViewModel, role: Role, nav: Nav, onCheckout: () -> Unit, 
 
     if (shift == null) {
         Column(Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            KEmpty("Belum ada Shift", "Mulai shift untuk menerima transaksi.\nProduk terkunci sampai shift dimulai.", R.drawable.ic_cart, "MULAI SHIFT", onStartShift)
+            KEmpty("Belum ada Shift", "Mulai shift untuk menerima transaksi.\nProduk terkunci sampai shift dimulai.", R.drawable.ic_stopwatch, "MULAI SHIFT", onStartShift)
         }
         return
     }

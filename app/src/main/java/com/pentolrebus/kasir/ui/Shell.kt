@@ -92,8 +92,8 @@ fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (
                 labels.forEachIndexed { i, l ->
                     val selected = tab == i
                     val c = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    Column(Modifier.weight(1f).clickable { tab = i; stack = emptyList(); if (i != 1) pay = Pay.NONE }.padding(top = 11.dp, bottom = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        BadgedBox(badge = { if (i == 1 && cart.isNotEmpty()) Badge { Text("${cart.sumOf { it.quantity }}") } }) { Icon(painterResource(icons[i]), l, tint = c, modifier = Modifier.size(29.dp)) }
+                    Column(Modifier.weight(1f).clickable { tab = i; stack = emptyList(); if (i != 1) pay = Pay.NONE }.padding(top = 8.dp, bottom = 7.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        BadgedBox(badge = { if (i == 1 && cart.isNotEmpty()) Badge { Text("${cart.sumOf { it.quantity }}") } }) { Icon(painterResource(icons[i]), l, tint = c, modifier = Modifier.size(26.dp)) }
                         Text(l, color = c, style = MaterialTheme.typography.labelSmall, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
                     }
                 }

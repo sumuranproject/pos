@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
 import com.pentolrebus.kasir.R
 import androidx.compose.ui.text.font.FontWeight
@@ -153,6 +154,7 @@ fun KField(label: String, value: String, onValue: (String) -> Unit, number: Bool
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 14.dp),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                 keyboardOptions = KeyboardOptions(keyboardType = if (number) KeyboardType.Number else KeyboardType.Text),
                 decorationBox = { inner ->
                     if (value.isEmpty() && placeholder.isNotEmpty()) Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
@@ -176,6 +178,7 @@ fun KSecretField(label: String, value: String, onValue: (String) -> Unit, numeri
                     singleLine = true,
                     modifier = Modifier.weight(1f).padding(vertical = 14.dp),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                     visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = if (numeric) KeyboardType.NumberPassword else KeyboardType.Password),
                     decorationBox = { inner ->
@@ -200,6 +203,7 @@ fun KSearchField(value: String, onValue: (String) -> Unit, placeholder: String =
                 value = value, onValueChange = onValue, singleLine = true,
                 modifier = Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 14.dp),
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                 decorationBox = { inner -> if (value.isEmpty()) Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge); inner() }
             )
             if (value.isNotEmpty()) TextButton(onClick = { onValue("") }, contentPadding = PaddingValues(0.dp)) { Text("×", style = MaterialTheme.typography.titleMedium) }

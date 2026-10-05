@@ -34,6 +34,10 @@ class PosViewModel(private val repo:PosRepository, private val offline:OfflineSt
 
  fun loginLocal(username:String,pin:String,expectedRole:Role?=null){_auth.value=AuthState.Loading;viewModelScope.launch{repo.localPinLogin(username,pin.toCharArray()).onSuccess{acceptSession(it,expectedRole)}.onFailure{_auth.value=AuthState.Error(it.message?:"Login gagal")}}}
  fun loginEmail(email:String,password:String,expectedRole:Role?=null){_auth.value=AuthState.Loading;viewModelScope.launch{repo.emailLogin(email,password).onSuccess{acceptSession(it,expectedRole)}.onFailure{_auth.value=AuthState.Error(it.message?:"Login gagal")}}}
+ fun resetPassword(email:String){
+  if(!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()){ _message.value="Masukkan email yang valid terlebih dahulu"; return }
+  viewModelScope.launch{ repo.sendPasswordReset(email).onSuccess{_message.value="Link reset password sudah dikirim ke email Anda"}.onFailure{_message.value=it.message?:"Gagal mengirim reset password"} }
+ }
  fun register(email:String,password:String,username:String,pin:String,business:String?,outlet:String?,whatsapp:String?){_auth.value=AuthState.Loading;viewModelScope.launch{repo.registerOwner(email,password,username,pin.toCharArray(),business,outlet,whatsapp).onSuccess(::loginSuccess).onFailure{_auth.value=AuthState.Error(it.message?:"Registrasi gagal")}}}
  private fun acceptSession(s:Session,e:Role?){if(e!=null&&s.role!=e){_auth.value=AuthState.Error("Akun ini bukan akun ${if(e==Role.OWNER)"Owner" else "Kasir"}.");return};loginSuccess(s)}
  private fun loginSuccess(s:Session){_auth.value=AuthState.LoggedIn(s);_activeOutlet.value=s.outletId;viewModelScope.launch{loadMaster(s);syncPending(s)}}

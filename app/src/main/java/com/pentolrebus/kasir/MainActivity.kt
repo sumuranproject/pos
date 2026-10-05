@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.app.Activity
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -33,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +45,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.core.view.WindowCompat
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.Alignment
@@ -174,7 +178,7 @@ private fun PasswordField(label: String, value: String, onValue: (String) -> Uni
         Surface(Modifier.fillMaxWidth().heightIn(min = 55.dp), shape = RoundedCornerShape(13.dp), color = MaterialTheme.colorScheme.surface) {
             Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(painterResource(R.drawable.ic_lock), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
-                BasicTextField(value, onValue, Modifier.weight(1f).padding(horizontal = 9.dp, vertical = 14.dp), singleLine = true, textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), decorationBox = { inner -> if (value.isEmpty()) Text("Masukkan password", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge); inner() })
+                BasicTextField(value, onValue, Modifier.weight(1f).padding(horizontal = 9.dp, vertical = 14.dp), singleLine = true, textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold), cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), decorationBox = { inner -> if (value.isEmpty()) Text("Masukkan password", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge); inner() })
                 IconButton(onClick = { visible = !visible }, modifier = Modifier.size(44.dp)) { Icon(painterResource(if (visible) R.drawable.ic_eye else R.drawable.ic_eye_off), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp)) }
             }
         }
@@ -198,6 +202,9 @@ private fun AuthScreen(vm: PosViewModel, error: String? = null) {
     var outlet by remember { mutableStateOf("") }
     var whatsapp by remember { mutableStateOf("") }
     var validation by remember { mutableStateOf<String?>(null) }
+    val message by vm.message.collectAsState()
+    val context = LocalContext.current
+    LaunchedEffect(message) { message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show(); vm.consumeMessage() } }
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         if (selectedRole == null) {
@@ -241,6 +248,7 @@ private fun AuthScreen(vm: PosViewModel, error: String? = null) {
                 onValidation = { validation = it },
                 onLoginLocal = { vm.loginLocal(username, pin, selectedRole!!) },
                 onLoginEmail = { vm.loginEmail(email, password, selectedRole!!) },
+                onForgotPassword = { vm.resetPassword(email) },
                 onRegister = {
                     validation = validateRegistration(email, password, confirmPassword, username, pin, confirmPin)
                     if (validation == null) {
@@ -263,28 +271,31 @@ private fun AuthScreen(vm: PosViewModel, error: String? = null) {
 @Composable
 private fun RoleSelectionScreen(onOwner: () -> Unit, onCashier: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(horizontal = 17.6.dp, vertical = 15.4.dp)) {
-        Column(
-            Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
-        ) {
-            Row(Modifier.fillMaxWidth().padding(top = 8.8.dp, bottom = 61.6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Surface(Modifier.size(48.4.dp), shape = RoundedCornerShape(11.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                    Box(contentAlignment = Alignment.Center) { Image(painterResource(R.drawable.app_icon), "Logo Saku Kasir", Modifier.size(43.dp)) }
+        Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
+            Row(
+                Modifier.fillMaxWidth().padding(top = 8.8.dp, bottom = 61.6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(Modifier.size(55.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Image(painterResource(R.drawable.app_icon), "Logo Saku Kasir", Modifier.size(50.dp))
+                    }
                 }
-                Spacer(Modifier.width(11.dp))
+                Spacer(Modifier.width(12.dp))
                 Column {
-                    Text("Saku Kasir", fontSize = 18.7.sp, lineHeight = 22.sp, fontWeight = FontWeight.ExtraBold)
-                    Text("Point of Sale", fontSize = 13.2.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Saku Kasir", fontSize = 17.5.sp, lineHeight = 21.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("Point of Sale", fontSize = 12.2.sp, lineHeight = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Text("Selamat datang", fontSize = 30.8.sp, lineHeight = 37.sp, fontWeight = FontWeight.ExtraBold)
-            Text("Masuk untuk mengelola bisnis Anda", fontSize = 14.3.sp, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.4.dp, bottom = 28.6.dp))
-            Text("MASUK SEBAGAI", fontSize = 12.1.sp, lineHeight = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 5.3.dp))
+            Text("Selamat datang", fontSize = 27.5.sp, lineHeight = 33.sp, fontWeight = FontWeight.ExtraBold)
+            Text("Masuk untuk mengelola bisnis Anda", fontSize = 13.2.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp, bottom = 24.dp))
+            Text("MASUK SEBAGAI", fontSize = 11.2.sp, lineHeight = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
             RoleCard("Owner", "Kelola outlet, produk, laporan", R.drawable.ic_owner, onOwner)
             RoleCard("Kasir", "Transaksi dan shift", R.drawable.ic_people, onCashier)
         }
-        Column(Modifier.fillMaxWidth().padding(top = 26.4.dp)) {
+        Column(Modifier.fillMaxWidth().padding(top = 20.dp)) {
             Text("Butuh bantuan? Hubungi Owner Anda", Modifier.fillMaxWidth(), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Saku Kasir · Versi 0.1", Modifier.fillMaxWidth().padding(top = 8.8.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Saku Kasir · Versi 0.1", Modifier.fillMaxWidth().padding(top = 6.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -295,7 +306,7 @@ private fun RoleCard(title: String, subtitle: String, icon: Int, onClick: () -> 
         Row(Modifier.padding(15.8.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(Modifier.size(57.2.dp), shape = RoundedCornerShape(15.8.dp), color = MaterialTheme.colorScheme.primaryContainer) { Box(contentAlignment = Alignment.Center) { Icon(painterResource(icon), null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.6.dp)) } }
             Spacer(Modifier.width(15.4.dp))
-            Column(Modifier.weight(1f)) { Text(title, fontSize = 19.8.sp, lineHeight = 24.sp, fontWeight = FontWeight.ExtraBold); Text(subtitle, fontSize = 14.3.sp, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Column(Modifier.weight(1f)) { Text(title, fontSize = 16.5.sp, lineHeight = 20.sp, fontWeight = FontWeight.ExtraBold); Text(subtitle, fontSize = 12.sp, lineHeight = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             Icon(painterResource(R.drawable.ic_chevron), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
     }
@@ -307,7 +318,7 @@ private fun LoginRoleScreen(
     business: String, outlet: String, whatsapp: String, error: String?, validation: String?, onBack: () -> Unit, onRegisterToggle: () -> Unit,
     onEmail: (String) -> Unit, onPassword: (String) -> Unit, onConfirmPassword: (String) -> Unit, onUsername: (String) -> Unit,
     onPin: (String) -> Unit, onConfirmPin: (String) -> Unit, onBusiness: (String) -> Unit, onOutlet: (String) -> Unit, onWhatsapp: (String) -> Unit,
-    onValidation: (String?) -> Unit, onLoginLocal: () -> Unit, onLoginEmail: () -> Unit, onRegister: () -> Unit
+    onValidation: (String?) -> Unit, onLoginLocal: () -> Unit, onLoginEmail: () -> Unit, onForgotPassword: () -> Unit, onRegister: () -> Unit
 ) {
     val isOwner = role == Role.OWNER
     var emailMode by remember { mutableStateOf(false) }
@@ -321,12 +332,12 @@ private fun LoginRoleScreen(
                 Icon(painterResource(R.drawable.ic_back), "Kembali", modifier = Modifier.size(24.6.dp), tint = MaterialTheme.colorScheme.onSurface)
             }
         }
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Image(painterResource(R.drawable.app_icon), "Logo Saku Kasir", Modifier.size(52.8.dp).padding(top = 8.8.dp))
-            Text("Selamat datang", fontSize = 30.8.sp, lineHeight = 37.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 8.8.dp))
-            Text("Masuk untuk mengelola bisnis Anda", fontSize = 16.5.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.4.dp, bottom = 13.2.dp))
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
+            Image(painterResource(R.drawable.app_icon), "Logo Saku Kasir", Modifier.size(58.dp).padding(top = 8.8.dp))
+            Text("Selamat datang", fontSize = 27.5.sp, lineHeight = 33.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 8.8.dp))
+            Text("Masuk untuk mengelola bisnis Anda", fontSize = 14.2.sp, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
             Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                Text("● ${if (isOwner) "Owner" else "Kasir"}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 7.dp), style = MaterialTheme.typography.labelMedium)
+                Text("● ${if (isOwner) "Owner" else "Kasir"}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium)
             }
         }
         if (isOwner && !register) {
@@ -341,10 +352,16 @@ private fun LoginRoleScreen(
             } else {
                 AuthField("Email", "Masukkan email", email, onEmail, R.drawable.ic_mail, KeyboardType.Email)
                 Spacer(Modifier.height(9.dp)); PasswordField("Password", password, onPassword)
+                TextButton(
+                    onClick = onForgotPassword,
+                    enabled = true,
+                    modifier = Modifier.padding(top = 2.dp),
+                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
+                ) { Text("Lupa Password?", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
                 error?.let { Spacer(Modifier.height(7.dp)); AlertBox(it) }
                 Spacer(Modifier.height(11.dp)); AuthPrimaryButton("Masuk", onLoginEmail)
             }
-            TextButton(onClick = onRegisterToggle, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) { Text("Daftar sebagai Owner", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
+            TextButton(onClick = onRegisterToggle, modifier = Modifier.padding(top = 2.dp), contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)) { Text("Daftar sebagai Owner", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
         } else if (isOwner) {
             error?.let { AlertBox(it) }; validation?.let { AlertBox(it) }
             Spacer(Modifier.height(18.dp));
@@ -378,7 +395,7 @@ private fun AuthField(label: String, placeholder: String, value: String, onValue
         Surface(Modifier.fillMaxWidth().heightIn(min = 55.dp), shape = RoundedCornerShape(13.2.dp), color = MaterialTheme.colorScheme.surface) {
             Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (icon != null) { Icon(painterResource(icon), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp)); Spacer(Modifier.width(11.dp)) }
-                androidx.compose.foundation.text.BasicTextField(value, onValue, Modifier.weight(1f).padding(vertical = 14.dp), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold), keyboardOptions = KeyboardOptions(keyboardType = keyboardType), decorationBox = { inner -> if (value.isEmpty()) Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium); inner() })
+                androidx.compose.foundation.text.BasicTextField(value, onValue, Modifier.weight(1f).padding(vertical = 14.dp), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold), cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface), keyboardOptions = KeyboardOptions(keyboardType = keyboardType), decorationBox = { inner -> if (value.isEmpty()) Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium); inner() })
             }
         }
     }
@@ -392,7 +409,7 @@ private fun AuthPinField(label: String, value: String, onValue: (String) -> Unit
         Surface(Modifier.fillMaxWidth().heightIn(min = 55.dp), shape = RoundedCornerShape(13.2.dp), color = MaterialTheme.colorScheme.surface) {
             Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(painterResource(R.drawable.ic_dialpad), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp)); Spacer(Modifier.width(11.dp))
-                androidx.compose.foundation.text.BasicTextField(value, { onValue(it.filter(Char::isDigit).take(6)) }, Modifier.weight(1f).padding(vertical = 14.dp), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword), visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), decorationBox = { inner -> if (value.isEmpty()) Text("Masukkan PIN", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium); inner() })
+                androidx.compose.foundation.text.BasicTextField(value, { onValue(it.filter(Char::isDigit).take(6)) }, Modifier.weight(1f).padding(vertical = 14.dp), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold), cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword), visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), decorationBox = { inner -> if (value.isEmpty()) Text("Masukkan PIN", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium); inner() })
                 IconButton(onClick = { visible = !visible }, modifier = Modifier.size(44.dp)) { Icon(painterResource(if (visible) R.drawable.ic_eye else R.drawable.ic_eye_off), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp)) }
             }
         }

@@ -1,13 +1,16 @@
-Saku Kasir — V49
-
-Base: V48
-Purpose: Align the Android UI scale with the supplied Saku Kasir screenshot/HTML reference without changing POS/Firebase logic.
+Saku Kasir — V51
+Base: V50
+Purpose: small visual follow-up to Bug Report R1
 
 Changes:
-- MainActivity.kt: apply a single global 1.10x Compose design scale through LocalDensity, preserving the device's own density and font scale.
-- Theme.kt: remove the previous typography-only 1.10 multiplier so typography is not double-scaled; the global LocalDensity scale now applies consistently to dp/sp geometry and text.
-- The scale is global and proportional: cards, fields, buttons, spacing, icons, navigation and typography grow together instead of being enlarged individually.
-- Android remains density-independent; the 440 dpi phone is not hard-coded into the APK.
-- No Firebase/Auth/RTDB/FCM configuration changes.
-- No Repository/domain/business-logic changes.
-- Base remains V48; V49 does not overwrite or roll back earlier versions.
+- Shift empty state now uses stopwatch/watch icon matching the HTML reference.
+- Role selection "Selamat datang" remains at the existing 27.5sp size.
+- Only the Owner/Kasir role-card text is reduced slightly: title 16.5sp, subtitle 12sp.
+- No Firebase configuration or data-access changes.
+- No tablet-landscape sidebar changes.
+
+V52 APP ICON SOURCE UPDATE
+Base: V51
+- Replaced the application icon resource drawable-nodpi/app_icon.png with the supplied icon-apk.png source.
+- This single app_icon resource is used by the Android launcher and all in-app application-logo placements.
+- Functional feature icons (cart, stopwatch, PIN, navigation, etc.) were not replaced.
