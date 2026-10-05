@@ -4,8 +4,10 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -25,6 +27,9 @@ import com.pentolrebus.kasir.R
 import com.pentolrebus.kasir.domain.*
 import com.pentolrebus.kasir.util.BluetoothPrinter
 import com.pentolrebus.kasir.util.QrisStore
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private val UNITS = listOf("porsi", "gelas", "pcs", "botol", "bungkus")
 
@@ -53,7 +58,7 @@ fun ManageRouter(route: String, arg: String?, vm: PosViewModel, session: Session
         "Printer" -> PrinterScreen(printer, nav)
         "Dropbox" -> DropboxScreen(nav)
         "Notifikasi" -> NotificationsScreen(vm, nav)
-        "Edit Struk" -> ReceiptSettingsScreen(nav)
+        "Edit Struk" -> ReceiptSettingsScreen(vm, printer, nav)
         "Tema" -> ThemeScreen(themeMode, onThemeMode, nav)
         "Sinkron" -> SyncScreen(vm, nav)
         "Tentang" -> AboutScreen(nav)
@@ -72,43 +77,62 @@ fun ManageRouter(route: String, arg: String?, vm: PosViewModel, session: Session
 
 // ------------------------------------------------------------------ Pengaturan
 @Composable
-fun SettingsScreen(vm: PosViewModel, session: Session, nav: Nav, onLogout: () -> Unit) {
+fun SettingsScreen(vm: PosViewModel, session: Session, nav: Nav, themeMode: Int, onLogout: () -> Unit) {
     val business by vm.business.collectAsState()
     val outlets by vm.outlets.collectAsState()
-    val active by vm.activeOutlet.collectAsState()
+    val activeOutlet by vm.activeOutlet.collectAsState()
+    val syncing by vm.syncing.collectAsState()
+    val ctx = LocalContext.current
+    val printer = remember(ctx) { BluetoothPrinter(ctx) }
+    val qrisReady = remember(activeOutlet) { QrisStore.has(ctx, activeOutlet.orEmpty()) }
+    val printerReady = remember { runCatching { printer.pairedDevices().isNotEmpty() }.getOrDefault(false) }
     val owner = session.role == Role.OWNER
-    KPage("Pengaturan", null, subtitle = if (owner) "Owner · ${business?.name ?: "Bisnis"}" else "${session.username} · ${outlets.firstOrNull()?.name ?: "Outlet"}") {
-        if (owner && outlets.size > 1) {
-            KLabel("OUTLET AKTIF"); KChips(outlets.map { it.name }, outlets.firstOrNull { it.id == active }?.name ?: "") { n -> outlets.firstOrNull { it.name == n }?.let { vm.setActiveOutlet(it.id) } }
-        }
-        KLabel(if (owner) "OPERASIONAL" else "AKUN")
+    val display = session.username.ifBlank { if (owner) "Owner" else "Kasir" }
+    KPage("Pengaturan", null) {
         if (owner) {
-            KItem("Produk", "Kelola produk dan harga", icon = R.drawable.ic_product) { nav.open("Produk", null) }
-            KItem("Kategori", "Kategori untuk filter Kasir", icon = R.drawable.ic_category) { nav.open("Kategori", null) }
-            KItem("Stok", "Jumlah dan batas menipis", icon = R.drawable.ic_stock) { nav.open("Stok", null) }
-            KItem("Outlet", "Kelola cabang bisnis", icon = R.drawable.ic_store) { nav.open("Outlet", null) }
-            KItem("Kasir / Pekerja", "Akun kasir dibuat oleh Owner", icon = R.drawable.ic_people) { nav.open("Pekerja", null) }
-            KItem("Owner", "Profil pemilik", icon = R.drawable.ic_owner) { nav.open("Owner", null) }
-            KItem("Bisnis", "Informasi bisnis", icon = R.drawable.ic_business) { nav.open("Bisnis", null) }
-            KItem("Pengeluaran", "Catat biaya operasional", icon = R.drawable.ic_report) { nav.open("Pengeluaran", null) }
+            Text("Owner · Bisnis ${business?.name ?: "—"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            KListGroup {
+                KListItem("Produk", icon = R.drawable.ic_product) { nav.open("Produk", null) }
+                KListItem("Kategori", icon = R.drawable.ic_category) { nav.open("Kategori", null) }
+                KListItem("Stok", icon = R.drawable.ic_stock) { nav.open("Stok", null) }
+                KListItem("Outlet", icon = R.drawable.ic_store) { nav.open("Outlet", null) }
+                KListItem("Kasir / Pekerja", icon = R.drawable.ic_people) { nav.open("Pekerja", null) }
+                KListItem("Owner", icon = R.drawable.ic_owner) { nav.open("Owner", null) }
+                KListItem("Bisnis", icon = R.drawable.ic_business, divider = false) { nav.open("Bisnis", null) }
+            }
             KLabel("PEMBAYARAN & PERANGKAT")
-            KItem("QRIS", "Gambar QRIS outlet", icon = R.drawable.ic_qris) { nav.open("QRIS", null) }
-            KItem("Printer", "Bluetooth", icon = R.drawable.ic_printer) { nav.open("Printer", null) }
-            KLabel("PENYIMPANAN")
-            KItem("Dropbox", "Penyimpanan foto produk, QRIS, dan logo bisnis", icon = R.drawable.ic_cloud) { nav.open("Dropbox", null) }
-            KLabel("STRUK & APLIKASI")
-            KItem("Edit Struk", "Atur informasi dan elemen struk", icon = R.drawable.ic_printer) { nav.open("Edit Struk", null) }
+            KListGroup {
+                KListItem("QRIS", trailing = if (qrisReady) "Aktif" else "Belum diatur", icon = R.drawable.ic_qris) { nav.open("QRIS", null) }
+                KListItem("Printer", trailing = if (printerReady) "Siap" else "Belum dipasang", icon = R.drawable.ic_printer) { nav.open("Printer", null) }
+                KListItem("Dropbox", icon = R.drawable.ic_cloud) { nav.open("Dropbox", null) }
+                KListItem("Edit Struk", icon = R.drawable.ic_edit_struk, divider = false) { nav.open("Edit Struk", null) }
+            }
         } else {
-            KItem("Profil", "Data akun kasir", icon = R.drawable.ic_person) { nav.open("Profil", null) }
-            KItem("Outlet", outlets.firstOrNull()?.name ?: "Outlet", icon = R.drawable.ic_store) { }
-            KItem("Pengeluaran", "Catat biaya operasional", icon = R.drawable.ic_report) { nav.open("Pengeluaran", null) }
-            KItem("Printer Bluetooth", "Pasangkan dan tes cetak", icon = R.drawable.ic_printer) { nav.open("Printer", null) }
+            KCard {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(Modifier.size(42.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+                        Box(contentAlignment = Alignment.Center) { Text(display.take(1).uppercase(), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold) }
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(display, fontWeight = FontWeight.ExtraBold)
+                        Text("Kasir · ${outlets.firstOrNull()?.name ?: "Outlet"}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            KListGroup {
+                KListItem("Profil", icon = R.drawable.ic_person) { nav.open("Profil", null) }
+                KListItem("Outlet", trailing = outlets.firstOrNull()?.name ?: "Outlet", icon = R.drawable.ic_store, onClick = null)
+                KListItem("Printer Bluetooth", trailing = if (printerReady) "Siap" else "Terputus", icon = R.drawable.ic_printer) { nav.open("Printer", null) }
+            }
         }
         KLabel("APLIKASI")
-        KItem("Tema", "Terang / Gelap / Sistem", icon = R.drawable.ic_theme) { nav.open("Tema", null) }
-        KItem("Sinkronisasi", "Status data offline", icon = R.drawable.ic_sync) { nav.open("Sinkron", null) }
-        KItem("Notifikasi", "Peringatan stok menipis", icon = R.drawable.ic_notification) { nav.open("Notifikasi", null) }
-        KItem("Tentang aplikasi", "Versi dan bantuan", icon = R.drawable.ic_info) { nav.open("Tentang", null) }
+        KListGroup {
+            KListItem("Tema", trailing = when (themeMode) { 1 -> "Terang"; 2 -> "Gelap"; else -> "Sistem" }, icon = R.drawable.ic_theme) { nav.open("Tema", null) }
+            KListItem("Sinkronisasi", trailing = if (syncing) "Menyinkronkan…" else "Tersinkron", icon = R.drawable.ic_sync) { nav.open("Sinkron", null) }
+            KListItem("Notifikasi", icon = R.drawable.ic_notification) { nav.open("Notifikasi", null) }
+            KListItem("Tentang aplikasi", icon = R.drawable.ic_info, divider = false) { nav.open("Tentang", null) }
+        }
         KSecondary("KELUAR", danger = true, onClick = onLogout)
     }
 }
@@ -120,16 +144,15 @@ fun ProductListScreen(vm: PosViewModel, nav: Nav) {
     val cats by vm.categories.collectAsState()
     var q by remember { mutableStateOf("") }
     var cat by remember { mutableStateOf<String?>(null) }
-    KPage("Produk", nav) {
-        Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) { Row(Modifier.padding(horizontal = 13.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp)); BasicTextField(q, { q = it }, Modifier.weight(1f).padding(horizontal = 9.dp, vertical = 13.dp), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface), decorationBox = { inner -> if (q.isEmpty()) Text("Cari produk…", color = MaterialTheme.colorScheme.onSurfaceVariant); inner() }) }}
+    KPage("Produk", nav, fab = { nav.open("Produk:form", null) }) {
+        KSearchField(q, { q = it }, "Cari produk…")
         KChips(listOf("Semua") + cats.map { it.name }, cats.firstOrNull { it.id == cat }?.name ?: "Semua") { n -> cat = cats.firstOrNull { it.name == n }?.id }
         val list = products.filter { (q.isBlank() || it.name.contains(q, true)) && (cat == null || it.categoryId == cat) }
         if (products.isEmpty()) KEmpty("Belum ada produk", "Tambahkan produk pertama Anda.", R.drawable.ic_product)
-        list.forEach { p ->
+        if (list.isNotEmpty()) KListGroup { list.forEachIndexed { i, p ->
             val low = p.stockEnabled && p.stock <= p.lowStock
-            KItem(p.name + if (!p.active) " (nonaktif)" else "", rp(p.price) + " / " + p.unit, if (p.stockEnabled) "Stok ${p.stock}" else "", if (low) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant, R.drawable.ic_product) { nav.open("Produk:detail", p.id) }
-        }
-        KPrimary("+ TAMBAH PRODUK") { nav.open("Produk:form", null) }
+            KListItem(p.name + if (!p.active) " (nonaktif)" else "", rp(p.price) + " / " + p.unit, if (p.stockEnabled) "Stok ${p.stock}" else "", if (low) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant, R.drawable.ic_product, onClick = { nav.open("Produk:detail", p.id) }, divider = i != list.lastIndex)
+        } }
     }
 }
 
@@ -194,10 +217,9 @@ fun ProductFormScreen(vm: PosViewModel, id: String?, nav: Nav) {
 @Composable
 fun CategoryListScreen(vm: PosViewModel, nav: Nav) {
     val cats by vm.categories.collectAsState(); val products by vm.products.collectAsState()
-    KPage("Kategori", nav) {
+    KPage("Kategori", nav, fab = { nav.open("Kategori:form", null) }) {
         if (cats.isEmpty()) KEmpty("Belum ada kategori", "Buat kategori sesuai produk Anda.", R.drawable.ic_category)
-        cats.forEach { c -> KItem(c.name, "${products.count { it.categoryId == c.id }} produk", icon = R.drawable.ic_category) { nav.open("Kategori:form", c.id) } }
-        KPrimary("+ TAMBAH KATEGORI") { nav.open("Kategori:form", null) }
+        if (cats.isNotEmpty()) KListGroup { cats.forEachIndexed { i, c -> KListItem(c.name, "${products.count { it.categoryId == c.id }} produk", icon = R.drawable.ic_category, onClick = { nav.open("Kategori:form", c.id) }, divider = i != cats.lastIndex) } }
     }
 }
 
@@ -227,10 +249,10 @@ fun StockListScreen(vm: PosViewModel, nav: Nav) {
     val products by vm.products.collectAsState()
     KPage("Stok", nav) {
         if (products.isEmpty()) KEmpty("Belum ada produk", "", R.drawable.ic_stock)
-        products.forEach { p ->
+        if (products.isNotEmpty()) KListGroup { products.forEachIndexed { i, p ->
             val low = p.stockEnabled && p.stock <= p.lowStock
-            KItem(p.name, if (!p.stockEnabled) "Stok OFF · tidak dilacak" else if (low) "Stok ON · menipis" else "Stok ON", if (p.stockEnabled) "${p.stock}" else "–", if (low) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface, R.drawable.ic_stock) { nav.open("Stok:detail", p.id) }
-        }
+            KListItem(p.name, if (!p.stockEnabled) "Stok OFF · tidak dilacak" else if (low) "Stok ON · menipis" else "Stok ON", if (p.stockEnabled) "${p.stock}" else "–", if (low) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface, R.drawable.ic_stock, onClick = { nav.open("Stok:detail", p.id) }, divider = i != products.lastIndex)
+        } }
     }
 }
 
@@ -243,14 +265,14 @@ fun StockDetailScreen(vm: PosViewModel, id: String?, nav: Nav) {
     KPage("Detail Stok", nav) {
         if (p == null) { KEmpty("Produk tidak ditemukan", "", R.drawable.ic_stock); return@KPage }
         if (!p.stockEnabled) { KEmpty("Stok tidak dilacak", "Aktifkan 'Lacak stok' di form produk untuk mengatur jumlah.", R.drawable.ic_stock, "UBAH PRODUK") { nav.open("Produk:form", p.id) }; return@KPage }
-        val delta = (amount.toLongOrNull() ?: 0) * if (mode == "Tambah") 1 else -1
+        val delta: Long = (amount.toLongOrNull() ?: 0L) * if (mode == "Tambah") 1L else -1L
         KCard(color = MaterialTheme.colorScheme.primaryContainer) { Text(p.name, fontWeight = FontWeight.ExtraBold); Text("${p.stock} ${p.unit}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = if (p.stock <= p.lowStock) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface); if (p.stock <= p.lowStock) Text("Menipis · batas ${p.lowStock}", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelMedium) }
         KChips(listOf("Tambah", "Kurangi"), mode) { mode = it }
         KField("Jumlah penyesuaian", amount, { amount = it }, number = true)
         Text("Stok setelah penyesuaian: ${(p.stock + delta).coerceAtLeast(0)} ${p.unit}", style = MaterialTheme.typography.labelMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             KSecondary("BATAL", modifier = Modifier.weight(1f), onClick = nav.back)
-            KPrimary("SIMPAN", enabled = delta != 0L && p.stock + delta >= 0, modifier = Modifier.weight(1f)) { vm.adjustStock(p.id, delta); nav.back() }
+            KPrimary("SIMPAN", enabled = delta != 0L && p.stock + delta >= 0L, modifier = Modifier.weight(1f)) { vm.adjustStock(p.id, delta); nav.back() }
         }
     }
 }
@@ -259,10 +281,9 @@ fun StockDetailScreen(vm: PosViewModel, id: String?, nav: Nav) {
 @Composable
 fun OutletListScreen(vm: PosViewModel, session: Session, nav: Nav) {
     val outlets by vm.outlets.collectAsState(); val workers by vm.workers.collectAsState(); val active by vm.activeOutlet.collectAsState(); val shifts by vm.shifts.collectAsState()
-    KPage("Outlet", nav, subtitle = "Owner › Bisnis › Outlet") {
+    KPage("Outlet", nav, subtitle = "Owner › Bisnis › Outlet", fab = { nav.open("Outlet:form", null) }) {
         if (outlets.isEmpty()) KEmpty("Belum ada outlet", "Tambahkan outlet pertama.", R.drawable.ic_store)
-        outlets.forEach { o -> KItem(o.name + if (o.id == active) " · aktif" else "", (o.address ?: "Alamat belum diisi") + "\n${workers.count { it.outletId == o.id }} kasir · ${shifts.count { it.outletId == o.id && it.closedAt == null }} shift aktif", icon = R.drawable.ic_store) { nav.open("Outlet:detail", o.id) } }
-        KPrimary("+ TAMBAH OUTLET") { nav.open("Outlet:form", null) }
+        if (outlets.isNotEmpty()) KListGroup { outlets.forEachIndexed { i, o -> KListItem(o.name + if (o.id == active) " · aktif" else "", (o.address ?: "Alamat belum diisi") + "\n${workers.count { it.outletId == o.id }} kasir · ${shifts.count { it.outletId == o.id && it.closedAt == null }} shift aktif", icon = R.drawable.ic_store, onClick = { nav.open("Outlet:detail", o.id) }, divider = i != outlets.lastIndex) } }
     }
 }
 
@@ -305,10 +326,9 @@ fun OutletFormScreen(vm: PosViewModel, id: String?, nav: Nav) {
 fun WorkerListScreen(vm: PosViewModel, nav: Nav) {
     val workers by vm.workers.collectAsState(); val outlets by vm.outlets.collectAsState()
     var sheet by remember { mutableStateOf(false) }
-    KPage("Kasir / Pekerja", nav, subtitle = "Owner › Bisnis › Outlet › Pekerja") {
+    KPage("Kasir / Pekerja", nav, subtitle = "Owner › Bisnis › Outlet › Pekerja", fab = { sheet = true }) {
         if (workers.isEmpty()) KEmpty("Belum ada kasir", "Owner membuat akun kasir; pekerja tidak mendaftar sendiri.", R.drawable.ic_people)
-        workers.forEach { w -> KItem(w.displayName.ifBlank { w.username }, (outlets.firstOrNull { it.id == w.outletId }?.name ?: "—") + " · Kasir", if (w.active) "Aktif" else "Nonaktif", if (w.active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, R.drawable.ic_people) { nav.open("Pekerja:detail", w.id) } }
-        KPrimary("+ TAMBAH PEKERJA") { sheet = true }
+        if (workers.isNotEmpty()) KListGroup { workers.forEachIndexed { i, w -> KListItem(w.displayName.ifBlank { w.username }, (outlets.firstOrNull { it.id == w.outletId }?.name ?: "—") + " · Kasir", if (w.active) "Aktif" else "Nonaktif", if (w.active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, R.drawable.ic_people, onClick = { nav.open("Pekerja:detail", w.id) }, divider = i != workers.lastIndex) } }
     }
     if (sheet) ModalBottomSheet(onDismissRequest = { sheet = false }) {
         Column(Modifier.padding(16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -350,7 +370,7 @@ private fun WorkerFormBody(vm: PosViewModel, old: Worker?, onDone: () -> Unit) {
 fun WorkerFormScreen(vm: PosViewModel, id: String?, nav: Nav) {
     val workers by vm.workers.collectAsState()
     val w = workers.firstOrNull { it.id == id }
-    KPage("Ubah Pekerja", nav) { if (w == null) KEmpty("Pekerja tidak ditemukan", "", R.drawable.ic_people) else WorkerFormBody(vm, w) { nav.back() } }
+    KPage(if (w == null) "Tambah Pekerja" else "Ubah Pekerja", nav) { if (id != null && w == null) KEmpty("Pekerja tidak ditemukan", "", R.drawable.ic_people) else WorkerFormBody(vm, w) { nav.back() } }
 }
 
 @Composable
@@ -460,8 +480,14 @@ fun PrinterScreen(printer: BluetoothPrinter, nav: Nav) {
 @Composable
 fun ThemeScreen(mode: Int, onMode: (Int) -> Unit, nav: Nav) {
     KPage("Tema", nav) {
-        listOf("Sistem", "Terang", "Gelap").forEachIndexed { i, label ->
-            KCard { Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) { Text(label, Modifier.weight(1f), fontWeight = FontWeight.SemiBold); RadioButton(selected = mode == i, onClick = { onMode(i) }) } }
+        KListGroup {
+            listOf("Sistem", "Terang", "Gelap").forEachIndexed { i, label ->
+                Row(Modifier.fillMaxWidth().clickable { onMode(i) }.padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(label, Modifier.weight(1f), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+                    RadioButton(selected = mode == i, onClick = { onMode(i) })
+                }
+                if (i != 2) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
         }
     }
 }
@@ -487,11 +513,20 @@ fun AboutScreen(nav: Nav) {
     val ctx = LocalContext.current
     val ver = remember { runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "-" }
     KPage("Tentang", nav) {
-        KEmpty("Saku Kasir", "Versi $ver", R.drawable.ic_info)
-        KCard { KRow("Bisnis", "Pentol Rebus x Es Teh"); KRow("Platform", "Android"); KRow("Bantuan", "Hubungi Owner") }
+        Column(Modifier.fillMaxWidth().padding(top = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Surface(Modifier.size(64.dp), shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                Box(contentAlignment = Alignment.Center) { Image(painterResource(R.drawable.app_icon), "Saku Kasir", Modifier.size(48.dp)) }
+            }
+            Text("Saku Kasir", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 10.dp))
+            Text("Versi $ver", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        KCard {
+            KRow("Bisnis", "Pentol Rebus x Es Teh")
+            KRow("Platform", "Android")
+            KRow("Bantuan", "Hubungi Owner")
+        }
     }
 }
-
 
 // ------------------------------------------------------------------ V37 feature port: Dropbox / Notifikasi / Edit Struk
 @Composable
@@ -517,12 +552,12 @@ fun DropboxScreen(nav: Nav) {
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Belum terhubung", fontWeight = FontWeight.Bold)
-                    Text("Hubungkan akun Dropbox milik bisnis ini", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    Text("Hubungkan akun Dropbox milik bisnis ini", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
         KPrimary("HUBUNGKAN DROPBOX") { showConnectInfo = true }
-        Text("Setiap bisnis dapat menggunakan akun Dropbox miliknya sendiri. Saku Kasir hanya menggunakan App Folder untuk penyimpanan aplikasi.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 9.dp))
+        Text("Setiap bisnis dapat menggunakan akun Dropbox miliknya sendiri. Saku Kasir hanya menggunakan App Folder untuk penyimpanan aplikasi.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 9.dp))
     }
     if (showConnectInfo) {
         AlertDialog(onDismissRequest = { showConnectInfo = false }, title = { Text("Hubungkan Dropbox") }, text = { Text("Saku Kasir akan membuka halaman Dropbox untuk login dan memberikan izin melalui OAuth. Integrasi OAuth belum diaktifkan pada tahap ini, jadi belum ada akun yang dianggap terhubung.") }, confirmButton = { TextButton(onClick = { showConnectInfo = false }) { Text("MENGERTI") } })
@@ -535,7 +570,7 @@ private fun StorageInfoRow(title: String, subtitle: String) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             Icon(painterResource(R.drawable.ic_cloud), title, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(12.dp))
-            Column { Text(title, fontWeight = FontWeight.SemiBold); Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }
+            Column { Text(title, fontWeight = FontWeight.SemiBold); Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall) }
         }
     }
 }
@@ -551,7 +586,7 @@ fun NotificationsScreen(vm: PosViewModel, nav: Nav) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     Icon(painterResource(R.drawable.ic_notification), "Peringatan stok", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(24.dp))
                     Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) { Text(p.name, fontWeight = FontWeight.Bold); Text("Stok ${p.stock} · batas ${p.lowStock}", color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
+                    Column(Modifier.weight(1f)) { Text(p.name, fontWeight = FontWeight.Bold); Text("Stok ${p.stock} · batas ${p.lowStock}", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall) }
                 }
             }
         }
@@ -559,37 +594,137 @@ fun NotificationsScreen(vm: PosViewModel, nav: Nav) {
 }
 
 @Composable
-fun ReceiptSettingsScreen(nav: Nav) {
+fun ReceiptSettingsScreen(vm: PosViewModel, printer: BluetoothPrinter, nav: Nav) {
     val ctx = LocalContext.current
     val prefs = remember { ctx.getSharedPreferences("receipt_settings", android.content.Context.MODE_PRIVATE) }
-    var title by rememberSaveable { mutableStateOf(prefs.getString("title", "") ?: "") }
-    var address by rememberSaveable { mutableStateOf(prefs.getString("address", "") ?: "") }
-    var phone by rememberSaveable { mutableStateOf(prefs.getString("phone", "") ?: "") }
+    var showBiz by rememberSaveable { mutableStateOf(prefs.getBoolean("showBiz", true)) }
+    var showOutlet by rememberSaveable { mutableStateOf(prefs.getBoolean("showOutlet", true)) }
+    var showTxId by rememberSaveable { mutableStateOf(prefs.getBoolean("showTxId", true)) }
+    var showCashier by rememberSaveable { mutableStateOf(prefs.getBoolean("showCashier", true)) }
+    var showPayment by rememberSaveable { mutableStateOf(prefs.getBoolean("showPayment", true)) }
+    var showChange by rememberSaveable { mutableStateOf(prefs.getBoolean("showChange", true)) }
     var footer by rememberSaveable { mutableStateOf(prefs.getString("footer", "Terima kasih!") ?: "Terima kasih!") }
-    var showLogo by rememberSaveable { mutableStateOf(prefs.getBoolean("logo", true)) }
-    var showId by rememberSaveable { mutableStateOf(prefs.getBoolean("id", true)) }
-    var showDate by rememberSaveable { mutableStateOf(prefs.getBoolean("date", true)) }
-    var showCashier by rememberSaveable { mutableStateOf(prefs.getBoolean("cashier", true)) }
-    var showPrice by rememberSaveable { mutableStateOf(prefs.getBoolean("price", true)) }
-    var showSubtotal by rememberSaveable { mutableStateOf(prefs.getBoolean("subtotal", true)) }
-    var showDiscount by rememberSaveable { mutableStateOf(prefs.getBoolean("discount", true)) }
-    var showTax by rememberSaveable { mutableStateOf(prefs.getBoolean("tax", true)) }
-    var showPayment by rememberSaveable { mutableStateOf(prefs.getBoolean("payment", true)) }
-    var showChange by rememberSaveable { mutableStateOf(prefs.getBoolean("change", true)) }
-    fun save() { prefs.edit().putString("title", title).putString("address", address).putString("phone", phone).putString("footer", footer).putBoolean("logo", showLogo).putBoolean("id", showId).putBoolean("date", showDate).putBoolean("cashier", showCashier).putBoolean("price", showPrice).putBoolean("subtotal", showSubtotal).putBoolean("discount", showDiscount).putBoolean("tax", showTax).putBoolean("payment", showPayment).putBoolean("change", showChange).apply() }
-    KPage("Edit Struk", nav, subtitle = "Atur tampilan dan informasi yang dicetak pada struk transaksi.") {
-        KLabel("IDENTITAS STRUK")
-        KField("Judul struk", title, { title = it }, placeholder = "Kosong = nama bisnis")
-        KField("Alamat", address, { address = it }, placeholder = "Kosong = alamat outlet")
-        KField("Telepon", phone, { phone = it }, placeholder = "Nomor telepon")
-        KField("Pesan bawah struk", footer, { footer = it }, placeholder = "Terima kasih!")
-        KLabel("ELEMEN YANG DITAMPILKAN")
-        listOf("Logo" to showLogo, "Nomor transaksi" to showId, "Tanggal & waktu" to showDate, "Kasir" to showCashier, "Harga satuan" to showPrice, "Subtotal" to showSubtotal, "Diskon" to showDiscount, "Pajak" to showTax, "Metode & uang dibayar" to showPayment, "Kembalian" to showChange).forEach { (label, value) ->
-            KCard { Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) { Text(label, Modifier.weight(1f), fontWeight = FontWeight.SemiBold); Switch(checked = value, onCheckedChange = { v -> when(label) { "Logo" -> showLogo=v; "Nomor transaksi" -> showId=v; "Tanggal & waktu" -> showDate=v; "Kasir" -> showCashier=v; "Harga satuan" -> showPrice=v; "Subtotal" -> showSubtotal=v; "Diskon" -> showDiscount=v; "Pajak" -> showTax=v; "Metode & uang dibayar" -> showPayment=v; "Kembalian" -> showChange=v } }) } }
-        }
-        KLabel("PRATINJAU")
-        KCard { Column(Modifier.fillMaxWidth().padding(4.dp)) { Text(title.ifBlank { "Saku Kasir" }, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(), fontWeight = FontWeight.Bold); Text("Pentol Rebus × Es Teh Fresh Brew", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(), fontSize = 11.sp); HorizontalDivider(Modifier.padding(vertical = 7.dp)); Text("Pentol Rebus     2 × 12.000", fontSize = 11.sp); HorizontalDivider(Modifier.padding(vertical = 7.dp)); Text("TOTAL            Rp 24.000", fontWeight = FontWeight.Bold, fontSize = 11.sp); Text(footer, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(), fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
-        KPrimary("SIMPAN") { save(); nav.back() }
-        KSecondary("KEMBALIKAN DEFAULT") { showLogo=true; showId=true; showDate=true; showCashier=true; showPrice=true; showSubtotal=true; showDiscount=true; showTax=true; showPayment=true; showChange=true; title=""; address=""; phone=""; footer="Terima kasih!"; save() }
+    var preview by remember { mutableStateOf(false) }
+    var print by remember { mutableStateOf(false) }
+    val transactions by vm.transactions.collectAsState()
+    val business by vm.business.collectAsState()
+    val outlets by vm.outlets.collectAsState()
+    fun save() {
+        prefs.edit()
+            .putBoolean("showBiz", showBiz).putBoolean("showOutlet", showOutlet).putBoolean("showTxId", showTxId)
+            .putBoolean("showCashier", showCashier).putBoolean("showPayment", showPayment).putBoolean("showChange", showChange)
+            .putString("footer", footer).apply()
     }
+    KPage("Edit Struk", nav, subtitle = "Atur informasi yang tampil pada struk cetak.") {
+        KCard {
+            listOf(
+                "Nama bisnis" to showBiz,
+                "Outlet" to showOutlet,
+                "Nomor transaksi" to showTxId,
+                "Nama kasir" to showCashier,
+                "Metode & pembayaran" to showPayment,
+                "Kembalian" to showChange
+            ).forEachIndexed { i, (label, value) ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(label, Modifier.weight(1f), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+                    KToggle(value) { checked -> when (label) {
+                        "Nama bisnis" -> showBiz = checked
+                        "Outlet" -> showOutlet = checked
+                        "Nomor transaksi" -> showTxId = checked
+                        "Nama kasir" -> showCashier = checked
+                        "Metode & pembayaran" -> showPayment = checked
+                        "Kembalian" -> showChange = checked
+                    }}
+                }
+                if (i != 5) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
+        }
+        KCard {
+            KLabel("PESAN BAWAH STRUK")
+            KField("Pesan", footer, { footer = it.take(120) }, placeholder = "Terima kasih!")
+            Text("Maksimal 120 karakter.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        KPrimary("PRATINJAU STRUK", enabled = transactions.isNotEmpty()) { if (transactions.isNotEmpty()) preview = true }
+        KPrimary("SIMPAN") { save(); nav.back() }
+    }
+    val tx = transactions.firstOrNull()
+    if (preview && tx != null) {
+        ReceiptPreviewDialog(
+            transaction = tx,
+            businessName = business?.name,
+            outletName = outlets.firstOrNull { it.id == tx.outletId }?.name,
+            showBiz = showBiz,
+            showOutlet = showOutlet,
+            showTxId = showTxId,
+            showCashier = showCashier,
+            showPayment = showPayment,
+            showChange = showChange,
+            footer = footer,
+            onPrint = { preview = false; print = true },
+            onDismiss = { preview = false }
+        )
+    }
+    if (print && tx != null) PrintDialog(printer, tx) { print = false }
+}
+
+@Composable
+private fun ReceiptPreviewDialog(
+    transaction: Transaction,
+    businessName: String?,
+    outletName: String?,
+    showBiz: Boolean,
+    showOutlet: Boolean,
+    showTxId: Boolean,
+    showCashier: Boolean,
+    showPayment: Boolean,
+    showChange: Boolean,
+    footer: String,
+    onPrint: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val date = remember(transaction.createdAt) { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("id", "ID")).format(Date(transaction.createdAt)) }
+    val content = @Composable {
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            if (showBiz) Text(businessName?.ifBlank { "Bisnis" } ?: "Bisnis", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontWeight = FontWeight.ExtraBold)
+            if (showOutlet) Text(outletName?.ifBlank { "Outlet" } ?: "Outlet", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
+            HorizontalDivider()
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(if (showTxId) shortId(transaction.transactionId) else "Tanggal", style = MaterialTheme.typography.labelSmall)
+                Text(date, style = MaterialTheme.typography.labelSmall)
+            }
+            if (showCashier) KRow("Kasir", transaction.cashierUid.ifBlank { "—" })
+            HorizontalDivider()
+            transaction.items.forEach { item ->
+                Text(item.name, fontWeight = FontWeight.SemiBold)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("${item.quantity} × ${rp(item.price)}", style = MaterialTheme.typography.labelSmall)
+                    Text(rp(item.subtotal), style = MaterialTheme.typography.labelSmall)
+                }
+            }
+            HorizontalDivider()
+            KRow("Subtotal", rp(transaction.subtotal))
+            if (transaction.discount > 0) KRow("Diskon", "- ${rp(transaction.discount)}")
+            if (transaction.tax > 0) KRow("Pajak ${transaction.taxPercent}%", rp(transaction.tax))
+            KRow("TOTAL", rp(transaction.total), bold = true, valueColor = MaterialTheme.colorScheme.primary)
+            if (showPayment) {
+                HorizontalDivider()
+                KRow("Pembayaran", if (transaction.paymentMethod == PaymentMethod.QRIS) "QRIS" else "Cash")
+                if (transaction.paymentMethod == PaymentMethod.CASH && showChange) {
+                    KRow("Diterima", rp(transaction.cashReceived))
+                    KRow("Kembali", rp((transaction.cashReceived - transaction.total).coerceAtLeast(0)))
+                }
+            }
+            if (footer.isNotBlank()) {
+                HorizontalDivider()
+                Text(footer, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Pratinjau Struk") },
+        text = { Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.fillMaxWidth()) { Column(Modifier.padding(14.dp)) { content() } } },
+        confirmButton = { TextButton(onClick = onPrint) { Text("CETAK") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("TUTUP") } }
+    )
 }

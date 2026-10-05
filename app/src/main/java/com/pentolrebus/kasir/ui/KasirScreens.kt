@@ -17,12 +17,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -57,11 +51,11 @@ fun KasirScreen(vm: PosViewModel, role: Role, nav: Nav, onCheckout: () -> Unit, 
     }
     val shown = products.filter { it.active && (query.isBlank() || it.name.contains(query, true)) && (cat == null || it.categoryId == cat) }
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
-            Row(Modifier.padding(horizontal = 13.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-                androidx.compose.foundation.text.BasicTextField(value = query, onValueChange = { query = it }, singleLine = true, modifier = Modifier.weight(1f).padding(horizontal = 9.dp, vertical = 13.dp), textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface), decorationBox = { inner -> if (query.isEmpty()) Text("Cari produk…", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium); inner() })
-                if (query.isNotEmpty()) IconButton(onClick = { query = "" }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Close, "Hapus", modifier = Modifier.size(18.dp)) }
+        Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), color = MaterialTheme.colorScheme.surface) {
+            Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(painterResource(R.drawable.ic_search), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(19.dp))
+                androidx.compose.foundation.text.BasicTextField(value = query, onValueChange = { query = it }, singleLine = true, modifier = Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 14.dp), textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface), decorationBox = { inner -> if (query.isEmpty()) Text("Cari produk…", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium); inner() })
+                if (query.isNotEmpty()) IconButton(onClick = { query = "" }, modifier = Modifier.size(32.dp)) { Icon(painterResource(R.drawable.ic_close), "Hapus", modifier = Modifier.size(18.dp)) }
             }
         }
         Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -87,8 +81,8 @@ fun KasirScreen(vm: PosViewModel, role: Role, nav: Nav, onCheckout: () -> Unit, 
                                 Text(p.name, fontWeight = FontWeight.Bold, maxLines = 1)
                                 Text(rp(p.price) + stockText(p), style = MaterialTheme.typography.labelMedium, color = if (p.stockEnabled && p.stock <= p.lowStock) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            if (q > 0) { RoundBtn(Icons.Default.Remove) { vm.remove(p) }; Text("$q", Modifier.padding(horizontal = 10.dp), fontWeight = FontWeight.Bold) }
-                            RoundBtn(Icons.Default.Add, enabled = !out) { vm.add(p) }
+                            if (q > 0) { RoundBtn(R.drawable.ic_remove) { vm.remove(p) }; Text("$q", Modifier.padding(horizontal = 10.dp), fontWeight = FontWeight.Bold) }
+                            RoundBtn(R.drawable.ic_add, enabled = !out) { vm.add(p) }
                         }
                     }
                 }
@@ -98,9 +92,9 @@ fun KasirScreen(vm: PosViewModel, role: Role, nav: Nav, onCheckout: () -> Unit, 
                 gridItems(shown, key = { it.id }) { p ->
                     val q = cart.firstOrNull { it.product.id == p.id }?.quantity ?: 0
                     val out = p.stockEnabled && p.stock <= 0
-                    Surface(Modifier.fillMaxWidth().clickable(enabled = !out) { vm.add(p) }, shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface) {
-                        Column(Modifier.padding(12.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) { ProductThumb(40); Spacer(Modifier.weight(1f)); if (q > 0) Badge { Text("$q") } }
+                    Surface(Modifier.fillMaxWidth().heightIn(min = 106.dp).clickable(enabled = !out) { vm.add(p) }, shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface) {
+                        Column(Modifier.padding(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) { ProductThumb(52); Spacer(Modifier.weight(1f)); if (q > 0) Badge { Text("$q") } }
                             Spacer(Modifier.height(8.dp))
                             Text(p.name, fontWeight = FontWeight.Bold, maxLines = 1)
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -108,7 +102,7 @@ fun KasirScreen(vm: PosViewModel, role: Role, nav: Nav, onCheckout: () -> Unit, 
                                     Text(rp(p.price), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     if (p.stockEnabled) Text(if (out) "Habis" else "Stok ${p.stock}", style = MaterialTheme.typography.labelSmall, color = if (p.stock <= p.lowStock) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
-                                RoundBtn(Icons.Default.Add, enabled = !out) { vm.add(p) }
+                                RoundBtn(R.drawable.ic_add, enabled = !out) { vm.add(p) }
                             }
                         }
                     }
@@ -137,27 +131,30 @@ private fun ProductThumb(size: Int) {
 }
 
 @Composable
-private fun RoundBtn(icon: androidx.compose.ui.graphics.vector.ImageVector, enabled: Boolean = true, onClick: () -> Unit) {
+private fun RoundBtn(icon: Int, enabled: Boolean = true, onClick: () -> Unit) {
     Surface(Modifier.size(30.dp).clickable(enabled = enabled, onClick = onClick), shape = CircleShape, color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant) {
-        Box(contentAlignment = Alignment.Center) { Icon(icon, null, tint = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) }
+        Box(contentAlignment = Alignment.Center) { Icon(painterResource(icon), null, tint = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) }
     }
 }
 
 // ------------------------------------------------------------------ Checkout
 @Composable
-fun CheckoutScreen(vm: PosViewModel, discount: Long, onDiscount: (Long) -> Unit, method: PaymentMethod, onMethod: (PaymentMethod) -> Unit, onNext: () -> Unit) {
+fun CheckoutScreen(vm: PosViewModel, discount: Long, onDiscount: (Long) -> Unit, taxPercent: Long, onTaxPercent: (Long) -> Unit, method: PaymentMethod, onMethod: (PaymentMethod) -> Unit, onNext: () -> Unit) {
     val cart by vm.cart.collectAsState()
     val subtotal = cart.sumOf { it.product.price * it.quantity }
     val disc = discount.coerceIn(0, subtotal)
-    KPage("Checkout", null, actions = { TextButton(onClick = { vm.clearCart(); onDiscount(0) }, enabled = cart.isNotEmpty()) { Text("Kosongkan", color = MaterialTheme.colorScheme.error) } }) {
+    val taxPct = taxPercent.coerceIn(0, 100)
+    val tax = kotlin.math.round((subtotal - disc) * taxPct / 100.0).toLong()
+    val total = subtotal - disc + tax
+    KPage("Checkout", null, actions = { TextButton(onClick = { vm.clearCart(); onDiscount(0); onTaxPercent(0) }, enabled = cart.isNotEmpty()) { Text("Kosongkan", color = MaterialTheme.colorScheme.error) } }) {
         if (cart.isEmpty()) { KEmpty("Keranjang kosong", "Tambahkan produk dari layar Kasir.", R.drawable.ic_cart); return@KPage }
         KCard {
             cart.forEach { c ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) { Text(c.product.name, fontWeight = FontWeight.Bold); Text("${c.quantity} × ${rp(c.product.price)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    RoundBtn(Icons.Default.Remove) { vm.remove(c.product) }
+                    RoundBtn(R.drawable.ic_remove) { vm.remove(c.product) }
                     Text("${c.quantity}", Modifier.padding(horizontal = 8.dp), fontWeight = FontWeight.Bold)
-                    RoundBtn(Icons.Default.Add, enabled = !(c.product.stockEnabled && c.quantity >= c.product.stock)) { vm.add(c.product) }
+                    RoundBtn(R.drawable.ic_add, enabled = !(c.product.stockEnabled && c.quantity >= c.product.stock)) { vm.add(c.product) }
                     Text(rp(c.product.price * c.quantity), Modifier.width(92.dp), textAlign = TextAlign.End, fontWeight = FontWeight.SemiBold)
                 }
             }
@@ -166,11 +163,14 @@ fun CheckoutScreen(vm: PosViewModel, discount: Long, onDiscount: (Long) -> Unit,
             KRow("Subtotal", rp(subtotal))
             KField("Diskon (Rp)", if (discount == 0L) "" else discount.toString(), { onDiscount(it.toLongOrNull() ?: 0) }, number = true, placeholder = "0")
             Spacer(Modifier.height(6.dp))
-            KRow("Total", rp(subtotal - disc), bold = true, valueColor = MaterialTheme.colorScheme.primary)
+            KField("Pajak (%)", if (taxPct == 0L) "" else taxPct.toString(), { onTaxPercent((it.toLongOrNull() ?: 0).coerceIn(0, 100)) }, number = true, placeholder = "0")
+            Spacer(Modifier.height(6.dp))
+            KRow("Pajak ${taxPct}%", rp(tax))
+            KRow("Total", rp(total), bold = true, valueColor = MaterialTheme.colorScheme.primary)
         }
         KLabel("Metode pembayaran")
         KSegmented(listOf("CASH", "QRIS"), if (method == PaymentMethod.CASH) "CASH" else "QRIS") { onMethod(if (it == "CASH") PaymentMethod.CASH else PaymentMethod.QRIS) }
-        KPrimary("LANJUT BAYAR", enabled = subtotal - disc >= 0, onClick = onNext)
+        KPrimary("LANJUT BAYAR", enabled = total >= 0, onClick = onNext)
     }
 }
 
@@ -183,7 +183,7 @@ fun CashPayScreen(total: Long, onBack: () -> Unit, onDone: (Long) -> Unit) {
         KCard { Text("Total tagihan", color = MaterialTheme.colorScheme.onSurfaceVariant); Text(rp(total), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold) }
         KField("Jumlah diterima (Rp)", if (received == 0L) "" else received.toString(), { received = it.toLongOrNull() ?: 0 }, number = true)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            quick.forEachIndexed { i, q -> Surface(Modifier.height(38.dp).clickable { received = q }, shape = RoundedCornerShape(20.dp), color = if (received == q) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface) { Box(Modifier.padding(horizontal = 13.dp), contentAlignment = Alignment.Center) { Text(if (i == 0) "Uang pas" else rp(q), color = if (received == q) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold) } } }
+            quick.forEachIndexed { i, q -> Surface(Modifier.height(42.dp).clickable { received = q }, shape = RoundedCornerShape(20.dp), color = if (received == q) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface) { Box(Modifier.padding(horizontal = 13.dp), contentAlignment = Alignment.Center) { Text(if (i == 0) "Uang pas" else rp(q), color = if (received == q) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold) } } }
         }
         KCard(color = MaterialTheme.colorScheme.primaryContainer) {
             Text("Kembalian", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -229,7 +229,7 @@ fun SuccessScreen(vm: PosViewModel, printer: BluetoothPrinter, onNew: () -> Unit
     }
     KPage("", null) {
         Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Surface(Modifier.size(84.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primary) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(44.dp)) } }
+            Surface(Modifier.size(84.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primary) { Box(contentAlignment = Alignment.Center) { Icon(painterResource(R.drawable.ic_check), null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(44.dp)) } }
             Spacer(Modifier.height(12.dp))
             Text("Transaksi Berhasil", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
             Text(rp(t?.total ?: 0), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
@@ -239,6 +239,7 @@ fun SuccessScreen(vm: PosViewModel, printer: BluetoothPrinter, onNew: () -> Unit
                 KRow("No. transaksi", shortId(t.transactionId))
                 KRow("Metode", if (t.paymentMethod == PaymentMethod.QRIS) "QRIS" else "Cash")
                 if (t.discount > 0) KRow("Diskon", "- " + rp(t.discount))
+                if (t.tax > 0) KRow("Pajak ${t.taxPercent}%", rp(t.tax))
                 if (t.paymentMethod == PaymentMethod.CASH) { KRow("Diterima", rp(t.cashReceived)); KRow("Kembalian", rp((t.cashReceived - t.total).coerceAtLeast(0))) }
                 if (t.paymentMethod == PaymentMethod.QRIS) KRow("Bukti QRIS", if (t.qrisProofPath != null) "Terlampir" else "Belum ada")
                 KRow("Sinkronisasi", syncLabel(t.syncStatus))

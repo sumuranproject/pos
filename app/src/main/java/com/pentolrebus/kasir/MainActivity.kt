@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -28,8 +29,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RectangleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,12 +39,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.LazyRow
@@ -53,7 +55,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pentolrebus.kasir.data.RepositoryProvider
 import com.pentolrebus.kasir.data.OfflineStore
@@ -97,19 +98,29 @@ private fun KasirApp(vm: PosViewModel, diagnostics: Diagnostics) {
     var themeMode by remember { mutableStateOf(prefs.getInt("theme", 0)) }
     val dark = when (themeMode) { 1 -> false; 2 -> true; else -> androidx.compose.foundation.isSystemInDarkTheme() }
     KasirTheme(dark = dark) {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            val auth by vm.auth.collectAsState()
-            when (val state = auth) {
-                AuthState.LoggedOut -> AuthScreen(vm)
-                AuthState.Loading -> LoadingScreen("Memproses…")
-                is AuthState.Error -> AuthScreen(vm, state.message)
-                is AuthState.LoggedIn -> com.pentolrebus.kasir.ui.MainShell(
-                    vm = vm,
-                    session = state.session,
-                    themeMode = themeMode,
-                    onThemeMode = { themeMode = it; prefs.edit().putInt("theme", it).apply() },
-                    diagnostics = diagnostics
-                )
+        Surface(Modifier.fillMaxSize(), color = if (dark) Color(0xFF0A0E16) else Color(0xFFE8EEF7)) {
+            BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                val wide = maxWidth >= 520.dp
+                Surface(
+                    Modifier.fillMaxWidth().fillMaxHeight().widthIn(max = 992.dp),
+                    shape = if (wide) RoundedCornerShape(28.dp) else RectangleShape,
+                    color = MaterialTheme.colorScheme.background,
+                    border = if (wide) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null
+                ) {
+                    val auth by vm.auth.collectAsState()
+                    when (val state = auth) {
+                        AuthState.LoggedOut -> AuthScreen(vm)
+                        AuthState.Loading -> LoadingScreen("Memproses…")
+                        is AuthState.Error -> AuthScreen(vm, state.message)
+                        is AuthState.LoggedIn -> com.pentolrebus.kasir.ui.MainShell(
+                            vm = vm,
+                            session = state.session,
+                            themeMode = themeMode,
+                            onThemeMode = { themeMode = it; prefs.edit().putInt("theme", it).apply() },
+                            diagnostics = diagnostics
+                        )
+                    }
+                }
             }
         }
     }
@@ -129,46 +140,20 @@ private fun LoadingScreen(message: String) {
 @Composable
 private fun PasswordField(label: String, value: String, onValue: (String) -> Unit) {
     var visible by remember { mutableStateOf(false) }
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValue,
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text(label) },
-        singleLine = true,
-        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        trailingIcon = {
-            IconButton(onClick = { visible = !visible }) {
-                Icon(
-                    imageVector = if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                    contentDescription = if (visible) "Sembunyikan $label" else "Tampilkan $label"
-                )
+    Column(Modifier.fillMaxWidth()) {
+        Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
+        Surface(Modifier.fillMaxWidth().heightIn(min = 55.dp), shape = RoundedCornerShape(13.dp), color = MaterialTheme.colorScheme.surface) {
+            Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(painterResource(R.drawable.ic_lock), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(19.dp))
+                BasicTextField(value, onValue, Modifier.weight(1f).padding(horizontal = 9.dp, vertical = 14.dp), singleLine = true, textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), decorationBox = { inner -> if (value.isEmpty()) Text("Masukkan password", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge); inner() })
+                IconButton(onClick = { visible = !visible }, modifier = Modifier.size(44.dp)) { Icon(painterResource(if (visible) R.drawable.ic_eye else R.drawable.ic_eye_off), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(19.dp)) }
             }
         }
-    )
+    }
 }
 
 @Composable
-private fun PinField(label: String, value: String, onValue: (String) -> Unit) {
-    var visible by remember { mutableStateOf(false) }
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValue,
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text(label) },
-        singleLine = true,
-        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-        trailingIcon = {
-            IconButton(onClick = { visible = !visible }) {
-                Icon(
-                    imageVector = if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                    contentDescription = if (visible) "Sembunyikan $label" else "Tampilkan $label"
-                )
-            }
-        }
-    )
-}
+private fun PinField(label: String, value: String, onValue: (String) -> Unit) = AuthPinField(label, value, onValue)
 
 @Composable
 private fun AuthScreen(vm: PosViewModel, error: String? = null) {
@@ -248,289 +233,141 @@ private fun AuthScreen(vm: PosViewModel, error: String? = null) {
 
 @Composable
 private fun RoleSelectionScreen(onOwner: () -> Unit, onCashier: () -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 14.dp)) {
-        Row(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 38.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(Modifier.size(42.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) { Box(contentAlignment = Alignment.Center) { Image(painterResource(R.drawable.app_icon), "Logo Saku Kasir", Modifier.size(32.dp)) } }
-            Spacer(Modifier.width(10.dp))
-            Column { Text("Saku Kasir", fontSize = 17.sp, fontWeight = FontWeight.ExtraBold); Text("Point of Sale", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 14.dp)
+    ) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 34.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(Modifier.size(36.dp), shape = RoundedCornerShape(9.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                Box(contentAlignment = Alignment.Center) { Image(painterResource(R.drawable.app_icon), "Logo Saku Kasir", Modifier.size(28.dp)) }
+            }
+            Spacer(Modifier.width(9.dp))
+            Column { Text("Saku Kasir", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold); Text("Point of Sale", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        Text("Selamat datang", style = MaterialTheme.typography.headlineLarge)
-        Text("Masuk untuk mengelola bisnis Anda", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp, bottom = 20.dp))
+        Text("Selamat datang", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold)
+        Text("Masuk untuk mengelola bisnis Anda", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 3.dp, bottom = 20.dp))
         Text("MASUK SEBAGAI", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 6.dp))
-        RoleCard("Owner", "Kelola outlet, produk, laporan", Icons.Default.Store, onOwner)
-        RoleCard("Kasir", "Transaksi dan shift", Icons.Default.ShoppingCart, onCashier)
-        Text("Butuh bantuan? Hubungi Owner Anda", Modifier.fillMaxWidth().padding(top = 30.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("Saku Kasir · Versi 0.1", Modifier.fillMaxWidth().padding(top = 8.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        RoleCard("Owner", "Kelola outlet, produk, laporan", R.drawable.ic_owner, onOwner)
+        RoleCard("Kasir", "Transaksi dan shift", R.drawable.ic_people, onCashier)
+        Spacer(Modifier.height(22.dp))
+        Text("Butuh bantuan? Hubungi Owner Anda", Modifier.fillMaxWidth(), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Saku Kasir · Versi 0.1", Modifier.fillMaxWidth().padding(top = 7.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
-private fun RoleCard(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Surface(Modifier.fillMaxWidth().padding(vertical = 5.dp).clickable(onClick = onClick), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(Modifier.size(48.dp), shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.primaryContainer) { Box(contentAlignment = Alignment.Center) { Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp)) } }
-            Spacer(Modifier.width(12.dp))
+private fun RoleCard(title: String, subtitle: String, icon: Int, onClick: () -> Unit) {
+    Surface(Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable(onClick = onClick), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface) {
+        Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(Modifier.size(46.dp), shape = RoundedCornerShape(13.dp), color = MaterialTheme.colorScheme.primaryContainer) { Box(contentAlignment = Alignment.Center) { Icon(painterResource(icon), null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp)) } }
+            Spacer(Modifier.width(11.dp))
             Column(Modifier.weight(1f)) { Text(title, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.bodyMedium); Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            Text("›", fontSize = 25.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(painterResource(R.drawable.ic_chevron), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
     }
 }
 
 @Composable
 private fun LoginRoleScreen(
-    role: Role,
-    register: Boolean,
-    email: String,
-    password: String,
-    confirmPassword: String,
-    username: String,
-    pin: String,
-    confirmPin: String,
-    business: String,
-    outlet: String,
-    whatsapp: String,
-    error: String?,
-    validation: String?,
-    onBack: () -> Unit,
-    onRegisterToggle: () -> Unit,
-    onEmail: (String) -> Unit,
-    onPassword: (String) -> Unit,
-    onConfirmPassword: (String) -> Unit,
-    onUsername: (String) -> Unit,
-    onPin: (String) -> Unit,
-    onConfirmPin: (String) -> Unit,
-    onBusiness: (String) -> Unit,
-    onOutlet: (String) -> Unit,
-    onWhatsapp: (String) -> Unit,
-    onValidation: (String?) -> Unit,
-    onLoginLocal: () -> Unit,
-    onLoginEmail: () -> Unit,
-    onRegister: () -> Unit
+    role: Role, register: Boolean, email: String, password: String, confirmPassword: String, username: String, pin: String, confirmPin: String,
+    business: String, outlet: String, whatsapp: String, error: String?, validation: String?, onBack: () -> Unit, onRegisterToggle: () -> Unit,
+    onEmail: (String) -> Unit, onPassword: (String) -> Unit, onConfirmPassword: (String) -> Unit, onUsername: (String) -> Unit,
+    onPin: (String) -> Unit, onConfirmPin: (String) -> Unit, onBusiness: (String) -> Unit, onOutlet: (String) -> Unit, onWhatsapp: (String) -> Unit,
+    onValidation: (String?) -> Unit, onLoginLocal: () -> Unit, onLoginEmail: () -> Unit, onRegister: () -> Unit
 ) {
     val isOwner = role == Role.OWNER
     var emailMode by remember { mutableStateOf(false) }
-    val colorScheme = MaterialTheme.colorScheme
-    val bg = colorScheme.background
-    val fieldBg = colorScheme.surface
-    val fieldBorder = colorScheme.outline
-    val text = colorScheme.onBackground
-    val muted = colorScheme.onSurfaceVariant
-    val accent = colorScheme.primary
-
-    Surface(Modifier.fillMaxSize(), color = bg) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Surface(
+            Modifier.size(44.dp).clickable { onBack() },
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surface
         ) {
-            Spacer(Modifier.height(2.dp))
-            Surface(
-                modifier = Modifier.width(96.dp).height(96.dp),
-                shape = MaterialTheme.shapes.extraLarge,
-                color = colorScheme.surfaceVariant
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Image(
-                        painter = painterResource(R.drawable.app_icon),
-                        contentDescription = "Logo SakuKasir",
-                        modifier = Modifier.width(62.dp).height(62.dp)
-                    )
-                }
+            Box(contentAlignment = Alignment.Center) {
+                Icon(painterResource(R.drawable.ic_back), "Kembali", modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
             }
-            Spacer(Modifier.height(14.dp))
-            Text("SakuKasir", color = text, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                if (isOwner) "Selamat datang kembali, Owner" else "Selamat datang kembali, Kasir",
-                color = muted,
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Kembali", tint = muted, modifier = Modifier.width(26.dp).height(26.dp))
-                }
-                Text(
-                    if (register && isOwner) "Daftar Owner" else "Login ${if (isOwner) "Owner" else "Kasir"}",
-                    color = text,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
+        }
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Image(painterResource(R.drawable.app_icon), "Logo Saku Kasir", Modifier.size(52.dp).padding(top = 8.dp))
+            Text("Selamat datang", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 8.dp))
+            Text("Masuk untuk mengelola bisnis Anda", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 3.dp, bottom = 10.dp))
+            Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                Text("● ${if (isOwner) "Owner" else "Kasir"}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 7.dp), style = MaterialTheme.typography.labelMedium)
             }
-            Spacer(Modifier.height(14.dp))
-
-            if (isOwner && !register) {
-                KSegmented(listOf("PIN Cepat", "Email & Password"), if (emailMode) "Email & Password" else "PIN Cepat") { emailMode = it == "Email & Password" }
-                Spacer(Modifier.height(16.dp))
-                if (!emailMode) {
-                    AuthField(
-                        label = "Username",
-                        placeholder = "Masukkan username",
-                        value = username,
-                        onValue = onUsername,
-                        icon = Icons.Default.Person,
-                        textColor = text,
-                        muted = muted,
-                        background = fieldBg,
-                        border = fieldBorder
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    AuthPinField(
-                        label = "PIN",
-                        value = pin,
-                        onValue = onPin,
-                        textColor = text,
-                        muted = muted,
-                        background = fieldBg,
-                        border = fieldBorder
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    AuthPrimaryButton("Masuk", accent, onLoginLocal)
-                } else {
-                    AuthField("Email", "Masukkan email", email, onEmail, null, text, muted, fieldBg, fieldBorder, KeyboardType.Email)
-                    Spacer(Modifier.height(16.dp))
-                    PasswordField("Password", password, onPassword)
-                    Spacer(Modifier.height(16.dp))
-                    AuthPrimaryButton("Masuk", accent, onLoginEmail)
-                }
-                Spacer(Modifier.height(8.dp))
-                TextButton(onClick = onRegisterToggle) {
-                    Text("Daftar sebagai Owner", color = accent, style = MaterialTheme.typography.titleMedium)
-                }
-            } else if (isOwner && register) {
-                if (error != null) AlertBox(error)
-                if (validation != null) AlertBox(validation)
-                AuthField("Email", "Masukkan email", email, onEmail, null, text, muted, fieldBg, fieldBorder, KeyboardType.Email)
-                Spacer(Modifier.height(10.dp))
-                PasswordField("Password", password, onPassword)
-                Spacer(Modifier.height(10.dp))
-                PasswordField("Confirm Password", confirmPassword, onConfirmPassword)
-                Spacer(Modifier.height(10.dp))
-                AuthField("Username", "Masukkan username", username, onUsername, Icons.Default.Person, text, muted, fieldBg, fieldBorder)
-                Spacer(Modifier.height(10.dp))
-                PinField("PIN", pin, onPin)
-                Spacer(Modifier.height(10.dp))
-                PinField("Confirm PIN", confirmPin, onConfirmPin)
-                Spacer(Modifier.height(10.dp))
-                AuthField("Nama Bisnis (opsional)", "Masukkan nama bisnis", business, onBusiness, null, text, muted, fieldBg, fieldBorder)
-                Spacer(Modifier.height(10.dp))
-                AuthField("Nama Outlet (opsional)", "Masukkan nama outlet", outlet, onOutlet, null, text, muted, fieldBg, fieldBorder)
-                Spacer(Modifier.height(10.dp))
-                AuthField("WhatsApp (opsional)", "Masukkan WhatsApp", whatsapp, onWhatsapp, null, text, muted, fieldBg, fieldBorder)
-                Spacer(Modifier.height(22.dp))
-                AuthPrimaryButton("Daftar Owner", accent, onRegister)
-                TextButton(onClick = onRegisterToggle) { Text("Sudah punya akun? Login Owner", color = accent) }
+        }
+        if (isOwner && !register) {
+            Spacer(Modifier.height(18.dp))
+            KSegmented(listOf("PIN Cepat", "Email & Password"), if (emailMode) "Email & Password" else "PIN Cepat") { emailMode = it == "Email & Password" }
+            Spacer(Modifier.height(10.dp))
+            if (!emailMode) {
+                AuthField("Username", "Masukkan username", username, onUsername, R.drawable.ic_person)
+                Spacer(Modifier.height(9.dp)); AuthPinField("PIN", pin, onPin)
+                error?.let { Spacer(Modifier.height(7.dp)); AlertBox(it) }
+                Spacer(Modifier.height(11.dp)); AuthPrimaryButton("Masuk", onLoginLocal)
             } else {
-                if (error != null) AlertBox(error)
-                if (validation != null) AlertBox(validation)
-                AuthField("Username", "Masukkan username", username, onUsername, Icons.Default.Person, text, muted, fieldBg, fieldBorder)
-                Spacer(Modifier.height(16.dp))
-                AuthPinField("PIN", pin, onPin, text, muted, fieldBg, fieldBorder)
-                Spacer(Modifier.height(22.dp))
-                AuthPrimaryButton("Masuk", accent, onLoginLocal)
+                AuthField("Email", "Masukkan email", email, onEmail, R.drawable.ic_mail, KeyboardType.Email)
+                Spacer(Modifier.height(9.dp)); PasswordField("Password", password, onPassword)
+                error?.let { Spacer(Modifier.height(7.dp)); AlertBox(it) }
+                Spacer(Modifier.height(11.dp)); AuthPrimaryButton("Masuk", onLoginEmail)
             }
-            Spacer(Modifier.height(28.dp))
+            TextButton(onClick = onRegisterToggle, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) { Text("Daftar sebagai Owner", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
+        } else if (isOwner) {
+            error?.let { AlertBox(it) }; validation?.let { AlertBox(it) }
+            Spacer(Modifier.height(18.dp));
+            AuthField("Email", "Masukkan email", email, onEmail, R.drawable.ic_mail, KeyboardType.Email)
+            Spacer(Modifier.height(9.dp)); PasswordField("Password", password, onPassword)
+            Spacer(Modifier.height(9.dp)); PasswordField("Confirm Password", confirmPassword, onConfirmPassword)
+            Spacer(Modifier.height(9.dp)); AuthField("Username", "Masukkan username", username, onUsername, R.drawable.ic_person)
+            Spacer(Modifier.height(9.dp)); AuthPinField("PIN", pin, onPin)
+            Spacer(Modifier.height(9.dp)); AuthPinField("Confirm PIN", confirmPin, onConfirmPin)
+            Spacer(Modifier.height(9.dp)); AuthField("Nama Bisnis (opsional)", "Masukkan nama bisnis", business, onBusiness, null)
+            Spacer(Modifier.height(9.dp)); AuthField("Nama Outlet (opsional)", "Masukkan nama outlet", outlet, onOutlet, null)
+            Spacer(Modifier.height(9.dp)); AuthField("WhatsApp (opsional)", "Masukkan WhatsApp", whatsapp, onWhatsapp, null)
+            Spacer(Modifier.height(12.dp)); AuthPrimaryButton("Daftar Owner", onRegister)
+            TextButton(onClick = onRegisterToggle, modifier = Modifier.fillMaxWidth()) { Text("Sudah punya akun? Login Owner", color = MaterialTheme.colorScheme.primary) }
+        } else {
+            error?.let { AlertBox(it) }
+            Spacer(Modifier.height(18.dp)); AuthField("Username", "Masukkan username", username, onUsername, R.drawable.ic_person)
+            Spacer(Modifier.height(9.dp)); AuthPinField("PIN", pin, onPin)
+            Spacer(Modifier.height(12.dp)); AuthPrimaryButton("Masuk", onLoginLocal)
+            Text("Akun kasir dibuat oleh Owner.\nLupa PIN? Tanyakan Owner Anda.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 14.dp))
+            Text("Contoh: dewi / 1234", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 10.dp))
+        }
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun AuthField(label: String, placeholder: String, value: String, onValue: (String) -> Unit, icon: Int?, keyboardType: KeyboardType = KeyboardType.Text) {
+    Column(Modifier.fillMaxWidth()) {
+        Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
+        Surface(Modifier.fillMaxWidth().heightIn(min = 50.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface) {
+            Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (icon != null) { Icon(painterResource(icon), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(19.dp)); Spacer(Modifier.width(9.dp)) }
+                androidx.compose.foundation.text.BasicTextField(value, onValue, Modifier.weight(1f).padding(vertical = 14.dp), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold), keyboardOptions = KeyboardOptions(keyboardType = keyboardType), decorationBox = { inner -> if (value.isEmpty()) Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium); inner() })
+            }
         }
     }
 }
 
 @Composable
-private fun AuthTab(
-    label: String,
-    active: Boolean,
-    modifier: Modifier,
-    textColor: androidx.compose.ui.graphics.Color,
-    onClick: (() -> Unit)? = null
-) {
-    Surface(
-        modifier = modifier.height(42.dp),
-        shape = RoundedCornerShape(16.dp),
-        color = if (active) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
-        onClick = onClick ?: {}
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(label, color = if (active) MaterialTheme.colorScheme.onPrimary else textColor, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+private fun AuthPinField(label: String, value: String, onValue: (String) -> Unit) {
+    var visible by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth()) {
+        Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
+        Surface(Modifier.fillMaxWidth().heightIn(min = 50.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface) {
+            Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(painterResource(R.drawable.ic_dialpad), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(19.dp)); Spacer(Modifier.width(9.dp))
+                androidx.compose.foundation.text.BasicTextField(value, { onValue(it.filter(Char::isDigit).take(6)) }, Modifier.weight(1f).padding(vertical = 14.dp), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword), visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), decorationBox = { inner -> if (value.isEmpty()) Text("Masukkan PIN", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium); inner() })
+                IconButton(onClick = { visible = !visible }, modifier = Modifier.size(32.dp)) { Icon(painterResource(if (visible) R.drawable.ic_eye else R.drawable.ic_eye_off), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) }
+            }
         }
     }
 }
 
 @Composable
-private fun AuthField(
-    label: String,
-    placeholder: String,
-    value: String,
-    onValue: (String) -> Unit,
-    icon: androidx.compose.ui.graphics.vector.ImageVector?,
-    textColor: androidx.compose.ui.graphics.Color,
-    muted: androidx.compose.ui.graphics.Color,
-    background: androidx.compose.ui.graphics.Color,
-    border: androidx.compose.ui.graphics.Color,
-    keyboardType: KeyboardType = KeyboardType.Text
-) {
-    Column(Modifier.fillMaxWidth()) {
-        Text(label, color = muted, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-        Spacer(Modifier.height(6.dp))
-        OutlinedTextField(value = value, onValueChange = onValue, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp), placeholder = { Text(placeholder, color = muted) }, leadingIcon = icon?.let { { Icon(it, null, tint = muted) } }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = keyboardType), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = background, unfocusedContainerColor = background, focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = border, focusedTextColor = textColor, unfocusedTextColor = textColor, cursorColor = MaterialTheme.colorScheme.primary))
-    }
-}
-
-@Composable
-private fun AuthPinField(
-    label: String,
-    value: String,
-    onValue: (String) -> Unit,
-    textColor: androidx.compose.ui.graphics.Color,
-    muted: androidx.compose.ui.graphics.Color,
-    background: androidx.compose.ui.graphics.Color,
-    border: androidx.compose.ui.graphics.Color
-) {
-    Column(Modifier.fillMaxWidth()) {
-        Text(label, color = muted, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-        Spacer(Modifier.height(8.dp))
-        var visible by remember { mutableStateOf(false) }
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValue,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Masukkan PIN", color = muted) },
-            leadingIcon = { Icon(Icons.Default.Dialpad, null, tint = muted) },
-            trailingIcon = {
-                IconButton(onClick = { visible = !visible }) {
-                    Icon(if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility, null, tint = muted)
-                }
-            },
-            singleLine = true,
-            visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = background,
-                unfocusedContainerColor = background,
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = border,
-                focusedTextColor = textColor,
-                unfocusedTextColor = textColor,
-                cursorColor = MaterialTheme.colorScheme.primary
-            )
-        )
-    }
-}
-
-@Composable
-private fun AuthPrimaryButton(label: String, color: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(56.dp),
-        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = color, contentColor = androidx.compose.ui.graphics.Color.White),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Text(label, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+private fun AuthPrimaryButton(label: String, onClick: () -> Unit) {
+    Button(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary), shape = RoundedCornerShape(14.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
     }
 }
 

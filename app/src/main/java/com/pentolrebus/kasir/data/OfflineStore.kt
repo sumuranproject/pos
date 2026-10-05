@@ -102,7 +102,7 @@ class OfflineStore(context: Context) {
     private fun transactionJson(t: Transaction) = JSONObject().apply {
         put("transactionId", t.transactionId); put("ownerUid", t.ownerUid); put("businessId", t.businessId)
         put("outletId", t.outletId); put("shiftId", t.shiftId); put("cashierUid", t.cashierUid)
-        put("subtotal", t.subtotal); put("total", t.total); put("discount", t.discount); put("cashReceived", t.cashReceived); put("paymentMethod", t.paymentMethod.name)
+        put("subtotal", t.subtotal); put("total", t.total); put("discount", t.discount); put("tax", t.tax); put("taxPercent", t.taxPercent); put("cashReceived", t.cashReceived); put("paymentMethod", t.paymentMethod.name)
         put("paymentStatus", t.paymentStatus); put("createdAt", t.createdAt)
         put("qrisProofPath", t.qrisProofPath ?: JSONObject.NULL); put("syncStatus", t.syncStatus.name)
         val items = JSONArray(); t.items.forEach { item ->
@@ -122,7 +122,7 @@ class OfflineStore(context: Context) {
         Transaction(
             transactionId = o.optString("transactionId"), ownerUid = o.optString("ownerUid"), businessId = o.optString("businessId"),
             outletId = o.optString("outletId"), shiftId = o.optString("shiftId"), cashierUid = o.optString("cashierUid"),
-            items = items, subtotal = o.optLong("subtotal"), total = o.optLong("total"), discount = o.optLong("discount"), cashReceived = o.optLong("cashReceived"),
+            items = items, subtotal = o.optLong("subtotal"), total = o.optLong("total"), discount = o.optLong("discount"), tax = o.optLong("tax"), taxPercent = o.optLong("taxPercent"), cashReceived = o.optLong("cashReceived"),
             paymentMethod = PaymentMethod.valueOf(o.optString("paymentMethod", PaymentMethod.CASH.name)),
             paymentStatus = o.optString("paymentStatus", "PAID"), createdAt = o.optLong("createdAt"),
             qrisProofPath = if (o.isNull("qrisProofPath")) null else o.optString("qrisProofPath"),

@@ -1,14 +1,34 @@
-Saku Kasir V43 — V42 baseline + saku-kasir-dpi HTML reference alignment
+Saku Kasir — V44 visual parity revision
+Date: 2026-10-05
 
-Base: KASIR-PATCH-20261005-V42.zip
-Reference: saku-kasir-dpi.html, split into reference/index.html, style.css, app.js
+This remains VERSION 44. No V45 was created.
 
-Changes:
-- Use exact HTML light/dark palette as the Compose visual source.
-- Preserve non-white light outer background (#E8EEF7) and card surface (#FFFFFF).
-- Preserve dark outer/background/card separation (#0A0E16 / #111722 / #1B2332).
-- Apply the HTML 110% root typography scale to Compose typography.
-- Keep existing V42/V43 functional architecture and Firebase configuration intact.
-- Add the split HTML reference under reference/saku-kasir-dpi-complete/ for future UI audits.
+Visual revision based on:
+- KASIR-SAKU-DPI-REFERENCE-FIXED.zip
+- screenshot-acuan.zip (48 Kiwi Browser screenshots)
+- existing V44 functionality/Firebase baseline
 
-Build status: static/preflight only; full Gradle/Codemagic build must still be run externally.
+Visual fixes in this V44 revision:
+- Page back control now uses the circular card-style back button from the reference.
+- Segmented controls restore the selected primary-blue state.
+- Owner/Kasir login screens now follow the reference hero layout: centered logo, welcome copy, role pill, compact auth fields.
+- Management list pages use floating + FABs instead of full-width add buttons for Produk, Kategori, Outlet, Kasir/Pekerja, and Pengeluaran.
+- Settings grouping was aligned with the reference while retaining Dropbox, notification, sync, printer, QRIS, and Edit Struk functionality.
+- About screen was visually rebuilt around the Saku Kasir logo and metadata card.
+- FAB size/position is aligned more closely to the reference and kept above the bottom navigation area.
+- Bottom navigation remains visible while browsing submenu/detail/form pages; switching tabs clears the page stack.
+- Owner Start Shift no longer shows a duplicate Outlet label; the outlet field keeps a single label while cashier outlet behavior remains owner-controlled.
+
+Preserved:
+- Firebase configuration and rules.
+- Existing repository/auth/RTDB/FCM architecture.
+- Dropbox integration shell.
+- QRIS, Bluetooth printer, Edit Struk, receipt preview, tax, reports, notifications.
+- Fixed DPI/color reference files remain byte-identical.
+
+Validation:
+- Source preflight: PASS (22 Kotlin files).
+- Firebase/Codemagic configuration preflight: PASS.
+- Kotlin delimiter audit: PASS.
+- Generic Icons.Default audit: PASS.
+- Full Gradle/Codemagic build: NOT RUN in this environment (no Android SDK/Gradle wrapper available).

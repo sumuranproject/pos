@@ -199,7 +199,7 @@ fun TransactionDetailScreen(vm: PosViewModel, id: String?, printer: BluetoothPri
         }
         KCard { t.items.forEach { KRow("${it.quantity} × ${it.name}", rp(it.subtotal)) } }
         KCard {
-            KRow("Subtotal", rp(t.subtotal)); KRow("Diskon", rp(t.discount)); KRow("Total", rp(t.total), true)
+            KRow("Subtotal", rp(t.subtotal)); KRow("Diskon", rp(t.discount)); KRow("Pajak ${t.taxPercent}%", rp(t.tax)); KRow("Total", rp(t.total), true)
             if (t.paymentMethod == PaymentMethod.CASH && t.cashReceived > 0) { KRow("Diterima", rp(t.cashReceived)); KRow("Kembalian", rp((t.cashReceived - t.total).coerceAtLeast(0))) }
         }
         if (t.paymentMethod == PaymentMethod.QRIS) KSecondary("LIHAT BUKTI QRIS") { nav.open("Bukti:QRIS", t.transactionId) }
@@ -283,7 +283,7 @@ fun ExpenseListScreen(vm: PosViewModel, nav: Nav) {
     val today = startOfDay(System.currentTimeMillis())
     val from = if (period == "Hari ini") today else startOfMonth(today)
     val list = ex.filter { it.createdAt >= from }
-    KPage("Pengeluaran", nav) {
+    KPage("Pengeluaran", nav, fab = { nav.open("Pengeluaran:form", null) }) {
         KChips(listOf("Hari ini", "Bulan ini"), period) { period = it }
         KCard(color = MaterialTheme.colorScheme.primaryContainer) { Text("Total pengeluaran · $period", style = MaterialTheme.typography.labelMedium); Text(rp(list.sumOf { it.amount }), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.error) }
         if (list.isEmpty()) KEmpty("Belum ada pengeluaran", "Catat biaya bahan atau operasional.", R.drawable.ic_report)
@@ -293,7 +293,6 @@ fun ExpenseListScreen(vm: PosViewModel, nav: Nav) {
             val total = list.sumOf { it.amount }.coerceAtLeast(1)
             KCard { list.groupBy { it.category }.forEach { (c, l) -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(c); Text(rp(l.sumOf { it.amount }), fontWeight = FontWeight.SemiBold) }; LinearProgressIndicator(progress = { l.sumOf { it.amount }.toFloat() / total }, Modifier.fillMaxWidth().padding(bottom = 8.dp)) } }
         }
-        KPrimary("+ TAMBAH PENGELUARAN") { nav.open("Pengeluaran:form", null) }
     }
 }
 
@@ -344,14 +343,14 @@ fun FinancialReportScreen(vm: PosViewModel, nav: Nav) {
     val today = startOfDay(System.currentTimeMillis())
     val from = if (period == "Hari ini") today else startOfMonth(today)
     val t = tx.filter { it.createdAt >= from }; val e = ex.filter { it.createdAt >= from }
-    val gross = t.sumOf { it.subtotal }; val disc = t.sumOf { it.discount }; val net = t.sales(); val exp = e.sumOf { it.amount }
+    val gross = t.sumOf { it.subtotal }; val disc = t.sumOf { it.discount }; val tax = t.sumOf { it.tax }; val net = t.sales(); val exp = e.sumOf { it.amount }
     KPage("Laporan Keuangan", nav, subtitle = if (period == "Hari ini") fmtDate(today) else fmtMonth(today)) {
         KChips(listOf("Hari ini", "Bulan ini"), period) { period = it }
-        KCard { KRow("Penjualan kotor", rp(gross)); KRow("Diskon", "- " + rp(disc)); KRow("Penjualan bersih", rp(net), true); KRow("Pengeluaran", "- " + rp(exp)); HorizontalDivider(Modifier.padding(vertical = 6.dp)); KRow("Laba bersih", rp(net - exp), true, MaterialTheme.colorScheme.primary) }
+        KCard { KRow("Penjualan kotor", rp(gross)); KRow("Diskon", "- " + rp(disc)); KRow("Pajak", rp(tax)); KRow("Penjualan bersih", rp(net), true); KRow("Pengeluaran", "- " + rp(exp)); HorizontalDivider(Modifier.padding(vertical = 6.dp)); KRow("Laba bersih", rp(net - exp), true, MaterialTheme.colorScheme.primary) }
         KCard { Text("Pembayaran masuk", style = MaterialTheme.typography.labelMedium); KRow("Cash", rp(t.cash())); KRow("QRIS", rp(t.qris())) }
         KItem("Pengeluaran per kategori", e.groupBy { it.category }.keys.joinToString(" · ").ifBlank { "Belum ada" }, onClick = { nav.open("Pengeluaran", null) })
         KSecondary("UNDUH LAPORAN (CSV)") {
-            val rows = listOf(listOf("Laporan Keuangan", period), listOf("Penjualan kotor", gross.toString()), listOf("Diskon", disc.toString()), listOf("Penjualan bersih", net.toString()),
+            val rows = listOf(listOf("Laporan Keuangan", period), listOf("Penjualan kotor", gross.toString()), listOf("Diskon", disc.toString()), listOf("Pajak", tax.toString()), listOf("Penjualan bersih", net.toString()),
                 listOf("Pengeluaran", exp.toString()), listOf("Laba bersih", (net - exp).toString()), listOf("Cash", t.cash().toString()), listOf("QRIS", t.qris().toString()), listOf(), listOf("Transaksi", "Waktu", "Metode", "Total")) +
                 t.sortedBy { it.createdAt }.map { listOf(shortId(it.transactionId), fmtDateTime(it.createdAt), it.paymentMethod.name, it.total.toString()) }
             msg = ReportExport.saveCsv(ctx, "laporan-keuangan", rows)?.let { "Tersimpan: $it" } ?: "Gagal menyimpan laporan"

@@ -73,14 +73,14 @@ class PosViewModel(private val repo:PosRepository, private val offline:OfflineSt
  fun add(p:Product){val u=_cart.value.toMutableList();val i=u.indexOfFirst{it.product.id==p.id};if(i>=0)u[i]=u[i].copy(quantity=u[i].quantity+1)else u.add(CartItem(p,1));_cart.value=u}
  fun remove(p:Product){_cart.value=_cart.value.mapNotNull{when{it.product.id!=p.id->it;it.quantity>1->it.copy(quantity=it.quantity-1);else->null}}}
  fun clearCart(){_cart.value=emptyList()}
- fun startShift(openingCash:Long){val s=session()?:return;viewModelScope.launch{val shift=Shift(ownerUid=ownerOf(s),businessId=s.businessId.orEmpty(),outletId=outletOf(s),cashierUid=s.uid,startAt=System.currentTimeMillis(),openingCash=openingCash,syncStatus=SyncStatus.PENDING_SYNC);offline.saveShift(shift);_shift.value=shift;repo.saveShift(shift).onSuccess{offline.updateShiftStatus(shift.id,SyncStatus.SYNCED);_shift.value=shift.copy(syncStatus=SyncStatus.SYNCED)} }}
+ fun startShift(openingCash:Long, selectedOutletId:String?=null){val s=session()?:return;val oid=if(s.role==Role.OWNER) selectedOutletId?.takeIf{it.isNotBlank()}?:_activeOutlet.value.orEmpty() else s.outletId.orEmpty();if(oid.isBlank()) { _message.value="Pilih outlet terlebih dahulu"; return };_activeOutlet.value=oid;viewModelScope.launch{val shift=Shift(ownerUid=ownerOf(s),businessId=s.businessId.orEmpty(),outletId=oid,cashierUid=s.uid,startAt=System.currentTimeMillis(),openingCash=openingCash,syncStatus=SyncStatus.PENDING_SYNC);offline.saveShift(shift);_shift.value=shift;repo.saveShift(shift).onSuccess{offline.updateShiftStatus(shift.id,SyncStatus.SYNCED);_shift.value=shift.copy(syncStatus=SyncStatus.SYNCED)} }}
 
- fun checkout(method:PaymentMethod,qrisPath:String?=null,discount:Long=0,cashReceived:Long=0){
+ fun checkout(method:PaymentMethod,qrisPath:String?=null,discount:Long=0,taxPercent:Long=0,cashReceived:Long=0){
   val s=session()?:return;val sh=_shift.value?:return;val cart=_cart.value
   val items=cart.map{TransactionItem(it.product.id,it.product.name,it.product.price,it.quantity,it.product.price*it.quantity)};if(items.isEmpty())return
-  val subtotal=items.sumOf{it.subtotal};val disc=discount.coerceIn(0,subtotal);val total=subtotal-disc
+  val subtotal=items.sumOf{it.subtotal};val disc=discount.coerceIn(0,subtotal);val taxPct=taxPercent.coerceIn(0,100);val tax= kotlin.math.round((subtotal-disc)*taxPct/100.0).toLong();val total=subtotal-disc+tax
   val oid=outletOf(s)
-  val t=Transaction(ownerUid=ownerOf(s),businessId=s.businessId.orEmpty(),outletId=oid,shiftId=sh.id,cashierUid=s.uid,items=items,subtotal=subtotal,discount=disc,total=total,cashReceived=if(method==PaymentMethod.CASH)cashReceived else 0,paymentMethod=method,qrisProofPath=qrisPath,syncStatus=SyncStatus.PENDING_SYNC)
+  val t=Transaction(ownerUid=ownerOf(s),businessId=s.businessId.orEmpty(),outletId=oid,shiftId=sh.id,cashierUid=s.uid,items=items,subtotal=subtotal,discount=disc,tax=tax,taxPercent=taxPct,total=total,cashReceived=if(method==PaymentMethod.CASH)cashReceived else 0,paymentMethod=method,qrisProofPath=qrisPath,syncStatus=SyncStatus.PENDING_SYNC)
   offline.saveTransaction(t);_lastTransaction.value=t
   _transactions.value=(_transactions.value.filterNot{it.transactionId==t.transactionId}+t).sortedByDescending{it.createdAt}
   val sh2=sh.copy(transactionCount=sh.transactionCount+1,cashTotal=sh.cashTotal+if(method==PaymentMethod.CASH)total else 0,qrisTotal=sh.qrisTotal+if(method==PaymentMethod.QRIS)total else 0,syncStatus=SyncStatus.PENDING_SYNC)

@@ -37,6 +37,7 @@ fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (
     var pay by remember { mutableStateOf(Pay.NONE) }
     var method by remember { mutableStateOf(PaymentMethod.CASH) }
     var discount by remember { mutableStateOf(0L) }
+    var taxPercent by remember { mutableStateOf(0L) }
     var showStart by remember { mutableStateOf(false) }
     var showClose by remember { mutableStateOf(false) }
     var showBlocked by remember { mutableStateOf(false) }
@@ -45,7 +46,9 @@ fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (
     val nav = remember { Nav(open = { r, a -> stack = stack + (r to a) }, back = { stack = stack.dropLast(1) }) }
     val outletName = outlets.firstOrNull { it.id == activeOutlet }?.name ?: "Outlet"
     val subtotal = cart.sumOf { it.product.price * it.quantity }
-    val payTotal = (subtotal - discount.coerceIn(0, subtotal)).coerceAtLeast(0)
+    val discountValue = discount.coerceIn(0, subtotal)
+    val taxValue = kotlin.math.round((subtotal - discountValue) * taxPercent.coerceIn(0, 100) / 100.0).toLong()
+    val payTotal = (subtotal - discountValue + taxValue).coerceAtLeast(0)
 
     BackHandler(enabled = stack.isNotEmpty() || (tab == 1 && pay != Pay.NONE && pay != Pay.SUCCESS)) {
         if (stack.isNotEmpty()) stack = stack.dropLast(1) else pay = Pay.NONE
@@ -59,7 +62,7 @@ fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (
                 ManageRouter(route, arg, vm, session, nav, printer, themeMode, onThemeMode) { showClose = true }
             } else when (tab) {
                 0 -> Column(Modifier.fillMaxSize()) {
-                    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().padding(start = 17.dp, end = 8.dp, top = 9.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(outletName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, maxLines = 1)
                             Text(if (session.role == Role.OWNER) "Owner · ${session.username}" else "${session.username} · Kasir", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -70,27 +73,27 @@ fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (
                     KasirScreen(vm, session.role, nav, onCheckout = { tab = 1 }, onStartShift = { showStart = true })
                 }
                 1 -> when (pay) {
-                    Pay.NONE -> CheckoutScreen(vm, discount, { discount = it }, method, { method = it }) {
+                    Pay.NONE -> CheckoutScreen(vm, discount, { discount = it }, taxPercent, { taxPercent = it }, method, { method = it }) {
                         if (shift == null) Toast.makeText(ctx, "Mulai shift terlebih dahulu", Toast.LENGTH_SHORT).show()
                         else pay = if (method == PaymentMethod.CASH) Pay.CASH else Pay.QRIS
                     }
-                    Pay.CASH -> CashPayScreen(payTotal, { pay = Pay.NONE }) { received -> vm.checkout(PaymentMethod.CASH, null, discount, received); discount = 0; pay = Pay.SUCCESS }
-                    Pay.QRIS -> QrisPayScreen(payTotal, activeOutlet ?: session.outletId.orEmpty(), { pay = Pay.NONE }) { vm.checkout(PaymentMethod.QRIS, null, discount); discount = 0; pay = Pay.SUCCESS }
+                    Pay.CASH -> CashPayScreen(payTotal, { pay = Pay.NONE }) { received -> vm.checkout(PaymentMethod.CASH, null, discount, taxPercent, received); discount = 0; taxPercent = 0; pay = Pay.SUCCESS }
+                    Pay.QRIS -> QrisPayScreen(payTotal, activeOutlet ?: session.outletId.orEmpty(), { pay = Pay.NONE }) { vm.checkout(PaymentMethod.QRIS, null, discount, taxPercent); discount = 0; taxPercent = 0; pay = Pay.SUCCESS }
                     Pay.SUCCESS -> SuccessScreen(vm, printer, onNew = { pay = Pay.NONE; tab = 0 }) { r, a -> nav.open(r, a) }
                 }
                 2 -> ReportsScreen(vm, session, nav)
-                else -> SettingsScreen(vm, session, nav, onLogout = tryLogout)
+                else -> SettingsScreen(vm, session, nav, themeMode = themeMode, onLogout = tryLogout)
             }
         }
-        if (stack.isEmpty() && pay != Pay.SUCCESS) Surface(color = MaterialTheme.colorScheme.surface) {
+        if (pay != Pay.SUCCESS) Surface(color = MaterialTheme.colorScheme.surface) {
             Row(Modifier.fillMaxWidth().navigationBarsPadding()) {
                 val labels = listOf("Kasir", "Checkout", "Laporan", "Pengaturan")
                 val icons = listOf(R.drawable.ic_grid, R.drawable.ic_cart, R.drawable.ic_report, R.drawable.ic_more)
                 labels.forEachIndexed { i, l ->
                     val selected = tab == i
                     val c = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    Column(Modifier.weight(1f).clickable { tab = i; if (i != 1) pay = Pay.NONE }.padding(top = 8.dp, bottom = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        BadgedBox(badge = { if (i == 1 && cart.isNotEmpty()) Badge { Text("${cart.sumOf { it.quantity }}") } }) { Icon(painterResource(icons[i]), l, tint = c, modifier = Modifier.size(24.dp)) }
+                    Column(Modifier.weight(1f).clickable { tab = i; stack = emptyList(); if (i != 1) pay = Pay.NONE }.padding(top = 11.dp, bottom = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        BadgedBox(badge = { if (i == 1 && cart.isNotEmpty()) Badge { Text("${cart.sumOf { it.quantity }}") } }) { Icon(painterResource(icons[i]), l, tint = c, modifier = Modifier.size(29.dp)) }
                         Text(l, color = c, style = MaterialTheme.typography.labelSmall, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
                     }
                 }
@@ -98,7 +101,7 @@ fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (
         }
     }
 
-    if (showStart) MoneyDialog("Mulai Shift", "Kas awal (hitung uang di laci)", { showStart = false }) { vm.startShift(it); showStart = false }
+    if (showStart) StartShiftDialog(session, outlets, activeOutlet, { showStart = false }) { outletId, cash -> vm.startShift(cash, outletId); showStart = false }
     if (showClose) CloseShiftDialogFull(shift, { showClose = false }) { vm.closeShift(it); showClose = false; stack = emptyList() }
     if (showBlocked) AlertDialog(onDismissRequest = { showBlocked = false },
         icon = { Text("!", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary) },
@@ -121,10 +124,36 @@ private fun ShiftChip(shift: Shift?, onStart: () -> Unit, onOpen: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MoneyDialog(title: String, label: String, onDismiss: () -> Unit, onConfirm: (Long) -> Unit) {
-    var v by remember { mutableStateOf("") }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(title) }, text = { KField(label, v, { v = it }, number = true) },
-        confirmButton = { Button(onClick = { onConfirm(v.toLongOrNull() ?: 0) }, enabled = v.isNotEmpty()) { Text("MULAI SHIFT") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("BATAL") } })
+private fun StartShiftDialog(session: Session, outlets: List<Outlet>, activeOutlet: String?, onDismiss: () -> Unit, onConfirm: (String?, Long) -> Unit) {
+    var cash by remember { mutableStateOf("") }
+    var outletId by remember { mutableStateOf(activeOutlet ?: outlets.firstOrNull()?.id.orEmpty()) }
+    var menu by remember { mutableStateOf(false) }
+    val owner = session.role == Role.OWNER
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surface) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).navigationBarsPadding().padding(bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Mulai Shift", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+            if (owner) {
+                Box {
+                    KField("Outlet", outlets.firstOrNull { it.id == outletId }?.name ?: "Pilih outlet", {}, enabled = false)
+                    Surface(Modifier.matchParentSize().clickable { menu = true }, color = androidx.compose.ui.graphics.Color.Transparent) {}
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, modifier = Modifier.fillMaxWidth(.88f)) {
+                        outlets.forEach { o -> DropdownMenuItem(text = { Text(o.name) }, onClick = { outletId = o.id; menu = false }) }
+                    }
+                }
+            } else {
+                KCard(color = MaterialTheme.colorScheme.primaryContainer) {
+                    Text("Outlet", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(outlets.firstOrNull { it.id == session.outletId }?.name ?: "Outlet kasir", fontWeight = FontWeight.Bold)
+                    Text("Outlet mengikuti akun kasir", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            KField("Kas Awal", cash, { cash = it }, number = true, placeholder = "mis. 200.000")
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                KSecondary("BATAL", modifier = Modifier.weight(1f), onClick = onDismiss)
+                KPrimary("MULAI SHIFT", enabled = cash.isNotBlank() && (!owner || outletId.isNotBlank()), modifier = Modifier.weight(1f)) { onConfirm(if (owner) outletId else session.outletId, cash.toLongOrNull() ?: 0) }
+            }
+        }
+    }
 }

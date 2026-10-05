@@ -49,11 +49,11 @@ private val SakuTypography = Typography(
     titleMedium = TextStyle(fontSize = (16f * HTML_DPI_SCALE).sp, lineHeight = (21f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.Bold),
     titleSmall = TextStyle(fontSize = (14f * HTML_DPI_SCALE).sp, lineHeight = (18f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.Bold),
     bodyLarge = TextStyle(fontSize = (16f * HTML_DPI_SCALE).sp, lineHeight = (21f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.Normal),
-    bodyMedium = TextStyle(fontSize = (14f * HTML_DPI_SCALE).sp, lineHeight = (19f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.Normal),
+    bodyMedium = TextStyle(fontSize = (15f * HTML_DPI_SCALE).sp, lineHeight = (20f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.Normal),
     bodySmall = TextStyle(fontSize = (13f * HTML_DPI_SCALE).sp, lineHeight = (17f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.Normal),
     labelLarge = TextStyle(fontSize = (14f * HTML_DPI_SCALE).sp, lineHeight = (18f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.Bold),
     labelMedium = TextStyle(fontSize = (13f * HTML_DPI_SCALE).sp, lineHeight = (16f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.SemiBold),
-    labelSmall = TextStyle(fontSize = (12f * HTML_DPI_SCALE).sp, lineHeight = (15f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.SemiBold)
+    labelSmall = TextStyle(fontSize = (11f * HTML_DPI_SCALE).sp, lineHeight = (14f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.SemiBold)
 )
 
 @Composable
