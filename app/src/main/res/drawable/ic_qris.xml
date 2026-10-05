@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-<group android:fillColor="@android:color/transparent" android:strokeColor="#1F6FEB" android:strokeWidth="1.8" android:strokeLineCap="round" android:strokeLineJoin="round" android:translateX="12" android:translateY="12">
-<path android:pathData="M-7,-8H-2A1,1 0,0 1,-1,-7V-2A1,1 0,0 1,-2,-1H-7A1,1 0,0 1,-8,-2V-7A1,1 0,0 1,-7,-8Z M2,-8H7A1,1 0,0 1,8,-7V-2A1,1 0,0 1,7,-1H2A1,1 0,0 1,1,-2V-7A1,1 0,0 1,2,-8Z M-7,1H-2A1,1 0,0 1,-1,2V7A1,1 0,0 1,-2,8H-7A1,1 0,0 1,-8,7V2A1,1 0,0 1,-7,1Z M2,2H5V5H2Z M6,2H8V4H6 M6,6H8V8H6 M2,6H4V8H2"/>
+<group android:fillColor="@android:color/transparent" android:strokeColor="#1F6FEB" android:strokeWidth="1.8" android:strokeLineCap="round" android:strokeLineJoin="round" android:translateX="12" android:translateY="12" android:scaleX="1" android:scaleY="1">
+<rect android:left="-8" android:top="-8" android:right="-1" android:bottom="-1" android:rx="1"/><rect android:left="1" android:top="-8" android:right="8" android:bottom="-1" android:rx="1"/><rect android:left="-8" android:top="1" android:right="-1" android:bottom="8" android:rx="1"/><rect android:left="2" android:top="2" android:right="5" android:bottom="5"/><path android:pathData="M6,2h2v2M6,6h2v2M2,6h2v2"/>
 </group>
 </vector>

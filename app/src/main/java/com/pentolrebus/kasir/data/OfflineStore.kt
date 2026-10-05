@@ -50,6 +50,43 @@ class OfflineStore(context: Context) {
         }.getOrDefault(emptyList())
     }
 
+    private val expFile = context.getFileStreamPath("offline-expenses.json")
+
+    @Synchronized fun saveExpense(e: Expense) {
+        val all = expenses().toMutableList()
+        val i = all.indexOfFirst { it.id == e.id }
+        if (i >= 0) all[i] = e else all.add(e)
+        writeExpenses(all)
+    }
+
+    @Synchronized fun deleteExpense(id: String) { writeExpenses(expenses().filterNot { it.id == id }) }
+
+    @Synchronized fun updateExpenseStatus(id: String, status: SyncStatus) {
+        writeExpenses(expenses().map { if (it.id == id) it.copy(syncStatus = status) else it })
+    }
+
+    @Synchronized fun expenses(): List<Expense> {
+        if (!expFile.exists()) return emptyList()
+        return runCatching {
+            val a = JSONArray(expFile.readText())
+            (0 until a.length()).map { val o = a.getJSONObject(it)
+                Expense(id = o.optString("id"), ownerUid = o.optString("ownerUid"), businessId = o.optString("businessId"), outletId = o.optString("outletId"),
+                    amount = o.optLong("amount"), category = o.optString("category"), note = o.optString("note"), createdAt = o.optLong("createdAt"),
+                    createdBy = o.optString("createdBy"), createdByName = o.optString("createdByName"),
+                    syncStatus = SyncStatus.valueOf(o.optString("syncStatus", SyncStatus.PENDING_SYNC.name)))
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    private fun writeExpenses(list: List<Expense>) {
+        val a = JSONArray()
+        list.forEach { e -> a.put(JSONObject().apply {
+            put("id", e.id); put("ownerUid", e.ownerUid); put("businessId", e.businessId); put("outletId", e.outletId)
+            put("amount", e.amount); put("category", e.category); put("note", e.note); put("createdAt", e.createdAt)
+            put("createdBy", e.createdBy); put("createdByName", e.createdByName); put("syncStatus", e.syncStatus.name) }) }
+        expFile.writeText(a.toString())
+    }
+
     private fun writeTransactions(list: List<Transaction>) {
         val a = JSONArray()
         list.forEach { a.put(transactionJson(it)) }
@@ -65,9 +102,9 @@ class OfflineStore(context: Context) {
     private fun transactionJson(t: Transaction) = JSONObject().apply {
         put("transactionId", t.transactionId); put("ownerUid", t.ownerUid); put("businessId", t.businessId)
         put("outletId", t.outletId); put("shiftId", t.shiftId); put("cashierUid", t.cashierUid)
-        put("subtotal", t.subtotal); put("total", t.total); put("paymentMethod", t.paymentMethod.name)
+        put("subtotal", t.subtotal); put("total", t.total); put("discount", t.discount); put("cashReceived", t.cashReceived); put("paymentMethod", t.paymentMethod.name)
         put("paymentStatus", t.paymentStatus); put("createdAt", t.createdAt)
-        put("qrisProofPath", t.qrisProofPath ?: JSONObject.NULL); put("cashReceived", t.cashReceived); put("change", t.change); put("discount", t.discount); put("syncStatus", t.syncStatus.name)
+        put("qrisProofPath", t.qrisProofPath ?: JSONObject.NULL); put("syncStatus", t.syncStatus.name)
         val items = JSONArray(); t.items.forEach { item ->
             items.put(JSONObject().apply {
                 put("productId", item.productId); put("name", item.name); put("price", item.price)
@@ -85,11 +122,10 @@ class OfflineStore(context: Context) {
         Transaction(
             transactionId = o.optString("transactionId"), ownerUid = o.optString("ownerUid"), businessId = o.optString("businessId"),
             outletId = o.optString("outletId"), shiftId = o.optString("shiftId"), cashierUid = o.optString("cashierUid"),
-            items = items, subtotal = o.optLong("subtotal"), total = o.optLong("total"),
+            items = items, subtotal = o.optLong("subtotal"), total = o.optLong("total"), discount = o.optLong("discount"), cashReceived = o.optLong("cashReceived"),
             paymentMethod = PaymentMethod.valueOf(o.optString("paymentMethod", PaymentMethod.CASH.name)),
             paymentStatus = o.optString("paymentStatus", "PAID"), createdAt = o.optLong("createdAt"),
             qrisProofPath = if (o.isNull("qrisProofPath")) null else o.optString("qrisProofPath"),
-            cashReceived = o.optLong("cashReceived"), change = o.optLong("change"), discount = o.optLong("discount"),
             syncStatus = SyncStatus.valueOf(o.optString("syncStatus", SyncStatus.PENDING_SYNC.name))
         )
     }.getOrNull()

@@ -1,40 +1,51 @@
 package com.pentolrebus.kasir.data
 
 import com.pentolrebus.kasir.domain.*
+import java.util.UUID
 
 class LocalPosRepository(private val secure:SecureLocalStore, private val log:(String,String)->Unit):PosRepository {
- private val products=mutableListOf(Product("p1","demo-owner","demo-outlet","c1","Pentol Rebus",12000,"porsi",true,48,5,null,true),Product("p2","demo-owner","demo-outlet","c1","Pentol Pedas",12000,"porsi",true,3,5,null,true),Product("p3","demo-owner","demo-outlet","c2","Es Teh Fresh Brew",5000,"gelas",true,120,10,null,true),Product("p4","demo-owner","demo-outlet","c2","Es Teh Lemon",7000,"gelas",true,64,10,null,true))
- private val categories=mutableListOf(Category("c1","demo-owner","demo-outlet","Pentol"),Category("c2","demo-owner","demo-outlet","Es Teh"),Category("c3","demo-owner","demo-outlet","Tambahan"))
- private val outlets=mutableListOf(Outlet("demo-outlet","demo-owner","demo-business","Outlet Alun-Alun","Jl. Alun-Alun Jember"))
- private val workers=mutableListOf(Worker("w1","demo-owner","demo-outlet","dewi","Dewi",Role.CASHIER,null,true))
- private var business=Business("demo-business","demo-owner","Pentol Rebus x Es Teh Fresh Brew")
- private val expenses=mutableListOf<Expense>()
+ private val products=mutableListOf(
+  Product("p1","demo-owner","demo-outlet","c1","Pentol Rebus",12000,"porsi",false,0,true),
+  Product("p2","demo-owner","demo-outlet","c1","Pentol Pedas",12000,"porsi",true,3,true),
+  Product("p3","demo-owner","demo-outlet","c2","Es Teh Fresh Brew",5000,"gelas",true,120,true),
+  Product("p4","demo-owner","demo-outlet","c2","Es Teh Lemon",7000,"gelas",true,64,true)
+ )
  private val tx=mutableListOf<Transaction>(); private var active:Shift?=null
- override suspend fun registerOwner(email:String,password:String,username:String,pin:CharArray,businessName:String?,outletName:String?,whatsapp:String?)=Result.success(Session("demo-owner",username,Role.OWNER,"demo-business","demo-outlet")).also{secure.saveCredential(username,"demo-owner",pin);secure.saveSession("demo-owner",username,"OWNER","demo-business","demo-outlet")}
+ override suspend fun registerOwner(email:String,password:String,username:String,pin:CharArray,businessName:String?,outletName:String?,whatsapp:String?):Result<Session>{val s=Session("demo-owner",username,Role.OWNER,"demo-business","demo-outlet");secure.saveCredential(username,s.uid,pin);secure.saveSession(s.uid,username,s.role.name,s.businessId,s.outletId);log("REGISTRATION","REGISTRATION_SUCCESS local development state");return Result.success(s)}
  override suspend fun emailLogin(email:String,password:String)=Result.success(Session("demo-owner","owner",Role.OWNER,"demo-business","demo-outlet"))
- override suspend fun localPinLogin(username:String,pin:CharArray)=runCatching{if(secure.verify(username,pin)==null)error("Username/PIN perangkat tidak valid");Session("demo-owner",username,Role.OWNER,"demo-business","demo-outlet")}
- override suspend fun loadProducts(outletId:String)=products.filter{it.outletId==outletId}
- override suspend fun saveProduct(product:Product):Result<Unit> =Result.success(Unit).also{products.removeAll{it.id==product.id};products.add(product)}
- override suspend fun deleteProduct(product:Product)=Result.success(Unit).also{products.removeAll{it.id==product.id}}
- override suspend fun loadCategories(outletId:String)=categories.filter{it.outletId==outletId}
- override suspend fun saveCategory(category:Category)=Result.success(Unit).also{categories.removeAll{it.id==category.id};categories.add(category)}
- override suspend fun deleteCategory(category:Category)=Result.success(Unit).also{categories.removeAll{it.id==category.id}}
- override suspend fun loadOutlets(ownerUid:String)=outlets.filter{it.ownerUid==ownerUid}
- override suspend fun saveOutlet(outlet:Outlet)=Result.success(Unit).also{outlets.removeAll{it.id==outlet.id};outlets.add(outlet)}
- override suspend fun deleteOutlet(outlet:Outlet)=Result.success(Unit).also{outlets.removeAll{it.id==outlet.id}}
- override suspend fun loadWorkers(outletId:String)=workers.filter{it.outletId==outletId}
- override suspend fun saveWorker(worker:Worker)=Result.success(Unit).also{workers.removeAll{it.id==worker.id};workers.add(worker)}
- override suspend fun deleteWorker(worker:Worker)=Result.success(Unit).also{workers.removeAll{it.id==worker.id}}
- override suspend fun loadBusiness(ownerUid:String)=business.takeIf{it.ownerUid==ownerUid}
- override suspend fun saveBusiness(business:Business)=Result.success(Unit).also{this.business=business}
- override suspend fun loadExpenses(outletId:String)=expenses.filter{it.outletId==outletId}.sortedByDescending{it.createdAt}
- override suspend fun saveExpense(expense:Expense)=Result.success(Unit).also{expenses.removeAll{it.id==expense.id};expenses.add(expense)}
- override suspend fun deleteExpense(expense:Expense)=Result.success(Unit).also{expenses.removeAll{it.id==expense.id}}
- override suspend fun startShift(session:Session,openingCash:Long)=Result.success(Shift(ownerUid=session.uid,businessId=session.businessId.orEmpty(),outletId=session.outletId.orEmpty(),cashierUid=session.uid,startAt=System.currentTimeMillis(),openingCash=openingCash)).also{active=it.getOrNull()}
- override suspend fun saveShift(shift:Shift)=Result.success(Unit).also{active=if(shift.closedAt==null)shift else null}
- override suspend fun closeShift(shift:Shift,closingCash:Long)=Result.success(shift.copy(closedAt=System.currentTimeMillis(),closingCash=closingCash)).also{active=null}
- override suspend fun saveTransaction(t:Transaction):Result<Unit> =Result.success(Unit).also{tx.removeAll{it.transactionId==t.transactionId};tx.add(t)}
- override suspend fun loadTransactions(session:Session)=tx.filter{session.role==Role.OWNER||it.cashierUid==session.uid}
+ override suspend fun localPinLogin(username:String,pin:CharArray)=runCatching{if(secure.verify(username,pin)==null) error("Username/PIN perangkat tidak valid");secure.workerSession(username)?.let{w->return@runCatching Session(w[0],username,Role.CASHIER,w[2],w[3],w[1])};Session("demo-owner",username,Role.OWNER,"demo-business","demo-outlet")}
+ override suspend fun loadProducts(outletId:String)=products.toList()
+ override suspend fun saveProduct(product:Product):Result<Unit> = runCatching {
+  products.removeAll { it.id == product.id }
+  products.add(product)
+  Unit
+}
+ override suspend fun startShift(session:Session,openingCash:Long)=runCatching{Shift(ownerUid=session.uid,businessId=session.businessId.orEmpty(),outletId=session.outletId.orEmpty(),cashierUid=session.uid,startAt=System.currentTimeMillis(),openingCash=openingCash,syncStatus=SyncStatus.PENDING_SYNC).also{active=it}}
+ override suspend fun saveShift(shift:Shift):Result<Unit> = runCatching { active = if (shift.closedAt == null) shift else null; Unit }
+ override suspend fun closeShift(shift:Shift,closingCash:Long)=runCatching{shift.copy(closedAt=System.currentTimeMillis(),closingCash=closingCash,syncStatus=SyncStatus.PENDING_SYNC).also{active=null}}
+ override suspend fun saveTransaction(t:Transaction):Result<Unit> = runCatching {
+  tx.add(t)
+  Unit
+}
+ override suspend fun loadTransactions(session:Session)=tx.toList()
  override suspend fun loadActiveShift(session:Session)=active
+ private val cats=mutableListOf<Category>(); private val outs=mutableListOf(Outlet("demo-outlet","demo-owner","demo-business","Outlet Demo",null)); private val wks=mutableListOf<Worker>(); private val exps=mutableListOf<Expense>(); private var biz:Business?=Business("demo-business","demo-owner","Demo")
+ override suspend fun deleteProduct(outletId:String,id:String)=runCatching{products.removeAll{it.id==id};Unit}
+ override suspend fun adjustStock(outletId:String,productId:String,delta:Long)=runCatching{val i=products.indexOfFirst{it.id==productId};if(i>=0)products[i]=products[i].copy(stock=products[i].stock+delta);Unit}
+ override suspend fun loadCategories(outletId:String)=cats.toList()
+ override suspend fun saveCategory(c:Category)=runCatching{cats.removeAll{it.id==c.id};cats.add(c);Unit}
+ override suspend fun deleteCategory(outletId:String,id:String)=runCatching{cats.removeAll{it.id==id};Unit}
+ override suspend fun loadOutlets(session:Session)=outs.toList()
+ override suspend fun saveOutlet(o:Outlet)=runCatching{outs.removeAll{it.id==o.id};outs.add(o);Unit}
+ override suspend fun loadWorkers(session:Session)=wks.toList()
+ override suspend fun saveWorker(w:Worker,pin:CharArray?)=runCatching{wks.removeAll{it.id==w.id};wks.add(w);if(pin!=null&&pin.isNotEmpty())secure.saveCredential(w.username,w.id,pin);secure.saveWorkerSession(w.username,w.id,w.ownerUid,w.businessId,w.outletId);Unit}
+ override suspend fun loadBusiness(session:Session)=biz
+ override suspend fun saveBusiness(b:Business)=runCatching{biz=b;Unit}
+ override suspend fun loadOutletTransactions(outletId:String)=tx.filter{it.outletId==outletId}
+ override suspend fun loadOutletShifts(outletId:String)=listOfNotNull(active)
+ override suspend fun loadExpenses(outletId:String)=exps.filter{it.outletId==outletId}
+ override suspend fun saveExpense(e:Expense)=runCatching{exps.removeAll{it.id==e.id};exps.add(e);Unit}
+ override suspend fun deleteExpense(outletId:String,id:String)=runCatching{exps.removeAll{it.id==id};Unit}
+ override suspend fun updateProfile(session:Session,displayName:String,whatsapp:String?)=Result.success(Unit)
  override fun logout(){secure.clearSession()}
 }
