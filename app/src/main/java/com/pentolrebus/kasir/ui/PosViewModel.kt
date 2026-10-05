@@ -81,27 +81,27 @@ class PosViewModel(private val repo:PosRepository, private val offline:OfflineSt
  fun clearCart(){_cart.value=emptyList()}
  fun startShift(openingCash:Long, selectedOutletId:String?=null){
   val s=session()?:return
-  val oid=if(s.role==Role.OWNER) selectedOutletId?.takeIf{it.isNotBlank()}?:_activeOutlet.value.orEmpty() else s.outletId.orEmpty()
-  if(oid.isBlank()) { _message.value="Pilih outlet terlebih dahulu"; return }
-  if(openingCash < 0L) { _message.value="Kas awal tidak valid"; return }
+  val oid=if(s.role==Role.OWNER) selectedOutletId?.trim().orEmpty().ifBlank{_activeOutlet.value.orEmpty()} else s.outletId?.trim().orEmpty()
+  if(oid.isBlank()){ _message.value="Pilih outlet terlebih dahulu"; return }
+  if(openingCash < 0L){ _message.value="Kas awal tidak valid"; return }
+  if(_shift.value != null){ _message.value="Shift masih aktif"; return }
   _activeOutlet.value=oid
-  viewModelScope.launch(Dispatchers.IO){
-    try {
-      val shift=Shift(ownerUid=ownerOf(s),businessId=s.businessId.orEmpty(),outletId=oid,cashierUid=s.uid,startAt=System.currentTimeMillis(),openingCash=openingCash,syncStatus=SyncStatus.PENDING_SYNC)
-      offline.saveShift(shift)
-      withContext(Dispatchers.Main){ _shift.value=shift }
-      repo.saveShift(shift).onSuccess{
-        offline.updateShiftStatus(shift.id,SyncStatus.SYNCED)
-        withContext(Dispatchers.Main){ _shift.value=shift.copy(syncStatus=SyncStatus.SYNCED) }
-      }.onFailure{
-        withContext(Dispatchers.Main){ _message.value="Shift tersimpan offline. Sinkronisasi akan dicoba lagi." }
-      }
-    } catch (e:Throwable) {
-      withContext(Dispatchers.Main){ _message.value="Gagal memulai shift: ${e.message ?: "kesalahan tidak diketahui"}" }
+  val shift=Shift(ownerUid=ownerOf(s),businessId=s.businessId.orEmpty(),outletId=oid,cashierUid=s.uid,startAt=System.currentTimeMillis(),openingCash=openingCash,syncStatus=SyncStatus.PENDING_SYNC)
+  viewModelScope.launch {
+    val localSaved=runCatching{ withContext(Dispatchers.IO){ offline.saveShift(shift) } }
+    if(localSaved.isFailure){ _message.value="Gagal menyimpan shift: ${localSaved.exceptionOrNull()?.message ?: "penyimpanan lokal gagal"}"; return@launch }
+    _shift.value=shift
+    _shifts.value=(_shifts.value.filterNot{it.id==shift.id}+shift).sortedByDescending{it.startAt}
+    val remote=runCatching{ repo.saveShift(shift) }.getOrNull()
+    if(remote?.isSuccess==true){
+      runCatching{ withContext(Dispatchers.IO){ offline.updateShiftStatus(shift.id,SyncStatus.SYNCED) } }
+      _shift.value=shift.copy(syncStatus=SyncStatus.SYNCED)
+      _shifts.value=_shifts.value.map{if(it.id==shift.id) shift.copy(syncStatus=SyncStatus.SYNCED) else it}
+    }else{
+      _message.value="Shift tersimpan offline. Sinkronisasi akan dicoba lagi."
     }
   }
  }
-
  fun checkout(method:PaymentMethod,qrisPath:String?=null,discount:Long=0,taxPercent:Long=0,cashReceived:Long=0){
   val s=session()?:return;val sh=_shift.value?:return;val cart=_cart.value
   val items=cart.map{TransactionItem(it.product.id,it.product.name,it.product.price,it.quantity,it.product.price*it.quantity)};if(items.isEmpty())return

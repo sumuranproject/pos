@@ -81,7 +81,7 @@ class FirebasePosRepository(private val auth:FirebaseAuth=FirebaseAuth.getInstan
 }
  override suspend fun startShift(session:Session,openingCash:Long)=runCatching{val s=Shift(ownerUid=session.uid,businessId=session.businessId.orEmpty(),outletId=session.outletId.orEmpty(),cashierUid=session.uid,startAt=System.currentTimeMillis(),openingCash=openingCash);timed{root.child("outlets/${s.outletId}/shifts/${s.id}").setValue(s).await()};s}
  override suspend fun closeShift(shift:Shift,closingCash:Long)=runCatching{val s=shift.copy(closedAt=System.currentTimeMillis(),closingCash=closingCash,syncStatus=SyncStatus.SYNCED);timed{root.child("outlets/${s.outletId}/shifts/${s.id}").setValue(s).await()};s}
- override suspend fun saveShift(shift:Shift):Result<Unit> = runCatching { timed { root.child("outlets/${shift.outletId}/shifts/${shift.id}").setValue(shift).await() }; Unit }
+ override suspend fun saveShift(shift:Shift):Result<Unit> = runCatching { timed { root.child("outlets/${shift.outletId}/shifts/${shift.id}").setValue(shift).await() }; Unit }.onFailure { log("RTDB", "saveShift failed path=outlets/${shift.outletId}/shifts/${shift.id} error=${it.javaClass.simpleName}: ${it.message}") }
  override suspend fun saveTransaction(t: Transaction): Result<Unit> = runCatching {
   timed { root.child("outlets/${t.outletId}/transactions/${t.transactionId}").setValue(t).await() }
   Unit
@@ -123,7 +123,7 @@ class FirebasePosRepository(private val auth:FirebaseAuth=FirebaseAuth.getInstan
   timed{root.child("users").child(authUid!!).setValue(profile).await()}
   timed{root.child("loginIndex").child(clean).setValue(mapOf("authEmail" to authEmailForUsername(clean),"uid" to authUid,"role" to "CASHIER","active" to q.active,"ownerUid" to q.ownerUid,"outletId" to q.outletId)).await()}
   Unit
- }
+ }.onFailure { log("RTDB", "saveWorker failed username=${w.username} outlet=${w.outletId} error=${it.javaClass.simpleName}: ${it.message}") }
  override suspend fun loadBusiness(session:Session)=runCatching{session.businessId?.let{timed{root.child("businesses/$it").get().await()}.getValue(Business::class.java)}}.getOrNull()
  override suspend fun saveBusiness(b:Business)=runCatching{timed{root.child("businesses/${b.id}").updateChildren(mapOf("id" to b.id,"ownerUid" to b.ownerUid,"name" to b.name,"type" to b.type,"phone" to b.phone)).await()};Unit}
  override suspend fun loadOutletTransactions(outletId:String)=runCatching{timed{root.child("outlets/$outletId/transactions").get().await()}.children.mapNotNull{it.getValue(Transaction::class.java)}}.getOrDefault(emptyList())

@@ -93,6 +93,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val diagnostics = Diagnostics(this)
+        val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            diagnostics.recordUncaughtException(throwable)
+            previousHandler?.uncaughtException(thread, throwable)
+        }
         val repository = RepositoryProvider.create(this, diagnostics)
         val offlineStore = OfflineStore(this)
         setContent {

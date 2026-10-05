@@ -84,6 +84,17 @@ fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (
                 2 -> ReportsScreen(vm, session, nav)
                 else -> SettingsScreen(vm, session, nav, themeMode = themeMode, onLogout = tryLogout)
             }
+            SmallFloatingActionButton(
+                onClick = {
+                    val name = diagnostics.exportToDownloads()
+                    Toast.makeText(ctx, if (name != null) "Log diagnostik disimpan: Downloads/Kasir" else "Gagal menyimpan log diagnostik", Toast.LENGTH_LONG).show()
+                },
+                modifier = Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 12.dp),
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            ) {
+                Text("LOG", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            }
         }
         if (pay != Pay.SUCCESS) Surface(color = MaterialTheme.colorScheme.surface) {
             Row(Modifier.fillMaxWidth().navigationBarsPadding()) {
@@ -152,7 +163,10 @@ private fun StartShiftDialog(session: Session, outlets: List<Outlet>, activeOutl
             KField("Kas Awal", cash, { cash = it }, number = true, placeholder = "mis. 200.000")
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 KSecondary("BATAL", modifier = Modifier.weight(1f), onClick = onDismiss)
-                KPrimary("MULAI SHIFT", enabled = cash.isNotBlank() && (!owner || outletId.isNotBlank()), modifier = Modifier.weight(1f)) { onConfirm(if (owner) outletId else session.outletId, cash.toLongOrNull() ?: 0) }
+                val amount = cash.toLongOrNull()
+                KPrimary("MULAI SHIFT", enabled = amount != null && amount >= 0L && (!owner || outletId.isNotBlank()), modifier = Modifier.weight(1f)) {
+                    amount?.let { onConfirm(if (owner) outletId else session.outletId, it) }
+                }
             }
         }
     }
