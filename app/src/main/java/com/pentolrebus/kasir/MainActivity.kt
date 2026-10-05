@@ -115,7 +115,7 @@ private fun KasirApp(vm: PosViewModel, diagnostics: Diagnostics) {
         // design coordinate space is scaled proportionally by 10%.
         androidx.compose.runtime.CompositionLocalProvider(
             LocalDensity provides Density(
-                density = baseDensity.density * 1.10f,
+                density = baseDensity.density * 0.90f,
                 fontScale = baseDensity.fontScale
             )
         ) {

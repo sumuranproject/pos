@@ -1,4 +1,4 @@
-Saku Kasir V54 — Unified Username + Password Authentication
+Saku Kasir V56 — Small-DPI UI scale adjustment
 
 Baseline: V53-R1
 
@@ -17,3 +17,8 @@ Authentication changes:
 
 Important: Firebase Console Authentication must have Email/Password provider enabled.
 Database rules must be deployed from database.rules.json for loginIndex and cashier profile writes.
+
+
+UI-only change in this overwrite:
+- Reduced Compose global design scale from 1.10x to 0.90x so the UI is smaller on small-DPI/small-screen devices.
+- Authentication and database rules are unchanged.
