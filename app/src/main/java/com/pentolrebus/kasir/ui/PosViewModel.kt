@@ -7,7 +7,9 @@ import com.pentolrebus.kasir.data.PosRepository
 import com.pentolrebus.kasir.domain.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 sealed interface AuthState { data object LoggedOut:AuthState; data object Loading:AuthState; data class LoggedIn(val session:Session):AuthState; data class Error(val message:String):AuthState }
 
@@ -77,7 +79,28 @@ class PosViewModel(private val repo:PosRepository, private val offline:OfflineSt
  fun add(p:Product){val u=_cart.value.toMutableList();val i=u.indexOfFirst{it.product.id==p.id};if(i>=0)u[i]=u[i].copy(quantity=u[i].quantity+1)else u.add(CartItem(p,1));_cart.value=u}
  fun remove(p:Product){_cart.value=_cart.value.mapNotNull{when{it.product.id!=p.id->it;it.quantity>1->it.copy(quantity=it.quantity-1);else->null}}}
  fun clearCart(){_cart.value=emptyList()}
- fun startShift(openingCash:Long, selectedOutletId:String?=null){val s=session()?:return;val oid=if(s.role==Role.OWNER) selectedOutletId?.takeIf{it.isNotBlank()}?:_activeOutlet.value.orEmpty() else s.outletId.orEmpty();if(oid.isBlank()) { _message.value="Pilih outlet terlebih dahulu"; return };_activeOutlet.value=oid;viewModelScope.launch{val shift=Shift(ownerUid=ownerOf(s),businessId=s.businessId.orEmpty(),outletId=oid,cashierUid=s.uid,startAt=System.currentTimeMillis(),openingCash=openingCash,syncStatus=SyncStatus.PENDING_SYNC);offline.saveShift(shift);_shift.value=shift;repo.saveShift(shift).onSuccess{offline.updateShiftStatus(shift.id,SyncStatus.SYNCED);_shift.value=shift.copy(syncStatus=SyncStatus.SYNCED)} }}
+ fun startShift(openingCash:Long, selectedOutletId:String?=null){
+  val s=session()?:return
+  val oid=if(s.role==Role.OWNER) selectedOutletId?.takeIf{it.isNotBlank()}?:_activeOutlet.value.orEmpty() else s.outletId.orEmpty()
+  if(oid.isBlank()) { _message.value="Pilih outlet terlebih dahulu"; return }
+  if(openingCash < 0L) { _message.value="Kas awal tidak valid"; return }
+  _activeOutlet.value=oid
+  viewModelScope.launch(Dispatchers.IO){
+    try {
+      val shift=Shift(ownerUid=ownerOf(s),businessId=s.businessId.orEmpty(),outletId=oid,cashierUid=s.uid,startAt=System.currentTimeMillis(),openingCash=openingCash,syncStatus=SyncStatus.PENDING_SYNC)
+      offline.saveShift(shift)
+      withContext(Dispatchers.Main){ _shift.value=shift }
+      repo.saveShift(shift).onSuccess{
+        offline.updateShiftStatus(shift.id,SyncStatus.SYNCED)
+        withContext(Dispatchers.Main){ _shift.value=shift.copy(syncStatus=SyncStatus.SYNCED) }
+      }.onFailure{
+        withContext(Dispatchers.Main){ _message.value="Shift tersimpan offline. Sinkronisasi akan dicoba lagi." }
+      }
+    } catch (e:Throwable) {
+      withContext(Dispatchers.Main){ _message.value="Gagal memulai shift: ${e.message ?: "kesalahan tidak diketahui"}" }
+    }
+  }
+ }
 
  fun checkout(method:PaymentMethod,qrisPath:String?=null,discount:Long=0,taxPercent:Long=0,cashReceived:Long=0){
   val s=session()?:return;val sh=_shift.value?:return;val cart=_cart.value

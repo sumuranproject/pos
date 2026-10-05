@@ -47,17 +47,20 @@ class FirebasePosRepository(private val auth:FirebaseAuth=FirebaseAuth.getInstan
  override suspend fun emailLogin(email:String,password:String)=runCatching{val r=timed{auth.signInWithEmailAndPassword(email,password).await()};val uid=r.user?.uid?:error("UID missing");val snap=timed{root.child("users").child(uid).get().await()};val username=snap.child("username").getValue(String::class.java)?:email;val role=Role.valueOf(snap.child("role").getValue(String::class.java)?:"OWNER");val b=snap.child("businessId").getValue(String::class.java);val o=snap.child("outletId").getValue(String::class.java);secure.saveSession(uid,username,role.name,b,o);Session(uid,username,role,b,o)}
  override suspend fun sendPasswordReset(email:String)=runCatching{timed{auth.sendPasswordResetEmail(email).await()};Unit}
  override suspend fun localPinLogin(username:String,pin:CharArray)=runCatching{
-  val uid=secure.verify(username,pin)?:error("Username/PIN perangkat tidak valid")
-  secure.workerSession(username)?.let{w->return@runCatching Session(w[0],username,Role.CASHIER,w[2].ifBlank{null},w[3].ifBlank{null},w[1])}
+  val cleanUsername=username.trim()
+  if(cleanUsername.isBlank()) error("Username wajib diisi")
+  if(pin.isEmpty()) error("PIN wajib diisi")
+  val uid=secure.verify(cleanUsername,pin)?:error("Username/PIN perangkat tidak valid. Pastikan akun kasir sudah dibuat di perangkat ini.")
+  secure.workerSession(cleanUsername)?.let{w->return@runCatching Session(w[0],cleanUsername,Role.CASHIER,w[2].ifBlank{null},w[3].ifBlank{null},w[1])}
   val cached=secure.session()
-  if (cached?.get("uid")==uid && cached["username"]==username) {
+  if (cached?.get("uid")==uid && cached["username"]==cleanUsername) {
    val role=Role.valueOf(cached["role"]?:"CASHIER")
-   return@runCatching Session(uid,username,role,cached["businessId"],cached["outletId"])
+   return@runCatching Session(uid,cleanUsername,role,cached["businessId"],cached["outletId"])
   }
   val snap=timed{root.child("users").child(uid).get().await()}
   val role=Role.valueOf(snap.child("role").getValue(String::class.java)?:"CASHIER")
   val b=snap.child("businessId").getValue(String::class.java); val o=snap.child("outletId").getValue(String::class.java)
-  secure.saveSession(uid,username,role.name,b,o); Session(uid,username,role,b,o)
+  secure.saveSession(uid,cleanUsername,role.name,b,o); Session(uid,cleanUsername,role,b,o)
 }
  override suspend fun loadProducts(outletId:String)=runCatching{val s=timed{root.child("outlets/$outletId/products").get().await()};s.children.mapNotNull{it.getValue(Product::class.java)}}.getOrDefault(emptyList())
  override suspend fun saveProduct(product: Product): Result<Unit> = runCatching {

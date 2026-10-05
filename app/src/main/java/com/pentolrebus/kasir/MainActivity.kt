@@ -246,7 +246,7 @@ private fun AuthScreen(vm: PosViewModel, error: String? = null) {
                 onOutlet = { outlet = it },
                 onWhatsapp = { whatsapp = it },
                 onValidation = { validation = it },
-                onLoginLocal = { vm.loginLocal(username, pin, selectedRole!!) },
+                onLoginLocal = { vm.loginLocal(username.trim(), pin.trim(), selectedRole!!) },
                 onLoginEmail = { vm.loginEmail(email, password, selectedRole!!) },
                 onForgotPassword = { vm.resetPassword(email) },
                 onRegister = {
@@ -276,10 +276,8 @@ private fun RoleSelectionScreen(onOwner: () -> Unit, onCashier: () -> Unit) {
                 Modifier.fillMaxWidth().padding(top = 8.8.dp, bottom = 61.6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(Modifier.size(55.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Image(painterResource(R.drawable.app_icon), "Logo Saku Kasir", Modifier.size(50.dp))
-                    }
+                Box(Modifier.size(55.dp), contentAlignment = Alignment.Center) {
+                    Image(painterResource(R.drawable.app_icon), "Logo Saku Kasir", Modifier.size(52.dp))
                 }
                 Spacer(Modifier.width(12.dp))
                 Column {
@@ -322,7 +320,8 @@ private fun LoginRoleScreen(
 ) {
     val isOwner = role == Role.OWNER
     var emailMode by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 17.6.dp, vertical = 13.2.dp)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 17.6.dp, vertical = 13.2.dp)) {
+      Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
         Surface(
             Modifier.size(48.4.dp).clickable { onBack() },
             shape = CircleShape,
@@ -333,7 +332,7 @@ private fun LoginRoleScreen(
             }
         }
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
-            Image(painterResource(R.drawable.app_icon), "Logo Saku Kasir", Modifier.size(58.dp).padding(top = 8.8.dp))
+            Image(painterResource(R.drawable.app_icon), "Logo Saku Kasir", Modifier.size(68.dp))
             Text("Selamat datang", fontSize = 27.5.sp, lineHeight = 33.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 8.8.dp))
             Text("Masuk untuk mengelola bisnis Anda", fontSize = 14.2.sp, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
             Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.primaryContainer) {
@@ -342,7 +341,7 @@ private fun LoginRoleScreen(
         }
         if (isOwner && !register) {
             Spacer(Modifier.height(18.dp))
-            KSegmented(listOf("PIN Cepat", "Email & Password"), if (emailMode) "Email & Password" else "PIN Cepat") { emailMode = it == "Email & Password" }
+            KSegmented(listOf("Username & PIN", "Email & Password"), if (emailMode) "Email & Password" else "Username & PIN") { emailMode = it == "Email & Password" }
             Spacer(Modifier.height(10.dp))
             if (!emailMode) {
                 AuthField("Username", "Masukkan username", username, onUsername, R.drawable.ic_person)
@@ -352,16 +351,15 @@ private fun LoginRoleScreen(
             } else {
                 AuthField("Email", "Masukkan email", email, onEmail, R.drawable.ic_mail, KeyboardType.Email)
                 Spacer(Modifier.height(9.dp)); PasswordField("Password", password, onPassword)
-                TextButton(
-                    onClick = onForgotPassword,
-                    enabled = true,
-                    modifier = Modifier.padding(top = 2.dp),
-                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
-                ) { Text("Lupa Password?", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onForgotPassword, enabled = true, contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)) {
+                        Text("Lupa Password?", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    }
+                }
                 error?.let { Spacer(Modifier.height(7.dp)); AlertBox(it) }
                 Spacer(Modifier.height(11.dp)); AuthPrimaryButton("Masuk", onLoginEmail)
             }
-            TextButton(onClick = onRegisterToggle, modifier = Modifier.padding(top = 2.dp), contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)) { Text("Daftar sebagai Owner", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
+            TextButton(onClick = onRegisterToggle, modifier = Modifier.fillMaxWidth().padding(top = 2.dp), contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)) { Text("Daftar sebagai Owner", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
         } else if (isOwner) {
             error?.let { AlertBox(it) }; validation?.let { AlertBox(it) }
             Spacer(Modifier.height(18.dp));
@@ -381,10 +379,13 @@ private fun LoginRoleScreen(
             Spacer(Modifier.height(18.dp)); AuthField("Username", "Masukkan username", username, onUsername, R.drawable.ic_person)
             Spacer(Modifier.height(9.dp)); AuthPinField("PIN", pin, onPin)
             Spacer(Modifier.height(12.dp)); AuthPrimaryButton("Masuk", onLoginLocal)
-            Text("Akun kasir dibuat oleh Owner.\nLupa PIN? Tanyakan Owner Anda.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 14.dp))
-            Text("Contoh: dewi / 1234", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 10.dp))
         }
-        Spacer(Modifier.height(24.dp))
+      }
+      if (!isOwner) {
+        Text("Akun kasir dibuat oleh Owner.\nLupa PIN? Tanyakan Owner Anda.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp))
+      } else {
+        Spacer(Modifier.height(8.dp))
+      }
     }
 }
 

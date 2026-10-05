@@ -55,7 +55,7 @@ private val PillShape = RoundedCornerShape((HTML_REM_DP * 1.188f).dp)
 fun KPage(title: String, nav: Nav?, subtitle: String? = null, actions: @Composable RowScope.() -> Unit = {}, fab: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Row(
-            Modifier.fillMaxWidth().padding(start = (HTML_REM_DP * .625f).dp, end = (HTML_REM_DP * .75f).dp, top = (HTML_REM_DP * .5f).dp, bottom = (HTML_REM_DP * .3125f).dp),
+            Modifier.fillMaxWidth().padding(start = (HTML_REM_DP * .625f).dp, end = (HTML_REM_DP * .75f).dp, top = 12.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (nav != null) {
@@ -69,6 +69,7 @@ fun KPage(title: String, nav: Nav?, subtitle: String? = null, actions: @Composab
                     }
                 }
             } else Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(if (nav != null) 10.dp else 0.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, maxLines = 1)
                 if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
@@ -280,6 +281,7 @@ fun KListItem(title: String, subtitle: String = "", trailing: String = "", trail
                 Icon(painterResource(icon), null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(12.dp))
             }
+            Spacer(Modifier.width(if (nav != null) 10.dp else 0.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
                 if (subtitle.isNotEmpty()) Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)

@@ -14,3 +14,5 @@ Base: V51
 - Replaced the application icon resource drawable-nodpi/app_icon.png with the supplied icon-apk.png source.
 - This single app_icon resource is used by the Android launcher and all in-app application-logo placements.
 - Functional feature icons (cart, stopwatch, PIN, navigation, etc.) were not replaced.
+
+V53 R1 PATCH: safe area/system bars preserved; submenu header spacing; icon alpha crop; role icon cleanup; stopwatch vector; login copy/layout cleanup; local login normalization; start-shift crash guard/off-main-thread persistence.
