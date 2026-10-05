@@ -6,12 +6,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
@@ -329,7 +331,7 @@ private fun WorkerFormBody(vm: PosViewModel, old: Worker?, onDone: () -> Unit) {
     val dup = workers.any { it.username == u && it.id != old?.id }
     val err = when { u.isBlank() -> null; dup -> "Username sudah dipakai"; old == null && pin.isNotEmpty() && pin.length < 4 -> "PIN 4–6 angka"; else -> null }
     KField("Nama", name, { name = it }); KField("Username", user, { user = it })
-    KSecretField(if (old == null) "PIN (4–6 angka)" else "PIN baru (kosongkan jika tidak diganti)", pin) { pin = it }
+    KSecretField(if (old == null) "PIN (4–6 angka)" else "PIN baru (kosongkan jika tidak diganti)", pin, onValue = { pin = it })
     KField("WhatsApp (opsional)", wa, { wa = it })
     KLabel("Outlet"); KChips(outlets.map { it.name }, outlets.firstOrNull { it.id == outletId }?.name ?: "") { n -> outletId = outlets.firstOrNull { it.name == n }?.id ?: outletId }
     if (old != null) KSwitchRow("Akun aktif", act) { act = it }

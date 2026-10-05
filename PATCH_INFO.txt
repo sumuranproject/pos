@@ -1,20 +1,23 @@
-Saku Kasir — V41
-Base: V40
+Saku Kasir — V42
+Base: V41
 Date: 2026-10-05
 
-Fix:
-- Fixed the remaining Android Vector Drawable AAPT2 error in drawable/ic_notification.xml.
-- Changed android:viewportWidth from 24dp to the required plain float value 24.
-- Kept android:viewportHeight as 24 (already fixed in V40).
-- No icon geometry, stroke, UI logic, Firebase configuration, or database rules changed.
+Fixes from V17 Kotlin build audit:
+- Added missing Compose layout imports for Modifier.size and Modifier.heightIn in MainActivity.kt.
+- Added explicit KSegmented import in MainActivity.kt.
+- Added Alignment and BasicTextField imports in ManageScreens.kt.
+- Added the missing Close icon import in KasirScreens.kt.
+- Extended Session with optional ownerUid so cashier worker sessions can carry the Owner UID expected by PosViewModel/repositories.
+- Fixed KSecretField call to use named onValue because numeric is a later default parameter; this removes the V17 trailing-lambda/type cascade.
 
 Derived-error audit:
-- Audited all 19 res/drawable/*.xml files.
-- No remaining viewportWidth/viewportHeight values with dp units.
-- No remaining unsupported android:cx/android:cy/android:r/android:rx/android:ry attributes.
-- All drawable XML files parse successfully as XML.
-- The V16 blocker was processDebugResources/AAPT2; this V41 removes the exact reported ic_notification.xml issue.
+- Re-audited all V17 reported Kotlin error sites after the fixes.
+- Kotlin source brace/parenthesis/bracket balance: PASS.
+- Standalone Kotlin parser pass produced no syntax/parser diagnostics; Android/Compose classpath is unavailable locally, so this is not a substitute for Gradle.
+- All 19 drawable XML files parse successfully; no invalid viewport dp or SVG geometry attributes remain.
+- Firebase google-services.json and database.rules.json hashes remain identical to V41.
+- scripts/preflight.sh: PASS.
 
 Build status:
 - Local full Gradle build could not be executed because the source package does not include gradlew and the local environment has no Gradle executable.
-- Therefore V41 is NOT claimed as a confirmed APK build until Codemagic (or another Gradle environment) runs assembleDebug.
+- Therefore V42 is NOT claimed as a confirmed APK build until Codemagic (or another Gradle environment) runs assembleDebug. The next Codemagic log is required to expose any downstream compiler errors after the V17 blockers are removed.

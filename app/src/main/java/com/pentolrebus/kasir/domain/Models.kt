@@ -6,7 +6,7 @@ enum class Role { OWNER, CASHIER }
 enum class PaymentMethod { CASH, QRIS }
 enum class SyncStatus { PENDING_SYNC, SYNCED, SYNC_ERROR }
 
-data class Session(val uid: String, val username: String, val role: Role, val businessId: String?, val outletId: String?)
+data class Session(val uid: String, val username: String, val role: Role, val businessId: String?, val outletId: String?, val ownerUid: String? = null)
 data class UserProfile(val uid:String, val ownerUid:String, val username:String, val role:Role, val displayName:String?, val businessId:String?, val outletId:String?)
 data class Business(val id:String="", val ownerUid:String="", val name:String?=null, val type:String?=null, val phone:String?=null)
 data class Outlet(val id:String="", val ownerUid:String="", val businessId:String?=null, val name:String="", val address:String?=null, val active:Boolean=true)
