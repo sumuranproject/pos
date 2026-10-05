@@ -55,7 +55,7 @@ private val PillShape = RoundedCornerShape((HTML_REM_DP * 1.188f).dp)
 fun KPage(title: String, nav: Nav?, subtitle: String? = null, actions: @Composable RowScope.() -> Unit = {}, fab: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Row(
-            Modifier.fillMaxWidth().padding(start = (HTML_REM_DP * .625f).dp, end = (HTML_REM_DP * .75f).dp, top = 12.dp, bottom = 10.dp),
+            Modifier.fillMaxWidth().statusBarsPadding().padding(start = (HTML_REM_DP * .625f).dp, end = (HTML_REM_DP * .75f).dp, top = 12.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (nav != null) {

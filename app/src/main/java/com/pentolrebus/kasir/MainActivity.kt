@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
@@ -112,10 +113,10 @@ private fun KasirApp(vm: PosViewModel, diagnostics: Diagnostics) {
         val baseDensity = LocalDensity.current
         // Match the HTML/screenshot design scale globally, not typography alone.
         // The device's actual density remains untouched; only the app's Compose
-        // design coordinate space is scaled proportionally by 10%.
+        // design coordinate space uses the device density at 1.00x.
         androidx.compose.runtime.CompositionLocalProvider(
             LocalDensity provides Density(
-                density = baseDensity.density * 0.90f,
+                density = baseDensity.density * 1.00f,
                 fontScale = baseDensity.fontScale
             )
         ) {
@@ -188,6 +189,7 @@ private fun PasswordField(label: String, value: String, onValue: (String) -> Uni
 @Composable
 private fun AuthScreen(vm: PosViewModel, error: String? = null) {
     var register by remember { mutableStateOf(false) }
+    BackHandler(enabled = register) { register = false }
     var username by remember { mutableStateOf("") }
     var ownerName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }

@@ -62,7 +62,7 @@ fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (
                 ManageRouter(route, arg, vm, session, nav, printer, themeMode, onThemeMode) { showClose = true }
             } else when (tab) {
                 0 -> Column(Modifier.fillMaxSize()) {
-                    Row(Modifier.fillMaxWidth().padding(start = 17.dp, end = 8.dp, top = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 17.dp, end = 8.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(outletName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, maxLines = 1)
                             Text(if (session.role == Role.OWNER) "Owner · ${session.username}" else "${session.username} · Kasir", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
