@@ -36,24 +36,19 @@ private val DarkColors = darkColorScheme(
     secondary = Color(0xFF9AA7BF), onSecondary = Color(0xFF111722), error = Color(0xFFF06A6A), onError = Color(0xFF06101F)
 )
 
-private const val HTML_DPI_SCALE = 1.10f
-
-// saku-kasir-dpi.html: html{font-size:110%}.
-// Compose uses dp/sp rather than CSS px/rem, so the 110% reference is
-// applied to typography while dp remains density-independent.
 private val SakuTypography = Typography(
-    displayLarge = TextStyle(fontSize = (32f * HTML_DPI_SCALE).sp, lineHeight = (38f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.ExtraBold),
-    headlineLarge = TextStyle(fontSize = (24f * HTML_DPI_SCALE).sp, lineHeight = (30f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.ExtraBold),
-    headlineSmall = TextStyle(fontSize = (20f * HTML_DPI_SCALE).sp, lineHeight = (25f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.ExtraBold),
-    titleLarge = TextStyle(fontSize = (18f * HTML_DPI_SCALE).sp, lineHeight = (23f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.ExtraBold),
-    titleMedium = TextStyle(fontSize = (16f * HTML_DPI_SCALE).sp, lineHeight = (21f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.Bold),
-    titleSmall = TextStyle(fontSize = (14f * HTML_DPI_SCALE).sp, lineHeight = (18f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.Bold),
-    bodyLarge = TextStyle(fontSize = (16f * HTML_DPI_SCALE).sp, lineHeight = (21f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.Normal),
-    bodyMedium = TextStyle(fontSize = (15f * HTML_DPI_SCALE).sp, lineHeight = (20f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.Normal),
-    bodySmall = TextStyle(fontSize = (13f * HTML_DPI_SCALE).sp, lineHeight = (17f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.Normal),
-    labelLarge = TextStyle(fontSize = (14f * HTML_DPI_SCALE).sp, lineHeight = (18f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.Bold),
-    labelMedium = TextStyle(fontSize = (13f * HTML_DPI_SCALE).sp, lineHeight = (16f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.SemiBold),
-    labelSmall = TextStyle(fontSize = (11f * HTML_DPI_SCALE).sp, lineHeight = (14f * HTML_DPI_SCALE).sp, fontWeight = FontWeight.SemiBold)
+    displayLarge = TextStyle(fontSize = 32f.sp, lineHeight = 38f.sp, fontWeight = FontWeight.ExtraBold),
+    headlineLarge = TextStyle(fontSize = 24f.sp, lineHeight = 30f.sp, fontWeight = FontWeight.ExtraBold),
+    headlineSmall = TextStyle(fontSize = 20f.sp, lineHeight = 25f.sp, fontWeight = FontWeight.ExtraBold),
+    titleLarge = TextStyle(fontSize = 18f.sp, lineHeight = 23f.sp, fontWeight = FontWeight.ExtraBold),
+    titleMedium = TextStyle(fontSize = 16f.sp, lineHeight = 21f.sp, fontWeight = FontWeight.Bold),
+    titleSmall = TextStyle(fontSize = 14f.sp, lineHeight = 18f.sp, fontWeight = FontWeight.Bold),
+    bodyLarge = TextStyle(fontSize = 16f.sp, lineHeight = 21f.sp, fontWeight = FontWeight.Normal),
+    bodyMedium = TextStyle(fontSize = 15f.sp, lineHeight = 20f.sp, fontWeight = FontWeight.Normal),
+    bodySmall = TextStyle(fontSize = 13f.sp, lineHeight = 17f.sp, fontWeight = FontWeight.Normal),
+    labelLarge = TextStyle(fontSize = 14f.sp, lineHeight = 18f.sp, fontWeight = FontWeight.Bold),
+    labelMedium = TextStyle(fontSize = 13f.sp, lineHeight = 16f.sp, fontWeight = FontWeight.SemiBold),
+    labelSmall = TextStyle(fontSize = 11f.sp, lineHeight = 14f.sp, fontWeight = FontWeight.SemiBold)
 )
 
 @Composable

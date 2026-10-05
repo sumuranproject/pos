@@ -1,11 +1,13 @@
-Saku Kasir — V46
+Saku Kasir — V49
 
-Base: V45
-Purpose: Fix all compile errors reported by build_log_v19.txt and remove directly-derived Compose call-site issues.
+Base: V48
+Purpose: Align the Android UI scale with the supplied Saku Kasir screenshot/HTML reference without changing POS/Firebase logic.
 
 Changes:
-- MainActivity.kt: remove RectangleShape/fillMaxHeight dependency from the responsive shell; use fillMaxSize and zero-radius RoundedCornerShape for narrow layout.
-- Common.kt: correct invalid Modifier.padding argument combination by using explicit start/end/top/bottom.
-- ManageScreens.kt: make KListItem onClick arguments explicit in SettingsScreen so trailing lambdas cannot bind to divider:Boolean.
+- MainActivity.kt: apply a single global 1.10x Compose design scale through LocalDensity, preserving the device's own density and font scale.
+- Theme.kt: remove the previous typography-only 1.10 multiplier so typography is not double-scaled; the global LocalDensity scale now applies consistently to dp/sp geometry and text.
+- The scale is global and proportional: cards, fields, buttons, spacing, icons, navigation and typography grow together instead of being enlarged individually.
+- Android remains density-independent; the 440 dpi phone is not hard-coded into the APK.
 - No Firebase/Auth/RTDB/FCM configuration changes.
 - No Repository/domain/business-logic changes.
+- Base remains V48; V49 does not overwrite or roll back earlier versions.
