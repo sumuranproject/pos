@@ -1,15 +1,20 @@
-Saku Kasir — V40
-Base: V39
+Saku Kasir — V41
+Base: V40
 Date: 2026-10-05
 
 Fix:
-- Fixed Android Vector Drawable resource format errors that caused V15/V15-style AAPT2 resource linking failures.
-- Converted invalid SVG-style <circle>/<rect> elements and unsupported circle/rect attributes into Android Vector Drawable <path> data.
-- Preserved icon geometry, 24dp viewport, blue stroke style, stroke width, caps, joins, and intended proportions.
-- Normalized ic_notification viewportHeight from 24dp to 24 (resource syntax only).
-- Audited all drawable XMLs for the same invalid SVG constructs.
+- Fixed the remaining Android Vector Drawable AAPT2 error in drawable/ic_notification.xml.
+- Changed android:viewportWidth from 24dp to the required plain float value 24.
+- Kept android:viewportHeight as 24 (already fixed in V40).
+- No icon geometry, stroke, UI logic, Firebase configuration, or database rules changed.
 
-Downstream audit:
-- Current V39 source already contains valid imports/usages for rememberSaveable and KeyboardOptions; historical errors for those symbols came from older builds/source and are not present in this V39 base.
-- No Firebase configuration or database rules were changed.
-- Full Gradle/Codemagic build was not available in this local environment; therefore this package is not claimed as a confirmed successful APK build.
+Derived-error audit:
+- Audited all 19 res/drawable/*.xml files.
+- No remaining viewportWidth/viewportHeight values with dp units.
+- No remaining unsupported android:cx/android:cy/android:r/android:rx/android:ry attributes.
+- All drawable XML files parse successfully as XML.
+- The V16 blocker was processDebugResources/AAPT2; this V41 removes the exact reported ic_notification.xml issue.
+
+Build status:
+- Local full Gradle build could not be executed because the source package does not include gradlew and the local environment has no Gradle executable.
+- Therefore V41 is NOT claimed as a confirmed APK build until Codemagic (or another Gradle environment) runs assembleDebug.
