@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pentolrebus.kasir.R
 import com.pentolrebus.kasir.domain.*
 import com.pentolrebus.kasir.util.BluetoothPrinter
