@@ -8,6 +8,8 @@ workflows:
     scripts:
       - name: Setup local.properties
         script: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+      - name: Make Gradle wrapper executable
+        script: chmod +x gradlew
       - name: Download bundled fonts
         script: bash download_fonts.sh
       - name: Build debug APK
