@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">SakuKasir</string>
+    <string name="camera_permission_title">Izin kamera diperlukan</string>
+    <string name="camera_permission_message">Kamera digunakan untuk mengambil foto bukti pembayaran QRIS langsung dari kamera.</string>
+    <string name="bluetooth_permission_title">Izin Bluetooth diperlukan</string>
+    <string name="bluetooth_permission_message">Bluetooth digunakan untuk menemukan dan mencetak struk pada printer kasir.</string>
+    <string name="notification_permission_title">Izin notifikasi</string>
+    <string name="notification_permission_message">Notifikasi digunakan untuk memberi tahu aktivitas penting seperti void, refund, dan stok.</string>
+</resources>

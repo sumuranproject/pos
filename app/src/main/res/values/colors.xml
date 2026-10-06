@@ -1,1 +1,6 @@
-<resources><color name="transparent">#00000000</color></resources>
+<resources>
+    <color name="sk_primary">#0F5132</color>
+    <color name="sk_primary_dark">#22A06B</color>
+    <color name="sk_surface">#FAFAF7</color>
+    <color name="sk_dark_surface">#0F0F0D</color>
+</resources>

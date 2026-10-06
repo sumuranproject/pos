@@ -1,0 +1,115 @@
+package com.sakukasir.pos.data
+
+import com.sakukasir.pos.domain.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import java.text.SimpleDateFormat
+import java.util.*
+
+class LocalPosRepository(
+    private val store: OfflineStore,
+    private val queue: OfflineSyncQueue
+) : PosRepository {
+    private val _transactions = MutableStateFlow(seedTransactions())
+    private val _expenses = MutableStateFlow(seedExpenses())
+    private val _audit = MutableStateFlow<List<AuditEntry>>(emptyList())
+    private val _notifications = MutableStateFlow(seedNotifications())
+    private val _products = MutableStateFlow(seedProducts())
+    private val _categories = MutableStateFlow(seedCategories())
+    private val _outlets = MutableStateFlow(seedOutlets())
+    private val _settings = MutableStateFlow(AppSettings())
+    private val _shift = MutableStateFlow<Shift?>(null)
+
+    override val transactions: StateFlow<List<Transaction>> = _transactions.asStateFlow()
+    override val expenses: StateFlow<List<Expense>> = _expenses.asStateFlow()
+    override val audit: StateFlow<List<AuditEntry>> = _audit.asStateFlow()
+    override val notifications: StateFlow<List<AppNotification>> = _notifications.asStateFlow()
+    override val products: StateFlow<List<Product>> = _products.asStateFlow()
+    override val categories: StateFlow<List<Category>> = _categories.asStateFlow()
+    override val outlets: StateFlow<List<Outlet>> = _outlets.asStateFlow()
+    override val settings: StateFlow<AppSettings> = _settings.asStateFlow()
+    override val activeShift: StateFlow<Shift?> = _shift.asStateFlow()
+    override val syncQueue = queue.items
+
+    override suspend fun addTransaction(tx: Transaction) {
+        _transactions.value = listOf(tx) + _transactions.value
+        store.save(TransactionEntity(tx.id, tx.timestamp, tx.date, tx.time, tx.items.joinToString("|"){ "${it.productId}:${it.qty}:${it.price}" },
+            tx.total, tx.method.name, tx.cashier, tx.cashierId, tx.outlet, tx.discount, tx.tax, tx.taxPct, tx.received, tx.change,
+            tx.status.name, tx.syncStatus.name))
+        queue.enqueue(SyncQueueItem(tx.id, "transaction", tx.id))
+    }
+
+    override suspend fun updateTransaction(tx: Transaction) {
+        _transactions.value = _transactions.value.map { if (it.id == tx.id) tx else it }
+        queue.enqueue(SyncQueueItem(tx.id, "transaction_update", tx.id))
+    }
+
+    override suspend fun addExpense(expense: Expense) {
+        _expenses.value = listOf(expense) + _expenses.value
+        queue.enqueue(SyncQueueItem(expense.id, "expense", expense.id))
+    }
+
+    override suspend fun deleteExpense(id: String) {
+        _expenses.value = _expenses.value.filterNot { it.id == id }
+        queue.enqueue(SyncQueueItem(id, "expense_delete", id))
+    }
+
+    override suspend fun addAudit(entry: AuditEntry) { _audit.value = listOf(entry) + _audit.value }
+    override suspend fun addNotification(item: AppNotification) { _notifications.value = listOf(item) + _notifications.value }
+    override suspend fun markNotificationsRead() { _notifications.value = _notifications.value.map { it.copy(read = true) } }
+
+    override suspend fun addProduct(product: Product) {
+        _products.value = _products.value + product
+    }
+
+    override suspend fun updateProduct(product: Product) {
+        _products.value = _products.value.map { if (it.id == product.id) product else it }
+    }
+
+    override suspend fun updateSettings(settings: AppSettings) { _settings.value = settings }
+    override suspend fun setShift(shift: Shift?) { _shift.value = shift }
+
+    override suspend fun sync() {
+        kotlinx.coroutines.delay(250)
+        queue.items.value.forEach { queue.markSynced(it.id) }
+        _transactions.value = _transactions.value.map { it.copy(syncStatus = SyncStatus.SYNCED) }
+    }
+
+    companion object {
+        private fun date(ts: Long): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(ts))
+        private fun time(ts: Long): String = SimpleDateFormat("HH:mm", Locale.US).format(Date(ts))
+        private fun seedProducts() = listOf(
+            Product(1,"Kopi Susu Gula Aren",18000,"cup","Minuman",24,5),
+            Product(2,"Teh Manis",8000,"gelas","Minuman",3,5),
+            Product(3,"Roti Bakar Coklat",15000,"porsi","Makanan",12,3),
+            Product(4,"Nasi Goreng Spesial",25000,"porsi","Makanan",8,3),
+            Product(5,"Air Mineral 600ml",5000,"botol","Minuman",0,5),
+            Product(6,"Keripik Singkong",12000,"pack","Snack",40,10),
+            Product(7,"Es Krim Vanilla",10000,"cup","Snack",15,5),
+            Product(8,"Mie Instan Goreng",12000,"porsi","Makanan",2,5)
+        )
+        private fun seedCategories() = listOf(Category(1,"Makanan"),Category(2,"Minuman"),Category(3,"Snack"),Category(4,"Lainnya"))
+        private fun seedOutlets() = listOf(Outlet(1,"Toko Berkah","Jl. Merdeka 12"),Outlet(2,"Cabang Pasar","Pasar Baru Blok C"))
+        private fun seedExpenses() = listOf(
+            Expense("EXP-001",150000,"Bahan","Beli kopi 2kg",System.currentTimeMillis()-86400000,"Budi"),
+            Expense("EXP-002",50000,"Operasional","Token listrik",System.currentTimeMillis()-82800000,"Budi"),
+            Expense("EXP-003",120000,"Gaji","Kasbon Andi",System.currentTimeMillis()-90000000,"Budi")
+        )
+        private fun seedNotifications() = listOf(
+            AppNotification(1,"stock_low","Stok menipis","Teh Manis · sisa 3",System.currentTimeMillis()-1800000),
+            AppNotification(2,"stock_low","Stok menipis","Mie Instan · sisa 2",System.currentTimeMillis()-2700000),
+            AppNotification(3,"system","Sinkronisasi berhasil","3 transaksi tersinkron",System.currentTimeMillis()-3600000,true)
+        )
+        private fun seedTransactions(): List<Transaction> {
+            val now = System.currentTimeMillis()
+            return listOf(
+                Transaction("TRX-20261006-0042",now-3600000,date(now-3600000),"14:32",listOf(CartItem(1,"Kopi Susu",18000,2,"cup")),38000,PaymentMethod.CASH,"Andi Wijaya","kasir","Toko Berkah",received=50000,change=12000,syncStatus=SyncStatus.SYNCED),
+                Transaction("TRX-20261006-0041",now-5000000,date(now-5000000),"14:05",listOf(CartItem(2,"Teh Manis",8000,1,"gelas")),18000,PaymentMethod.QRIS,"Andi Wijaya","kasir","Toko Berkah",syncStatus=SyncStatus.SYNCED),
+                Transaction("TRX-20261006-0040",now-7000000,date(now-7000000),"13:48",listOf(CartItem(4,"Nasi Goreng",25000,3,"porsi")),97000,PaymentMethod.CASH,"Andi Wijaya","kasir","Toko Berkah",discount=2000,received=100000,change=3000,syncStatus=SyncStatus.PENDING_SYNC),
+                Transaction("TRX-20261006-0039",now-9000000,date(now-9000000),"13:12",listOf(CartItem(3,"Roti Bakar",15000,2,"porsi")),33000,PaymentMethod.CASH,"Andi Wijaya","kasir","Toko Berkah",received=50000,change=17000,syncStatus=SyncStatus.SYNCED),
+                Transaction("TRX-20261006-0038",now-11000000,date(now-11000000),"12:55",listOf(CartItem(7,"Es Krim",10000,4,"cup")),62000,PaymentMethod.QRIS,"Andi Wijaya","kasir","Toko Berkah",syncStatus=SyncStatus.SYNC_ERROR)
+            )
+        }
+    }
+}

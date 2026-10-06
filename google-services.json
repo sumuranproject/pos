@@ -1,0 +1,16 @@
+{
+  "_comment": "TODO: Replace this placeholder with the real Firebase google-services.json before enabling the Google Services Gradle plugin. Firebase SDKs are present but the MVP repository is local-only.",
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "TODO-replace-sakukasir",
+    "storage_bucket": "TODO-replace-sakukasir.appspot.com"
+  },
+  "client": [{
+    "client_info": {
+      "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+      "android_client_info": {"package_name": "com.sakukasir.pos"}
+    },
+    "api_key": [{"current_key": "TODO_REPLACE"}]
+  }],
+  "configuration_version": "1"
+}
