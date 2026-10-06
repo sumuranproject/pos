@@ -11,7 +11,7 @@ import kotlinx.coroutines.withTimeout
 import java.util.UUID
 
 interface PosRepository {
- suspend fun registerOwner(email:String,password:String,username:String,displayName:String,businessName:String?,outletName:String?,whatsapp:String?):Result<Session>
+ suspend fun registerOwner(email:String,password:String,username:String,displayName:String,businessName:String?,businessType:String?,whatsapp:String?):Result<Session>
  suspend fun usernameLogin(username:String,password:String):Result<Session>
  suspend fun sendPasswordReset(username:String):Result<Unit>
  suspend fun loadProducts(outletId:String):List<Product>
@@ -44,16 +44,16 @@ interface PosRepository {
 
 class FirebasePosRepository(private val auth:FirebaseAuth=FirebaseAuth.getInstance(), private val root:DatabaseReference=FirebaseDatabase.getInstance().reference, private val secure:SecureLocalStore, private val log:(String,String)->Unit):PosRepository {
  private suspend fun <T> timed(block:suspend()->T)=withTimeout(15_000){block()}
- override suspend fun registerOwner(email:String,password:String,username:String,displayName:String,businessName:String?,outletName:String?,whatsapp:String?):Result<Session> = runCatching {
+ override suspend fun registerOwner(email:String,password:String,username:String,displayName:String,businessName:String?,businessType:String?,whatsapp:String?):Result<Session> = runCatching {
   val clean=username.trim().lowercase().replace(" ",""); if(clean.length<3) error("Username minimal 3 karakter")
   val existing=timed{root.child("loginIndex").child(clean).get().await()}; if(existing.exists()) error("Username sudah dipakai")
   val result=timed{auth.createUserWithEmailAndPassword(email.trim(),password).await()}; val uid=result.user?.uid ?: error("Firebase UID tidak tersedia")
-  val businessId=businessName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}; val outletId=outletName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}
+  val businessId=businessName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}; val outletId=businessName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}
   val profile=mapOf("uid" to uid,"ownerUid" to uid,"username" to clean,"role" to "OWNER","displayName" to displayName.trim().ifBlank{clean},"businessId" to businessId,"outletId" to outletId,"whatsapp" to whatsapp,"email" to email.trim())
   timed{root.child("users").child(uid).setValue(profile).await()}
   timed{root.child("loginIndex").child(clean).setValue(mapOf("authEmail" to email.trim(),"uid" to uid,"role" to "OWNER","active" to true,"recoveryEmail" to email.trim())).await()}
-  if(businessId!=null) timed{root.child("businesses").child(businessId).setValue(mapOf("id" to businessId,"ownerUid" to uid,"name" to businessName)).await()}
-  if(outletId!=null) timed{root.child("outlets").child(outletId).setValue(mapOf("id" to outletId,"ownerUid" to uid,"businessId" to businessId,"name" to outletName)).await()}
+  if(businessId!=null) timed{root.child("businesses").child(businessId).setValue(mapOf("id" to businessId,"ownerUid" to uid,"name" to businessName,"type" to businessType?.trim(),"phone" to whatsapp?.trim())).await()}
+  if(outletId!=null) timed{root.child("outlets").child(outletId).setValue(mapOf("id" to outletId,"ownerUid" to uid,"businessId" to businessId,"name" to businessName)).await()}
   secure.saveSession(uid,clean,"OWNER",businessId,outletId); Session(uid,clean,Role.OWNER,businessId,outletId)
  }.also{if(it.isFailure)log("ERROR","OWNER_REGISTRATION_ERROR stage=registration")}
  override suspend fun usernameLogin(username:String,password:String)=runCatching{

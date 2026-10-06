@@ -23,6 +23,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import com.pentolrebus.kasir.domain.*
 import java.text.NumberFormat
@@ -70,14 +71,14 @@ fun KPage(title: String, nav: Nav?, subtitle: String? = null, actions: @Composab
                 }
             } else Spacer(Modifier.width(8.dp))
                     Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                Text(title, fontSize = 24.sp, lineHeight = 29.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
                 if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
             actions()
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             Column(
-                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = HTML_REM_DP.dp, top = (HTML_REM_DP * .25f).dp, end = HTML_REM_DP.dp, bottom = if (fab != null) 96.dp else (HTML_REM_DP * .25f).dp),
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding().navigationBarsPadding().padding(start = HTML_REM_DP.dp, top = (HTML_REM_DP * .25f).dp, end = HTML_REM_DP.dp, bottom = if (fab != null) 96.dp else (HTML_REM_DP * .25f).dp),
                 verticalArrangement = Arrangement.spacedBy((HTML_REM_DP * .5f).dp),
                 content = content
             )
@@ -275,14 +276,14 @@ fun KListGroup(content: @Composable ColumnScope.() -> Unit) {
 fun KListItem(title: String, subtitle: String = "", trailing: String = "", trailingColor: Color = MaterialTheme.colorScheme.onSurface, icon: Int? = null, onClick: (() -> Unit)? = null, divider: Boolean = true) {
     val m = if (onClick != null) Modifier.fillMaxWidth().clickable(onClick = onClick) else Modifier.fillMaxWidth()
     Column {
-        Row(m.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(m.heightIn(min = 52.dp).padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) {
                 Icon(painterResource(icon), null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(12.dp))
             }
                     Column(Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-                if (subtitle.isNotEmpty()) Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                Text(title, fontSize = 17.6.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                if (subtitle.isNotEmpty()) Text(subtitle, fontSize = 17.6.sp, lineHeight = 21.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
             }
             if (trailing.isNotEmpty()) Text(trailing, color = trailingColor, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
             if (onClick != null) Icon(painterResource(R.drawable.ic_chevron), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
@@ -293,7 +294,7 @@ fun KListItem(title: String, subtitle: String = "", trailing: String = "", trail
 
 @Composable
 fun KItem(title: String, subtitle: String = "", trailing: String = "", trailingColor: Color = MaterialTheme.colorScheme.onSurface, icon: Int? = null, onClick: (() -> Unit)? = null) {
-    KCard {
+    Surface(Modifier.fillMaxWidth(), shape = CardShape, color = MaterialTheme.colorScheme.surface) {
         KListItem(title, subtitle, trailing, trailingColor, icon, onClick, divider = false)
     }
 }

@@ -40,7 +40,7 @@ class PosViewModel(private val repo:PosRepository, private val offline:OfflineSt
   if(username.trim().isBlank()){ _message.value="Masukkan username terlebih dahulu"; return }
   viewModelScope.launch{ repo.sendPasswordReset(username).onSuccess{_message.value="Link reset password Owner sudah dikirim ke email terdaftar"}.onFailure{_message.value=it.message?:"Gagal mengirim reset password"} }
  }
- fun register(email:String,password:String,username:String,displayName:String,business:String?,outlet:String?,whatsapp:String?){_auth.value=AuthState.Loading;viewModelScope.launch{repo.registerOwner(email,password,username,displayName,business,outlet,whatsapp).onSuccess(::loginSuccess).onFailure{_auth.value=AuthState.Error(it.message?:"Registrasi gagal")}}}
+ fun register(email:String,password:String,username:String,displayName:String,business:String?,businessType:String?,whatsapp:String?){_auth.value=AuthState.Loading;viewModelScope.launch{repo.registerOwner(email,password,username,displayName,business,businessType,whatsapp).onSuccess(::loginSuccess).onFailure{_auth.value=AuthState.Error(it.message?:"Registrasi gagal")}}}
  private fun acceptSession(s:Session,e:Role?){if(e!=null&&s.role!=e){_auth.value=AuthState.Error("Akun ini bukan akun ${if(e==Role.OWNER)"Owner" else "Kasir"}.");return};loginSuccess(s)}
  private fun loginSuccess(s:Session){_auth.value=AuthState.LoggedIn(s);_activeOutlet.value=s.outletId;viewModelScope.launch{loadMaster(s);syncPending(s)}}
 

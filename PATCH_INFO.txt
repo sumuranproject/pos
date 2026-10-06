@@ -1,24 +1,22 @@
-Saku Kasir V56 — Small-DPI UI scale adjustment
+V63 REGISTRATION FORM PATCH — based on V62
 
-Baseline: V53-R1
+Registration UI:
+- Owner registration is now split into 2 pages/steps.
+- Step 1: Username, Email, Password.
+- Step 2: Nama Bisnis, Tipe Bisnis, Nomor HP.
+- Step 1 validates before advancing to Step 2.
+- Back button/system Back returns from Step 2 to Step 1 before leaving registration.
+- Removed old Owner Name, Confirm Password, Outlet Name, and optional WhatsApp fields from the registration UI.
+- Existing login screen and V62 centered login layout are preserved.
 
-Authentication changes:
-- Removed role-selection screen before login.
-- One login page for Owner and Cashier.
-- Login UI uses Username + Password only.
-- Owner registration order: Username, Email, Password, Confirm Password, Owner Name, Business, Outlet, WhatsApp.
-- Owner remains backed by Firebase Authentication Email/Password; email is used internally for Auth/recovery.
-- Cashier accounts are created by Owner with Username + Password and a secondary Firebase Auth instance, so creating a cashier does not sign out the Owner.
-- Cashier and Owner profiles are stored in RTDB and role is resolved after authentication.
-- Removed local PIN/hash credential storage from SecureLocalStore.
-- Added loginIndex mapping for username -> Firebase Auth email/UID/role.
-- Password reset is available for Owner accounts via their registered email; Cashier password reset is Owner-managed.
-- Guest/Anonymous Auth architecture is not removed by this patch.
+Registration data:
+- Firebase owner registration now accepts business type.
+- Business record stores name, type, and phone.
+- A default initial outlet is created using the business name so the existing POS flow still has an outlet.
+- Owner displayName falls back to username because the old Owner Name field is no longer part of registration.
 
-Important: Firebase Console Authentication must have Email/Password provider enabled.
-Database rules must be deployed from database.rules.json for loginIndex and cashier profile writes.
-
-
-UI-only change in this overwrite:
-- Reduced Compose global design scale from 1.10x to 0.90x so the UI is smaller on small-DPI/small-screen devices.
-- Authentication and database rules are unchanged.
+Preserved:
+- V62 Auth/Firebase flow.
+- V62 Firebase Rules.
+- V62 UI/IME/status-bar/navigation handling.
+- No diagnostic/log feature added.

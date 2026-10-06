@@ -3,6 +3,7 @@ package com.pentolrebus.kasir.ui
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,19 +12,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
 import com.pentolrebus.kasir.R
 import com.pentolrebus.kasir.domain.*
 import com.pentolrebus.kasir.util.BluetoothPrinter
-import com.pentolrebus.kasir.util.Diagnostics
 
 private enum class Pay { NONE, CASH, QRIS, SUCCESS }
 
 /** Main authenticated shell: 4-tab bottom navigation shared by Kasir and Owner, plus a page stack for detail/form screens. */
 @Composable
-fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (Int) -> Unit, diagnostics: Diagnostics) {
+fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (Int) -> Unit) {
     val ctx = LocalContext.current
     val printer = remember(ctx) { BluetoothPrinter(ctx) }
     val shift by vm.shift.collectAsState()
@@ -49,6 +52,7 @@ fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (
     val discountValue = discount.coerceIn(0, subtotal)
     val taxValue = kotlin.math.round((subtotal - discountValue) * taxPercent.coerceIn(0, 100) / 100.0).toLong()
     val payTotal = (subtotal - discountValue + taxValue).coerceAtLeast(0)
+    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
     BackHandler(enabled = stack.isNotEmpty() || (tab == 1 && pay != Pay.NONE && pay != Pay.SUCCESS)) {
         if (stack.isNotEmpty()) stack = stack.dropLast(1) else pay = Pay.NONE
@@ -64,7 +68,7 @@ fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (
                 0 -> Column(Modifier.fillMaxSize()) {
                     Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 17.dp, end = 8.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text(outletName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                            Text(outletName, fontSize = 17.6.sp, lineHeight = 21.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
                             Text(if (session.role == Role.OWNER) "Owner · ${session.username}" else "${session.username} · Kasir", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         ShiftChip(shift, onStart = { showStart = true }, onOpen = { nav.open("Shift:detail", "active") })
@@ -84,28 +88,21 @@ fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (
                 2 -> ReportsScreen(vm, session, nav)
                 else -> SettingsScreen(vm, session, nav, themeMode = themeMode, onLogout = tryLogout)
             }
-            SmallFloatingActionButton(
-                onClick = {
-                    val name = diagnostics.exportToDownloads()
-                    Toast.makeText(ctx, if (name != null) "Log diagnostik disimpan: Downloads/Kasir" else "Gagal menyimpan log diagnostik", Toast.LENGTH_LONG).show()
-                },
-                modifier = Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 12.dp),
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-            ) {
-                Text("LOG", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-            }
         }
-        if (pay != Pay.SUCCESS) Surface(color = MaterialTheme.colorScheme.surface) {
+        if (pay != Pay.SUCCESS && !imeVisible) Surface(color = MaterialTheme.colorScheme.surface) {
             Row(Modifier.fillMaxWidth().navigationBarsPadding()) {
                 val labels = listOf("Kasir", "Checkout", "Laporan", "Pengaturan")
                 val icons = listOf(R.drawable.ic_grid, R.drawable.ic_cart, R.drawable.ic_report, R.drawable.ic_more)
                 labels.forEachIndexed { i, l ->
                     val selected = tab == i
                     val c = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    Column(Modifier.weight(1f).clickable { tab = i; stack = emptyList(); if (i != 1) pay = Pay.NONE }.padding(top = 8.dp, bottom = 7.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        BadgedBox(badge = { if (i == 1 && cart.isNotEmpty()) Badge { Text("${cart.sumOf { it.quantity }}") } }) { Icon(painterResource(icons[i]), l, tint = c, modifier = Modifier.size(26.dp)) }
-                        Text(l, color = c, style = MaterialTheme.typography.labelSmall, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
+                    Column(Modifier.weight(1f).clickable { tab = i; stack = emptyList(); if (i != 1) pay = Pay.NONE }.padding(top = 6.dp, bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Surface(shape = RoundedCornerShape(18.dp), color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent) {
+                            Box(Modifier.padding(horizontal = 14.dp, vertical = 4.dp), contentAlignment = Alignment.Center) {
+                                BadgedBox(badge = { if (i == 1 && cart.isNotEmpty()) Badge { Text("${cart.sumOf { it.quantity }}") } }) { Icon(painterResource(icons[i]), l, tint = c, modifier = Modifier.size(26.dp)) }
+                            }
+                        }
+                        Text(l, color = c, fontSize = 17.6.sp, lineHeight = 21.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
                     }
                 }
             }
@@ -143,7 +140,7 @@ private fun StartShiftDialog(session: Session, outlets: List<Outlet>, activeOutl
     var menu by remember { mutableStateOf(false) }
     val owner = session.role == Role.OWNER
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surface) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).navigationBarsPadding().padding(bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.fillMaxWidth().imePadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Mulai Shift", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
             if (owner) {
                 Box {

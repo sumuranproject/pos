@@ -6,7 +6,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -59,7 +58,7 @@ fun KasirScreen(vm: PosViewModel, role: Role, nav: Nav, onCheckout: () -> Unit, 
             }
         }
         Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 KChips(listOf("Semua") + categories.filter { it.active }.map { it.name }, if (cat == null) "Semua" else categories.firstOrNull { it.id == cat }?.name.orEmpty()) { selected -> cat = if (selected == "Semua") null else categories.firstOrNull { it.name == selected }?.id }
             }
             TextButton(onClick = { listMode = !listMode }) { Text(if (listMode) "Grid" else "Daftar") }

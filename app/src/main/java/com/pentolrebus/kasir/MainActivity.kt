@@ -28,6 +28,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -79,7 +82,6 @@ import com.pentolrebus.kasir.ui.KasirTheme
 import com.pentolrebus.kasir.ui.KSegmented
 import com.pentolrebus.kasir.ui.PosViewModel
 import com.pentolrebus.kasir.ui.PosViewModelFactory
-import com.pentolrebus.kasir.util.Diagnostics
 import com.pentolrebus.kasir.util.BluetoothPrinter
 import java.text.NumberFormat
 import java.util.Locale
@@ -92,25 +94,19 @@ private fun money(value: Long): String = NumberFormat.getCurrencyInstance(Locale
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val diagnostics = Diagnostics(this)
-        val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            diagnostics.recordUncaughtException(throwable)
-            previousHandler?.uncaughtException(thread, throwable)
-        }
-        val repository = RepositoryProvider.create(this, diagnostics)
+        val repository = RepositoryProvider.create(this)
         val offlineStore = OfflineStore(this)
         setContent {
             KasirTheme {
                 val vm: PosViewModel = viewModel(factory = PosViewModelFactory(repository, offlineStore))
-                KasirApp(vm, diagnostics)
+                KasirApp(vm)
             }
         }
     }
 }
 
 @Composable
-private fun KasirApp(vm: PosViewModel, diagnostics: Diagnostics) {
+private fun KasirApp(vm: PosViewModel) {
     val prefs = androidx.compose.ui.platform.LocalContext.current.getSharedPreferences("ui", android.content.Context.MODE_PRIVATE)
     var themeMode by remember { mutableStateOf(prefs.getInt("theme", 0)) }
     val dark = when (themeMode) { 1 -> false; 2 -> true; else -> androidx.compose.foundation.isSystemInDarkTheme() }
@@ -155,7 +151,6 @@ private fun KasirApp(vm: PosViewModel, diagnostics: Diagnostics) {
                             session = state.session,
                             themeMode = themeMode,
                             onThemeMode = { themeMode = it; prefs.edit().putInt("theme", it).apply() },
-                            diagnostics = diagnostics
                         )
                     }
                 }
@@ -167,7 +162,7 @@ private fun KasirApp(vm: PosViewModel, diagnostics: Diagnostics) {
 
 @Composable
 private fun LoadingScreen(message: String) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             androidx.compose.material3.CircularProgressIndicator()
             Spacer(Modifier.height(16.dp))
@@ -194,14 +189,13 @@ private fun PasswordField(label: String, value: String, onValue: (String) -> Uni
 @Composable
 private fun AuthScreen(vm: PosViewModel, error: String? = null) {
     var register by remember { mutableStateOf(false) }
-    BackHandler(enabled = register) { register = false }
+    var registerStep by remember { mutableStateOf(1) }
+    BackHandler(enabled = register) { if (registerStep == 2) registerStep = 1 else register = false }
     var username by remember { mutableStateOf("") }
-    var ownerName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
     var business by remember { mutableStateOf("") }
-    var outlet by remember { mutableStateOf("") }
+    var businessType by remember { mutableStateOf("") }
     var whatsapp by remember { mutableStateOf("") }
     var validation by remember { mutableStateOf<String?>(null) }
     val message by vm.message.collectAsState()
@@ -209,41 +203,57 @@ private fun AuthScreen(vm: PosViewModel, error: String? = null) {
     LaunchedEffect(message) { message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show(); vm.consumeMessage() } }
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 17.6.dp, vertical = 13.2.dp)) {
-            Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
-                Image(painterResource(R.drawable.app_icon), "Logo Saku Kasir", Modifier.size(76.dp))
-                Text(if (register) "Daftar sebagai Owner" else "Selamat datang", fontSize = 27.5.sp, lineHeight = 33.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 10.dp))
-                Text(if (register) "Buat akun Owner untuk mengelola bisnis Anda" else "Masuk untuk mengelola bisnis Anda", fontSize = 14.2.sp, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp, bottom = 18.dp))
+        Column(Modifier.fillMaxSize().statusBarsPadding().imePadding().navigationBarsPadding().padding(horizontal = 17.6.dp, vertical = 13.2.dp)) {
+            Column(
+                Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                verticalArrangement = if (register) Arrangement.Top else Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().then(if (register) Modifier else Modifier.padding(top = 24.dp)),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Image(painterResource(R.drawable.app_icon), "Logo Saku Kasir", Modifier.size(76.dp))
+                    Text(if (register) "Daftar sebagai Owner" else "Selamat datang", fontSize = 24.sp, lineHeight = 29.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp))
+                    Text(if (register) if (registerStep == 1) "Buat akun Owner" else "Lengkapi data bisnis Anda" else "Masuk untuk mengelola bisnis Anda", fontSize = 14.2.sp, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp, bottom = 18.dp))
 
                 error?.let { AlertBox(it); Spacer(Modifier.height(9.dp)) }
                 validation?.let { AlertBox(it); Spacer(Modifier.height(9.dp)) }
 
-                AuthField("Username", "Masukkan username", username, { username = it }, R.drawable.ic_person)
-                Spacer(Modifier.height(9.dp))
-
                 if (register) {
-                    AuthField("Email", "Masukkan email", email, { email = it }, R.drawable.ic_mail, KeyboardType.Email)
-                    Spacer(Modifier.height(9.dp))
-                    PasswordField("Password", password, { password = it })
-                    Spacer(Modifier.height(9.dp))
-                    PasswordField("Konfirmasi Password", confirmPassword, { confirmPassword = it })
-                    Spacer(Modifier.height(9.dp))
-                    AuthField("Nama Owner", "Masukkan nama", ownerName, { ownerName = it }, null)
-                    Spacer(Modifier.height(9.dp))
-                    AuthField("Nama Bisnis (opsional)", "Masukkan nama bisnis", business, { business = it }, null)
-                    Spacer(Modifier.height(9.dp))
-                    AuthField("Nama Outlet (opsional)", "Masukkan nama outlet", outlet, { outlet = it }, null)
-                    Spacer(Modifier.height(9.dp))
-                    AuthField("WhatsApp (opsional)", "Masukkan WhatsApp", whatsapp, { whatsapp = it }, null, KeyboardType.Phone)
-                    Spacer(Modifier.height(12.dp))
-                    AuthPrimaryButton("Daftar Owner") {
-                        validation = validateRegistration(email, password, confirmPassword, username)
-                        if (validation == null) vm.register(email, password, username, ownerName, business.takeIf(String::isNotBlank), outlet.takeIf(String::isNotBlank), whatsapp.takeIf(String::isNotBlank))
+                    Text("Langkah $registerStep dari 2", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp))
+                    if (registerStep == 1) {
+                        AuthField("Username", "Masukkan username", username, { username = it }, R.drawable.ic_person)
+                        Spacer(Modifier.height(9.dp))
+                        AuthField("Email", "Masukkan email", email, { email = it }, R.drawable.ic_mail, KeyboardType.Email)
+                        Spacer(Modifier.height(9.dp))
+                        PasswordField("Password", password, { password = it })
+                        Spacer(Modifier.height(12.dp))
+                        AuthPrimaryButton("Lanjut") {
+                            validation = validateRegistrationStep1(email, password, username)
+                            if (validation == null) registerStep = 2
+                        }
+                    } else {
+                        AuthField("Nama Bisnis", "Masukkan nama bisnis", business, { business = it }, null)
+                        Spacer(Modifier.height(9.dp))
+                        AuthField("Tipe Bisnis", "Contoh: Kuliner", businessType, { businessType = it }, null)
+                        Spacer(Modifier.height(9.dp))
+                        AuthField("Nomor HP", "Masukkan nomor HP", whatsapp, { whatsapp = it }, null, KeyboardType.Phone)
+                        Spacer(Modifier.height(12.dp))
+                        AuthPrimaryButton("Daftar Owner") {
+                            validation = validateRegistrationStep2(business, businessType, whatsapp)
+                            if (validation == null) vm.register(email, password, username, username, business.trim(), businessType.trim(), whatsapp.trim())
+                        }
+                        TextButton(onClick = { registerStep = 1; validation = null }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Kembali", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        }
                     }
-                    TextButton(onClick = { register = false; validation = null }, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = { register = false; registerStep = 1; validation = null }, modifier = Modifier.fillMaxWidth()) {
                         Text("Sudah punya akun? Masuk", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     }
                 } else {
+                    AuthField("Username", "Masukkan username", username, { username = it }, R.drawable.ic_person)
+                    Spacer(Modifier.height(9.dp))
                     PasswordField("Password", password, { password = it })
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         TextButton(onClick = { vm.resetPassword(username) }, contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)) {
@@ -252,13 +262,14 @@ private fun AuthScreen(vm: PosViewModel, error: String? = null) {
                     }
                     Spacer(Modifier.height(4.dp))
                     AuthPrimaryButton("Masuk") { vm.login(username, password) }
-                    TextButton(onClick = { register = true; validation = null }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                    TextButton(onClick = { register = true; registerStep = 1; validation = null }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
                         Text("Daftar sebagai Owner", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     }
                 }
+                }
             }
             Text(
-                if (register) "Gunakan email aktif untuk pemulihan password Owner." else "Akun Kasir dibuat oleh Owner. Gunakan Username dan Password yang diberikan Owner.",
+                if (register) if (registerStep == 1) "Gunakan email aktif untuk pemulihan password Owner." else "Pastikan data bisnis dan nomor HP sudah benar." else "Akun Kasir dibuat oleh Owner. Gunakan Username dan Password yang diberikan Owner.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -288,13 +299,21 @@ private fun AuthPrimaryButton(label: String, onClick: () -> Unit) {
     }
 }
 
-private fun validateRegistration(email: String, password: String, confirmPassword: String, username: String): String? {
+private fun validateRegistrationStep1(email: String, password: String, username: String): String? {
     val clean = username.trim().lowercase().replace(" ", "")
     return when {
         clean.length < 3 -> "Username minimal 3 karakter"
         !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "Email tidak valid"
         password.length < 8 -> "Password minimal 8 karakter"
-        password != confirmPassword -> "Konfirmasi Password tidak cocok"
+        else -> null
+    }
+}
+
+private fun validateRegistrationStep2(business: String, businessType: String, phone: String): String? {
+    return when {
+        business.trim().length < 2 -> "Nama bisnis wajib diisi"
+        businessType.trim().length < 2 -> "Tipe bisnis wajib diisi"
+        phone.trim().length < 8 -> "Nomor HP tidak valid"
         else -> null
     }
 }

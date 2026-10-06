@@ -19,7 +19,7 @@ android {
         applicationId = "com.pentolrebus.kasir"
         minSdk = 26
         targetSdk = 36
-        versionCode = 59
+        versionCode = 63
         versionName = "1.0.0"
     }
 

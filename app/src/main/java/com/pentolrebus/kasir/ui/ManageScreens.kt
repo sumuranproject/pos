@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -331,7 +332,7 @@ fun WorkerListScreen(vm: PosViewModel, nav: Nav) {
         if (workers.isNotEmpty()) KListGroup { workers.forEachIndexed { i, w -> KListItem(w.displayName.ifBlank { w.username }, (outlets.firstOrNull { it.id == w.outletId }?.name ?: "—") + " · Kasir", if (w.active) "Aktif" else "Nonaktif", if (w.active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, R.drawable.ic_people, onClick = { nav.open("Pekerja:detail", w.id) }, divider = i != workers.lastIndex) } }
     }
     if (sheet) ModalBottomSheet(onDismissRequest = { sheet = false }) {
-        Column(Modifier.padding(16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.fillMaxWidth().imePadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Tambah Pekerja", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
             WorkerFormBody(vm, null) { sheet = false }
         }
