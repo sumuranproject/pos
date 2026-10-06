@@ -88,8 +88,9 @@ fun KPage(title: String, nav: Nav?, subtitle: String? = null, actions: @Composab
                         Icon(painterResource(R.drawable.ic_back), "Kembali", modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
+                Spacer(Modifier.width(16.dp))
             } else Spacer(Modifier.width(8.dp))
-                    Column(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f)) {
                 Text(title, fontSize = 24.sp, lineHeight = 29.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
                 if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }

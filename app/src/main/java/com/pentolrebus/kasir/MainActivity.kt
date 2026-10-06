@@ -217,11 +217,11 @@ private fun AuthScreen(vm: PosViewModel, error: String? = null) {
         Column(Modifier.fillMaxSize().statusBarsPadding().imePadding().navigationBarsPadding().padding(horizontal = 17.6.dp, vertical = 13.2.dp)) {
             Column(
                 Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
-                verticalArrangement = if (register) Arrangement.Top else Arrangement.Center,
+                verticalArrangement = Arrangement.Top,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Column(
-                    Modifier.fillMaxWidth().then(if (register) Modifier else Modifier.padding(top = 24.dp)),
+                    Modifier.fillMaxWidth().padding(top = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Image(painterResource(R.drawable.app_icon), "Logo Saku Kasir", Modifier.size(76.dp))
@@ -243,7 +243,7 @@ private fun AuthScreen(vm: PosViewModel, error: String? = null) {
                             AuthField("Email", "Masukkan email", email, { email = it }, R.drawable.ic_mail, KeyboardType.Email, error = validationError?.takeIf { it.first == "email" }?.second ?: activeError?.takeIf { it.first == "email" }?.second)
                             Spacer(Modifier.height(9.dp))
                             PasswordField("Password", password, { password = it }, error = validationError?.takeIf { it.first == "password" }?.second ?: activeError?.takeIf { it.first == "password" }?.second)
-                            Spacer(Modifier.height(20.dp))
+                            Spacer(Modifier.height(24.dp))
                             AuthPrimaryButton("Lanjut") {
                                 validation = validateRegistrationStep1(email, password, username)
                                 if (validation == null) registerStep = 2
@@ -254,7 +254,7 @@ private fun AuthScreen(vm: PosViewModel, error: String? = null) {
                             AuthField("Tipe Bisnis", "Contoh: Kuliner", businessType, { businessType = it }, null, error = validationError?.takeIf { it.first == "businessType" }?.second ?: activeError?.takeIf { it.first == "businessType" }?.second)
                             Spacer(Modifier.height(9.dp))
                             AuthField("Nomor HP", "Masukkan nomor HP", whatsapp, { whatsapp = it }, null, KeyboardType.Phone, error = validationError?.takeIf { it.first == "phone" }?.second ?: activeError?.takeIf { it.first == "phone" }?.second)
-                            Spacer(Modifier.height(12.dp))
+                            Spacer(Modifier.height(24.dp))
                             AuthPrimaryButton("Daftar Owner") {
                                 validation = validateRegistrationStep2(business, businessType, whatsapp)
                                 if (validation == null) vm.register(email, password, username, username, business.trim(), businessType.trim(), whatsapp.trim())
@@ -264,7 +264,7 @@ private fun AuthScreen(vm: PosViewModel, error: String? = null) {
                             }
                         }
                         Row(
-                            Modifier.fillMaxWidth().padding(top = 4.dp),
+                            Modifier.fillMaxWidth().padding(top = 12.dp),
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -292,7 +292,7 @@ private fun AuthScreen(vm: PosViewModel, error: String? = null) {
                         }
                         Spacer(Modifier.height(4.dp))
                         AuthPrimaryButton("Masuk") { vm.login(username, password) }
-                        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                             Text("Belum punya akun? ", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                             Text(
                                 "Daftar",

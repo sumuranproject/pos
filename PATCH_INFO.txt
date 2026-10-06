@@ -1,20 +1,22 @@
-V65 UI/UX FORM PATCH — based on V64
+V73 UI/UX + LAPORAN KEUANGAN PATCH — based on V72
 
-Applied requested registration/login refinements:
-- Registration header now uses “Saku Kasir”.
-- Registration subtitle now uses “Buat akun untuk mulai mengelola bisnis Anda”.
-- Registration/login form spacing remains aligned with the existing login form measurements.
-- Password visibility uses the same eye icon; state is indicated by tint only (no crossed-eye slash).
-- Removed red AlertBox errors from the auth form. Validation/auth errors are shown inline beneath the relevant field.
-- Registration username requires at least 5 alphanumeric characters.
-- Exact username validation message: “Username minimal 5 karakter huruf dan angka”.
-- Login footer changed to “Belum punya akun? Daftar”; only “Daftar” is clickable and accent-colored.
-- Firebase repository validation uses the same username rule for Owner and Cashier usernames.
+Applied requested fixes from the consolidated UI checklist and the supplied Laporan Keuangan mockup:
+- Bottom navigation click/ripple is now circular around the icon area, not a large rounded box around the whole menu item.
+- Bottom navigation labels reduced to a more proportional size while keeping the 4-item layout and safe-area handling.
+- Page-header back button remains circular and now has a clearer horizontal gap before the title.
+- Ringkasan Bisnis outlet cards no longer show the chevron/arrow; outlet name, transaction count, and amount have comfortable spacing.
+- Ringkasan Bisnis Cash/QRIS progress calculation is now explicitly zero when there is no payment data, avoiding a false progress state.
+- The Laporan Keuangan entry is now a dedicated card on Ringkasan Bisnis only.
+- Other report tabs no longer show shortcut buttons/cards for Laporan Keuangan.
+- Dedicated Laporan Keuangan page restyled to follow the supplied mockup: period chips, financial summary card, payment card, expense-category card, spacing, typography, and download button.
+- Profit value on the financial summary uses the mockup green accent.
+- Download action changed from CSV to a real XLSX workbook.
+- XLSX includes the selected-period summary and transaction rows and is saved to Downloads/Kasir on modern Android.
 
-Preserved from V64:
-- V63 two-step Owner registration flow and data mapping.
-- V64 compile fix for verticalScroll imports.
-- Compose horizontal-scroll force-close fix: no outer/nested horizontal scroll was reintroduced around KChips.
-- Firebase Auth flow and Rules unchanged.
-- No diagnostic/log feature added.
-- Status-bar, navigation-bar, IME, and existing UI scale handling unchanged.
+Preserved from V72 and earlier:
+- Firebase Auth / RTDB architecture and Rules unchanged.
+- Two-step Owner registration and all auth validation changes preserved.
+- Force-close fix preserved; no nested horizontal scrolling was introduced around KChips.
+- V64 verticalScroll compile fix preserved.
+- No diagnostic/log feature reintroduced.
+- Existing navigation, shift handling, payment flow, and data model preserved.

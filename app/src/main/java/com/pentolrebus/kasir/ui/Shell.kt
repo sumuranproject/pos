@@ -96,17 +96,22 @@ fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (
                 labels.forEachIndexed { i, l ->
                     val selected = tab == i
                     val c = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    Column(Modifier.weight(1f).kRoundedClickable(RoundedCornerShape(18.dp)) { tab = i; stack = emptyList(); if (i != 1) pay = Pay.NONE }.padding(top = 6.dp, bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Surface(shape = RoundedCornerShape(18.dp), color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent) {
-                            Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-                                BadgedBox(badge = { if (i == 1 && cart.isNotEmpty()) Badge { Text("${cart.sumOf { it.quantity }}") } }) {
-                                    Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                                        Icon(painterResource(icons[i]), l, tint = c, modifier = Modifier.fillMaxSize())
-                                    }
+                    Column(Modifier.weight(1f).padding(top = 6.dp, bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            Modifier.size(32.dp).kCircularClickable {
+                                tab = i
+                                stack = emptyList()
+                                if (i != 1) pay = Pay.NONE
+                            },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            BadgedBox(badge = { if (i == 1 && cart.isNotEmpty()) Badge { Text("${cart.sumOf { it.quantity }}") } }) {
+                                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                                    Icon(painterResource(icons[i]), l, tint = c, modifier = Modifier.fillMaxSize())
                                 }
                             }
                         }
-                        Text(l, color = c, fontSize = 17.6.sp, lineHeight = 21.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
+                        Text(l, color = c, fontSize = 14.sp, lineHeight = 17.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
                     }
                 }
             }

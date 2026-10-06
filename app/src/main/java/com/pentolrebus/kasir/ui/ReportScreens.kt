@@ -11,7 +11,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pentolrebus.kasir.R
@@ -94,13 +96,37 @@ fun ReportsScreen(vm: PosViewModel, session: Session, nav: Nav) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { KStat("Transaksi", "${td.size}", Modifier.weight(1f)); KStat("Shift aktif", "${shifts.count { it.closedAt == null }}", Modifier.weight(1f)) }
                 KCard {
                     Text("Cash ${rp(td.cash())} · QRIS ${rp(td.qris())}", fontWeight = FontWeight.SemiBold)
-                    val tot = td.sales().coerceAtLeast(1)
+                    val paymentTotal = (td.cash() + td.qris()).coerceAtLeast(0)
+                    val cashProgress = if (paymentTotal > 0L) td.cash().toFloat() / paymentTotal.toFloat() else 0f
                     Spacer(Modifier.height(8.dp))
-                    LinearProgressIndicator(progress = { td.cash().toFloat() / tot }, Modifier.fillMaxWidth().height(8.dp))
+                    LinearProgressIndicator(progress = { cashProgress.coerceIn(0f, 1f) }, Modifier.fillMaxWidth().height(8.dp))
                 }
                 KLabel("Per outlet")
-                outlets.forEach { o -> KItem(o.name, "${td.count { it.outletId == o.id }} transaksi", rp(td.filter { it.outletId == o.id }.sales()), onClick = { nav.open("Outlet:detail", o.id) }) }
-                KSecondary("LAPORAN KEUANGAN") { nav.open("Keuangan", null) }
+                outlets.forEach { o ->
+                    val ot = td.filter { it.outletId == o.id }
+                    KCard(Modifier.kRoundedClickable(RoundedCornerShape(16.dp)) { nav.open("Outlet:detail", o.id) }) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(o.name, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                                Text("${ot.size} transaksi", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text(rp(ot.sales()), fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(start = 12.dp))
+                        }
+                    }
+                }
+                Surface(
+                    Modifier.fillMaxWidth().kRoundedClickable(RoundedCornerShape(20.dp)) { nav.open("Keuangan", null) },
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Laporan Keuangan", fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold)
+                            Text("Ringkasan pendapatan, pengeluaran, dan laba", fontSize = 14.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Icon(painterResource(R.drawable.ic_chevron), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+                    }
+                }
             }
             1 -> {
                 val td = tx.filter { inRange(it.createdAt, today, today + DAY) }
@@ -134,7 +160,6 @@ fun ReportsScreen(vm: PosViewModel, session: Session, nav: Nav) {
                     KStat("Pengeluaran", rp(exp), Modifier.weight(1f).clickableCompat { nav.open("Pengeluaran", null) }, MaterialTheme.colorScheme.error)
                     KStat("Laba bersih", rp(td.sales() - exp), Modifier.weight(1f).clickableCompat { nav.open("Keuangan", null) }, MaterialTheme.colorScheme.primary)
                 }
-                KSecondary("LIHAT LAPORAN KEUANGAN") { nav.open("Keuangan", null) }
             }
             else -> {
                 val m0 = startOfMonth(today)
@@ -156,7 +181,6 @@ fun ReportsScreen(vm: PosViewModel, session: Session, nav: Nav) {
                     KStat("Pengeluaran", rp(exp), Modifier.weight(1f).clickableCompat { nav.open("Pengeluaran", null) }, MaterialTheme.colorScheme.error)
                     KStat("Laba bersih", rp(cur.sales() - exp), Modifier.weight(1f).clickableCompat { nav.open("Keuangan", null) }, MaterialTheme.colorScheme.primary)
                 }
-                KSecondary("LIHAT LAPORAN KEUANGAN") { nav.open("Keuangan", null) }
             }
         }
     }
@@ -341,19 +365,67 @@ fun FinancialReportScreen(vm: PosViewModel, nav: Nav) {
     var msg by remember { mutableStateOf<String?>(null) }
     val today = startOfDay(System.currentTimeMillis())
     val from = if (period == "Hari ini") today else startOfMonth(today)
-    val t = tx.filter { it.createdAt >= from }; val e = ex.filter { it.createdAt >= from }
-    val gross = t.sumOf { it.subtotal }; val disc = t.sumOf { it.discount }; val tax = t.sumOf { it.tax }; val net = t.sales(); val exp = e.sumOf { it.amount }
+    val to = if (period == "Hari ini") today + DAY else startOfMonth(today + 32L * DAY)
+    val t = tx.filter { inRange(it.createdAt, from, to) }
+    val e = ex.filter { inRange(it.createdAt, from, to) }
+    val gross = t.sumOf { it.subtotal }
+    val disc = t.sumOf { it.discount }
+    val tax = t.sumOf { it.tax }
+    val net = t.sales()
+    val exp = e.sumOf { it.amount }
+    val cash = t.cash()
+    val qris = t.qris()
+    val categories = e.groupBy { it.category }.entries.sortedBy { it.key }.joinToString(" · ") { it.key }
+
     KPage("Laporan Keuangan", nav, subtitle = if (period == "Hari ini") fmtDate(today) else fmtMonth(today)) {
-        KChips(listOf("Hari ini", "Bulan ini"), period) { period = it }
-        KCard { KRow("Penjualan kotor", rp(gross)); KRow("Diskon", "- " + rp(disc)); KRow("Pajak", rp(tax)); KRow("Penjualan bersih", rp(net), true); KRow("Pengeluaran", "- " + rp(exp)); HorizontalDivider(Modifier.padding(vertical = 6.dp)); KRow("Laba bersih", rp(net - exp), true, MaterialTheme.colorScheme.primary) }
-        KCard { Text("Pembayaran masuk", style = MaterialTheme.typography.labelMedium); KRow("Cash", rp(t.cash())); KRow("QRIS", rp(t.qris())) }
-        KItem("Pengeluaran per kategori", e.groupBy { it.category }.keys.joinToString(" · ").ifBlank { "Belum ada" }, onClick = { nav.open("Pengeluaran", null) })
-        KSecondary("UNDUH LAPORAN (CSV)") {
-            val rows = listOf(listOf("Laporan Keuangan", period), listOf("Penjualan kotor", gross.toString()), listOf("Diskon", disc.toString()), listOf("Pajak", tax.toString()), listOf("Penjualan bersih", net.toString()),
-                listOf("Pengeluaran", exp.toString()), listOf("Laba bersih", (net - exp).toString()), listOf("Cash", t.cash().toString()), listOf("QRIS", t.qris().toString()), listOf(), listOf("Transaksi", "Waktu", "Metode", "Total")) +
-                t.sortedBy { it.createdAt }.map { listOf(shortId(it.transactionId), fmtDateTime(it.createdAt), it.paymentMethod.name, it.total.toString()) }
-            msg = ReportExport.saveCsv(ctx, "laporan-keuangan", rows)?.let { "Tersimpan: $it" } ?: "Gagal menyimpan laporan"
+        KChips(listOf("Hari ini", "Bulan ini"), period) { period = it; msg = null }
+
+        Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+            Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+                FinancialRow("Penjualan kotor", rp(gross))
+                FinancialRow("Diskon", rp(disc))
+                FinancialRow("Pajak", rp(tax))
+                FinancialRow("Penjualan bersih", rp(net))
+                FinancialRow("Pengeluaran", "- " + rp(exp))
+                HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                FinancialRow("Laba bersih", rp(net - exp), emphasized = true, valueColor = Color(0xFF3DD68C))
+            }
+        }
+
+        Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+            Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+                Text("Pembayaran masuk", fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                FinancialRow("Cash", rp(cash))
+                FinancialRow("QRIS", rp(qris))
+            }
+        }
+
+        Surface(
+            Modifier.fillMaxWidth().kRoundedClickable(RoundedCornerShape(20.dp)) { nav.open("Pengeluaran", null) },
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Pengeluaran per kategori", fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold)
+                    Text(categories.ifBlank { "Belum ada" }, fontSize = 14.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                }
+                Icon(painterResource(R.drawable.ic_chevron), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp).padding(start = 4.dp))
+            }
+        }
+
+        KPrimary("UNDUH LAPORAN") {
+            msg = ReportExport.saveXlsx(ctx, "Laporan_Keuangan", period, gross, disc, tax, net, exp, net - exp, cash, qris, t)
+                ?.let { "Tersimpan: $it" } ?: "Gagal menyimpan laporan"
         }
         msg?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+@Composable
+private fun FinancialRow(label: String, value: String, emphasized: Boolean = false, valueColor: Color = MaterialTheme.colorScheme.onSurface) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = if (emphasized) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = if (emphasized) 18.sp else 17.sp, lineHeight = if (emphasized) 22.sp else 21.sp, fontWeight = if (emphasized) FontWeight.ExtraBold else FontWeight.Normal)
+        Text(value, color = valueColor, fontSize = if (emphasized) 20.sp else 16.sp, lineHeight = if (emphasized) 24.sp else 20.sp, fontWeight = if (emphasized) FontWeight.ExtraBold else FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.padding(start = 12.dp))
     }
 }
