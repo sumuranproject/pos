@@ -54,6 +54,6 @@ SakuKasir bundles Inter and JetBrains Mono inside `app/src/main/res/font/`; no r
 - Inter: `inter_regular.ttf`, `inter_medium.ttf`, `inter_semibold.ttf`, `inter_bold.ttf`
 - JetBrains Mono: `jetbrains_mono_regular.ttf`, `jetbrains_mono_medium.ttf`
 
-`download_fonts.sh` refreshes the bundled TTF files from the specified upstream repositories. Codemagic runs this script before the Android build so the generated APK contains the required font files.
+`download_fonts.sh` first validates the TTF files already bundled in the repository. This is the normal build path and avoids a network dependency. If a TTF is missing or invalid, the script falls back to the Google Fonts repository URLs and validates the downloaded TrueType header before continuing. Codemagic runs this script before the Android build.
 
 Inter is the default Material 3 UI typeface. JetBrains Mono is used explicitly for TRX IDs and receipt/audit timestamp-style content.
