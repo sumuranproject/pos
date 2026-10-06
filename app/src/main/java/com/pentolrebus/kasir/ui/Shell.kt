@@ -2,7 +2,6 @@ package com.pentolrebus.kasir.ui
 
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -93,14 +92,18 @@ fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (
         if (pay != Pay.SUCCESS && !imeVisible) Surface(color = MaterialTheme.colorScheme.surface) {
             Row(Modifier.fillMaxWidth().navigationBarsPadding()) {
                 val labels = listOf("Kasir", "Checkout", "Laporan", "Pengaturan")
-                val icons = listOf(R.drawable.ic_grid, R.drawable.ic_cart, R.drawable.ic_report, R.drawable.ic_more)
+                val icons = listOf(R.drawable.ic_grid, R.drawable.ic_cart, R.drawable.ic_report, R.drawable.ic_settings)
                 labels.forEachIndexed { i, l ->
                     val selected = tab == i
                     val c = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    Column(Modifier.weight(1f).clickable { tab = i; stack = emptyList(); if (i != 1) pay = Pay.NONE }.padding(top = 6.dp, bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(Modifier.weight(1f).kRoundedClickable(RoundedCornerShape(18.dp)) { tab = i; stack = emptyList(); if (i != 1) pay = Pay.NONE }.padding(top = 6.dp, bottom = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Surface(shape = RoundedCornerShape(18.dp), color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent) {
-                            Box(Modifier.padding(horizontal = 14.dp, vertical = 4.dp), contentAlignment = Alignment.Center) {
-                                BadgedBox(badge = { if (i == 1 && cart.isNotEmpty()) Badge { Text("${cart.sumOf { it.quantity }}") } }) { Icon(painterResource(icons[i]), l, tint = c, modifier = Modifier.size(26.dp)) }
+                            Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                                BadgedBox(badge = { if (i == 1 && cart.isNotEmpty()) Badge { Text("${cart.sumOf { it.quantity }}") } }) {
+                                    Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                                        Icon(painterResource(icons[i]), l, tint = c, modifier = Modifier.fillMaxSize())
+                                    }
+                                }
                             }
                         }
                         Text(l, color = c, fontSize = 17.6.sp, lineHeight = 21.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
@@ -121,7 +124,7 @@ fun MainShell(vm: PosViewModel, session: Session, themeMode: Int, onThemeMode: (
 
 @Composable
 private fun ShiftChip(shift: Shift?, onStart: () -> Unit, onOpen: () -> Unit) {
-    Surface(Modifier.clickable { if (shift == null) onStart() else onOpen() }, shape = RoundedCornerShape(18.dp), color = if (shift == null) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.primaryContainer) {
+    Surface(Modifier.kRoundedClickable(RoundedCornerShape(18.dp)) { if (shift == null) onStart() else onOpen() }, shape = RoundedCornerShape(18.dp), color = if (shift == null) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.primaryContainer) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(Modifier.size(9.dp), shape = CircleShape, color = if (shift == null) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary) {}
             Spacer(Modifier.width(8.dp))
@@ -146,7 +149,7 @@ private fun StartShiftDialog(session: Session, outlets: List<Outlet>, activeOutl
             if (owner) {
                 Box {
                     KField("Outlet", outlets.firstOrNull { it.id == outletId }?.name ?: "Pilih outlet", {}, enabled = false)
-                    Surface(Modifier.matchParentSize().clickable { menu = true }, color = androidx.compose.ui.graphics.Color.Transparent) {}
+                    Surface(Modifier.matchParentSize().kTextClickable { menu = true }, color = androidx.compose.ui.graphics.Color.Transparent) {}
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, modifier = Modifier.fillMaxWidth(.88f)) {
                         outlets.forEach { o -> DropdownMenuItem(text = { Text(o.name) }, onClick = { outletId = o.id; menu = false }) }
                     }

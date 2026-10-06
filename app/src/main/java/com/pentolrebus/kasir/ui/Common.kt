@@ -1,6 +1,9 @@
 package com.pentolrebus.kasir.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -46,6 +49,22 @@ fun startOfDay(ms: Long): Long = Calendar.getInstance().apply { timeInMillis = m
 fun startOfMonth(ms: Long): Long = Calendar.getInstance().apply { timeInMillis = startOfDay(ms); set(Calendar.DAY_OF_MONTH, 1) }.timeInMillis
 fun shortId(id: String) = "#" + id.takeLast(4).uppercase()
 
+/** Global touch feedback helpers. Clip first so bounded ripple follows the element shape. */
+fun Modifier.kRoundedClickable(shape: Shape, enabled: Boolean = true, onClick: () -> Unit): Modifier =
+    this.clip(shape).clickable(enabled = enabled, onClick = onClick)
+
+fun Modifier.kCircularClickable(enabled: Boolean = true, onClick: () -> Unit): Modifier =
+    this.clip(CircleShape).clickable(enabled = enabled, onClick = onClick)
+
+fun Modifier.kTextClickable(enabled: Boolean = true, onClick: () -> Unit): Modifier =
+    this.clickable(
+        enabled = enabled,
+        interactionSource = MutableInteractionSource(),
+        indication = null,
+        onClick = onClick
+    )
+
+
 private const val HTML_REM_DP = 17.6f // 1rem from html{font-size:110%} (16px × 1.10)
 private val CardShape = RoundedCornerShape((HTML_REM_DP).dp)
 private val ButtonShape = RoundedCornerShape((HTML_REM_DP * .875f).dp)
@@ -61,7 +80,7 @@ fun KPage(title: String, nav: Nav?, subtitle: String? = null, actions: @Composab
         ) {
             if (nav != null) {
                 Surface(
-                    Modifier.size(44.dp).clickable { nav.back() },
+                    Modifier.size(44.dp).kCircularClickable { nav.back() },
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.surface
                 ) {
@@ -84,7 +103,7 @@ fun KPage(title: String, nav: Nav?, subtitle: String? = null, actions: @Composab
             )
             if (fab != null) {
                 Surface(
-                    Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 16.dp).size(62.dp).clickable { fab() },
+                    Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 16.dp).size(62.dp).kCircularClickable { fab() },
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primary,
                     shadowElevation = 5.dp
@@ -188,7 +207,7 @@ fun KSecretField(label: String, value: String, onValue: (String) -> Unit, numeri
                     }
                 )
                 IconButton(onClick = { show = !show }, modifier = Modifier.size(44.dp)) {
-                    Icon(painterResource(if (show) R.drawable.ic_eye else R.drawable.ic_eye_off), if (show) "Sembunyikan" else "Tampilkan", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                    Icon(painterResource(R.drawable.ic_eye), if (show) "Sembunyikan" else "Tampilkan", tint = if (show) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -217,7 +236,7 @@ fun KChips(options: List<String>, selected: String, onSelect: (String) -> Unit) 
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { o ->
             Surface(
-                Modifier.heightIn(min = (HTML_REM_DP * 2.375f).dp).clickable { onSelect(o) },
+                Modifier.heightIn(min = (HTML_REM_DP * 2.375f).dp).kRoundedClickable(PillShape) { onSelect(o) },
                 shape = PillShape,
                 color = if (selected == o) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
             ) {
@@ -235,7 +254,7 @@ fun KSegmented(options: List<String>, selected: String, onSelect: (String) -> Un
         Row(Modifier.padding(4.dp)) {
             options.forEach { o ->
                 Surface(
-                    Modifier.weight(1f).height((HTML_REM_DP * 2.25f).dp).clickable { onSelect(o) },
+                    Modifier.weight(1f).height((HTML_REM_DP * 2.25f).dp).kRoundedClickable(RoundedCornerShape((HTML_REM_DP * .9375f).dp)) { onSelect(o) },
                     shape = RoundedCornerShape((HTML_REM_DP * .9375f).dp),
                     color = if (selected == o) MaterialTheme.colorScheme.primary else Color.Transparent
                 ) { Box(contentAlignment = Alignment.Center) { Text(o, color = if (selected == o) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium) } }
@@ -248,7 +267,7 @@ fun KSegmented(options: List<String>, selected: String, onSelect: (String) -> Un
 fun KToggle(checked: Boolean, onChecked: (Boolean) -> Unit) {
     val track = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer
     val knob = if (checked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-    Surface(Modifier.size(width = 48.dp, height = 26.dp).clickable { onChecked(!checked) }, shape = PillShape, color = track) {
+    Surface(Modifier.size(width = 48.dp, height = 26.dp).kRoundedClickable(PillShape) { onChecked(!checked) }, shape = PillShape, color = track) {
         Box(Modifier.fillMaxSize().padding(3.dp)) {
             Surface(Modifier.size(20.dp).align(if (checked) Alignment.CenterEnd else Alignment.CenterStart), shape = CircleShape, color = knob) {}
         }
@@ -274,7 +293,7 @@ fun KListGroup(content: @Composable ColumnScope.() -> Unit) {
 
 @Composable
 fun KListItem(title: String, subtitle: String = "", trailing: String = "", trailingColor: Color = MaterialTheme.colorScheme.onSurface, icon: Int? = null, onClick: (() -> Unit)? = null, divider: Boolean = true) {
-    val m = if (onClick != null) Modifier.fillMaxWidth().clickable(onClick = onClick) else Modifier.fillMaxWidth()
+    val m = if (onClick != null) Modifier.fillMaxWidth().kRoundedClickable(RoundedCornerShape(12.dp), onClick = onClick) else Modifier.fillMaxWidth()
     Column {
         Row(m.heightIn(min = 52.dp).padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) {

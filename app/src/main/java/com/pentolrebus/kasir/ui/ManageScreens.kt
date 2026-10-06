@@ -4,7 +4,6 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
@@ -483,7 +482,7 @@ fun ThemeScreen(mode: Int, onMode: (Int) -> Unit, nav: Nav) {
     KPage("Tema", nav) {
         KListGroup {
             listOf("Sistem", "Terang", "Gelap").forEachIndexed { i, label ->
-                Row(Modifier.fillMaxWidth().clickable { onMode(i) }.padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().kRoundedClickable(RoundedCornerShape(12.dp)) { onMode(i) }.padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(label, Modifier.weight(1f), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                     RadioButton(selected = mode == i, onClick = { onMode(i) })
                 }

@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -91,7 +90,7 @@ fun KasirScreen(vm: PosViewModel, role: Role, nav: Nav, onCheckout: () -> Unit, 
                 gridItems(shown, key = { it.id }) { p ->
                     val q = cart.firstOrNull { it.product.id == p.id }?.quantity ?: 0
                     val out = p.stockEnabled && p.stock <= 0
-                    Surface(Modifier.fillMaxWidth().heightIn(min = 106.dp).clickable(enabled = !out) { vm.add(p) }, shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface) {
+                    Surface(Modifier.fillMaxWidth().heightIn(min = 106.dp).kRoundedClickable(RoundedCornerShape(18.dp), enabled = !out) { vm.add(p) }, shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface) {
                         Column(Modifier.padding(10.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) { ProductThumb(52); Spacer(Modifier.weight(1f)); if (q > 0) Badge { Text("$q") } }
                             Spacer(Modifier.height(8.dp))
@@ -110,7 +109,7 @@ fun KasirScreen(vm: PosViewModel, role: Role, nav: Nav, onCheckout: () -> Unit, 
         }
         val count = cart.sumOf { it.quantity }
         val total = cart.sumOf { it.product.price * it.quantity }
-        Surface(Modifier.fillMaxWidth().padding(vertical = 8.dp).clickable(enabled = count > 0) { onCheckout() }, shape = RoundedCornerShape(16.dp), color = if (count > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant) {
+        Surface(Modifier.fillMaxWidth().padding(vertical = 8.dp).kRoundedClickable(RoundedCornerShape(16.dp), enabled = count > 0) { onCheckout() }, shape = RoundedCornerShape(16.dp), color = if (count > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant) {
             Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 val fg = if (count > 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                 Column(Modifier.weight(1f)) { Text("$count item", color = fg, style = MaterialTheme.typography.labelSmall); Text(rp(total), color = fg, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium) }
@@ -131,7 +130,7 @@ private fun ProductThumb(size: Int) {
 
 @Composable
 private fun RoundBtn(icon: Int, enabled: Boolean = true, onClick: () -> Unit) {
-    Surface(Modifier.size(30.dp).clickable(enabled = enabled, onClick = onClick), shape = CircleShape, color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant) {
+    Surface(Modifier.size(30.dp).kCircularClickable(enabled = enabled, onClick = onClick), shape = CircleShape, color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant) {
         Box(contentAlignment = Alignment.Center) { Icon(painterResource(icon), null, tint = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp)) }
     }
 }
@@ -182,7 +181,7 @@ fun CashPayScreen(total: Long, onBack: () -> Unit, onDone: (Long) -> Unit) {
         KCard { Text("Total tagihan", color = MaterialTheme.colorScheme.onSurfaceVariant); Text(rp(total), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold) }
         KField("Jumlah diterima (Rp)", if (received == 0L) "" else received.toString(), { received = it.toLongOrNull() ?: 0 }, number = true)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            quick.forEachIndexed { i, q -> Surface(Modifier.height(42.dp).clickable { received = q }, shape = RoundedCornerShape(20.dp), color = if (received == q) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface) { Box(Modifier.padding(horizontal = 13.dp), contentAlignment = Alignment.Center) { Text(if (i == 0) "Uang pas" else rp(q), color = if (received == q) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold) } } }
+            quick.forEachIndexed { i, q -> Surface(Modifier.height(42.dp).kRoundedClickable(RoundedCornerShape(20.dp)) { received = q }, shape = RoundedCornerShape(20.dp), color = if (received == q) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface) { Box(Modifier.padding(horizontal = 13.dp), contentAlignment = Alignment.Center) { Text(if (i == 0) "Uang pas" else rp(q), color = if (received == q) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold) } } }
         }
         KCard(color = MaterialTheme.colorScheme.primaryContainer) {
             Text("Kembalian", color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -54,7 +54,6 @@ import androidx.core.view.WindowCompat
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.painterResource
@@ -82,6 +81,7 @@ import com.pentolrebus.kasir.ui.KasirTheme
 import com.pentolrebus.kasir.ui.KSegmented
 import com.pentolrebus.kasir.ui.PosViewModel
 import com.pentolrebus.kasir.ui.PosViewModelFactory
+import com.pentolrebus.kasir.ui.kTextClickable
 import com.pentolrebus.kasir.util.BluetoothPrinter
 import java.text.NumberFormat
 import java.util.Locale
@@ -172,7 +172,7 @@ private fun LoadingScreen(message: String) {
 }
 
 @Composable
-private fun PasswordField(label: String, value: String, onValue: (String) -> Unit) {
+private fun PasswordField(label: String, value: String, onValue: (String) -> Unit, error: String? = null) {
     var visible by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth()) {
         Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
@@ -180,9 +180,17 @@ private fun PasswordField(label: String, value: String, onValue: (String) -> Uni
             Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(painterResource(R.drawable.ic_lock), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
                 BasicTextField(value, onValue, Modifier.weight(1f).padding(horizontal = 9.dp, vertical = 14.dp), singleLine = true, textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold), cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), decorationBox = { inner -> if (value.isEmpty()) Text("Masukkan password", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge); inner() })
-                IconButton(onClick = { visible = !visible }, modifier = Modifier.size(44.dp)) { Icon(painterResource(if (visible) R.drawable.ic_eye else R.drawable.ic_eye_off), null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp)) }
+                IconButton(onClick = { visible = !visible }, modifier = Modifier.size(44.dp)) {
+                    Icon(
+                        painterResource(R.drawable.ic_eye),
+                        contentDescription = if (visible) "Sembunyikan password" else "Tampilkan password",
+                        tint = if (visible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
         }
+        error?.let { InlineError(it) }
     }
 }
 
@@ -197,10 +205,13 @@ private fun AuthScreen(vm: PosViewModel, error: String? = null) {
     var business by remember { mutableStateOf("") }
     var businessType by remember { mutableStateOf("") }
     var whatsapp by remember { mutableStateOf("") }
-    var validation by remember { mutableStateOf<String?>(null) }
+    var validation by remember { mutableStateOf<Pair<String, String>?>(null) }
     val message by vm.message.collectAsState()
     val context = LocalContext.current
     LaunchedEffect(message) { message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show(); vm.consumeMessage() } }
+
+    val activeError = error?.let { AuthErrorTarget(it, register, registerStep) }
+    val validationError = validation?.let { (target, text) -> target to text }
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxSize().statusBarsPadding().imePadding().navigationBarsPadding().padding(horizontal = 17.6.dp, vertical = 13.2.dp)) {
@@ -214,58 +225,84 @@ private fun AuthScreen(vm: PosViewModel, error: String? = null) {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Image(painterResource(R.drawable.app_icon), "Logo Saku Kasir", Modifier.size(76.dp))
-                    Text(if (register) "Daftar sebagai Owner" else "Selamat datang", fontSize = 24.sp, lineHeight = 29.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp))
-                    Text(if (register) if (registerStep == 1) "Buat akun Owner" else "Lengkapi data bisnis Anda" else "Masuk untuk mengelola bisnis Anda", fontSize = 14.2.sp, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp, bottom = 18.dp))
+                    Text(if (register) "Saku Kasir" else "Selamat datang", fontSize = 24.sp, lineHeight = 29.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp))
+                    Text(
+                        if (register) "Buat akun untuk mulai mengelola bisnis Anda" else "Masuk untuk mengelola bisnis Anda",
+                        fontSize = 14.2.sp,
+                        lineHeight = 17.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 18.dp)
+                    )
 
-                error?.let { AlertBox(it); Spacer(Modifier.height(9.dp)) }
-                validation?.let { AlertBox(it); Spacer(Modifier.height(9.dp)) }
-
-                if (register) {
-                    Text("Langkah $registerStep dari 2", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp))
-                    if (registerStep == 1) {
-                        AuthField("Username", "Masukkan username", username, { username = it }, R.drawable.ic_person)
-                        Spacer(Modifier.height(9.dp))
-                        AuthField("Email", "Masukkan email", email, { email = it }, R.drawable.ic_mail, KeyboardType.Email)
-                        Spacer(Modifier.height(9.dp))
-                        PasswordField("Password", password, { password = it })
-                        Spacer(Modifier.height(12.dp))
-                        AuthPrimaryButton("Lanjut") {
-                            validation = validateRegistrationStep1(email, password, username)
-                            if (validation == null) registerStep = 2
+                    if (register) {
+                        Text("Langkah $registerStep dari 2", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp))
+                        if (registerStep == 1) {
+                            AuthField("Username", "Masukkan username", username, { username = it }, R.drawable.ic_person, error = validationError?.takeIf { it.first == "username" }?.second ?: activeError?.takeIf { it.first == "username" }?.second)
+                            Spacer(Modifier.height(9.dp))
+                            AuthField("Email", "Masukkan email", email, { email = it }, R.drawable.ic_mail, KeyboardType.Email, error = validationError?.takeIf { it.first == "email" }?.second ?: activeError?.takeIf { it.first == "email" }?.second)
+                            Spacer(Modifier.height(9.dp))
+                            PasswordField("Password", password, { password = it }, error = validationError?.takeIf { it.first == "password" }?.second ?: activeError?.takeIf { it.first == "password" }?.second)
+                            Spacer(Modifier.height(20.dp))
+                            AuthPrimaryButton("Lanjut") {
+                                validation = validateRegistrationStep1(email, password, username)
+                                if (validation == null) registerStep = 2
+                            }
+                        } else {
+                            AuthField("Nama Bisnis", "Masukkan nama bisnis", business, { business = it }, null, error = validationError?.takeIf { it.first == "business" }?.second ?: activeError?.takeIf { it.first == "business" }?.second)
+                            Spacer(Modifier.height(9.dp))
+                            AuthField("Tipe Bisnis", "Contoh: Kuliner", businessType, { businessType = it }, null, error = validationError?.takeIf { it.first == "businessType" }?.second ?: activeError?.takeIf { it.first == "businessType" }?.second)
+                            Spacer(Modifier.height(9.dp))
+                            AuthField("Nomor HP", "Masukkan nomor HP", whatsapp, { whatsapp = it }, null, KeyboardType.Phone, error = validationError?.takeIf { it.first == "phone" }?.second ?: activeError?.takeIf { it.first == "phone" }?.second)
+                            Spacer(Modifier.height(12.dp))
+                            AuthPrimaryButton("Daftar Owner") {
+                                validation = validateRegistrationStep2(business, businessType, whatsapp)
+                                if (validation == null) vm.register(email, password, username, username, business.trim(), businessType.trim(), whatsapp.trim())
+                            }
+                            TextButton(onClick = { registerStep = 1; validation = null }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Kembali", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Row(
+                            Modifier.fillMaxWidth().padding(top = 4.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Sudah punya akun? ",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                "Masuk",
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.kTextClickable { register = false; registerStep = 1; validation = null }
+                            )
                         }
                     } else {
-                        AuthField("Nama Bisnis", "Masukkan nama bisnis", business, { business = it }, null)
+                        AuthField("Username", "Masukkan username", username, { username = it }, R.drawable.ic_person, error = activeError?.takeIf { it.first == "username" }?.second)
                         Spacer(Modifier.height(9.dp))
-                        AuthField("Tipe Bisnis", "Contoh: Kuliner", businessType, { businessType = it }, null)
-                        Spacer(Modifier.height(9.dp))
-                        AuthField("Nomor HP", "Masukkan nomor HP", whatsapp, { whatsapp = it }, null, KeyboardType.Phone)
-                        Spacer(Modifier.height(12.dp))
-                        AuthPrimaryButton("Daftar Owner") {
-                            validation = validateRegistrationStep2(business, businessType, whatsapp)
-                            if (validation == null) vm.register(email, password, username, username, business.trim(), businessType.trim(), whatsapp.trim())
+                        PasswordField("Password", password, { password = it }, error = activeError?.takeIf { it.first == "password" }?.second)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            TextButton(onClick = { vm.resetPassword(username) }, contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)) {
+                                Text("Lupa Password?", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            }
                         }
-                        TextButton(onClick = { registerStep = 1; validation = null }, modifier = Modifier.fillMaxWidth()) {
-                            Text("Kembali", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    TextButton(onClick = { register = false; registerStep = 1; validation = null }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Sudah punya akun? Masuk", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                    }
-                } else {
-                    AuthField("Username", "Masukkan username", username, { username = it }, R.drawable.ic_person)
-                    Spacer(Modifier.height(9.dp))
-                    PasswordField("Password", password, { password = it })
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = { vm.resetPassword(username) }, contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)) {
-                            Text("Lupa Password?", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(4.dp))
+                        AuthPrimaryButton("Masuk") { vm.login(username, password) }
+                        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                            Text("Belum punya akun? ", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "Daftar",
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.kTextClickable { register = true; registerStep = 1; validation = null }
+                            )
                         }
                     }
-                    Spacer(Modifier.height(4.dp))
-                    AuthPrimaryButton("Masuk") { vm.login(username, password) }
-                    TextButton(onClick = { register = true; registerStep = 1; validation = null }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                        Text("Daftar sebagai Owner", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                    }
-                }
                 }
             }
             Text(
@@ -280,7 +317,7 @@ private fun AuthScreen(vm: PosViewModel, error: String? = null) {
 }
 
 @Composable
-private fun AuthField(label: String, placeholder: String, value: String, onValue: (String) -> Unit, icon: Int?, keyboardType: KeyboardType = KeyboardType.Text) {
+private fun AuthField(label: String, placeholder: String, value: String, onValue: (String) -> Unit, icon: Int?, keyboardType: KeyboardType = KeyboardType.Text, error: String? = null) {
     Column(Modifier.fillMaxWidth()) {
         Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
         Surface(Modifier.fillMaxWidth().heightIn(min = 55.dp), shape = RoundedCornerShape(13.2.dp), color = MaterialTheme.colorScheme.surface) {
@@ -289,7 +326,18 @@ private fun AuthField(label: String, placeholder: String, value: String, onValue
                 androidx.compose.foundation.text.BasicTextField(value, onValue, Modifier.weight(1f).padding(vertical = 14.dp), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold), cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface), keyboardOptions = KeyboardOptions(keyboardType = keyboardType), decorationBox = { inner -> if (value.isEmpty()) Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium); inner() })
             }
         }
+        error?.let { InlineError(it) }
     }
+}
+
+@Composable
+private fun InlineError(message: String) {
+    Text(
+        message,
+        color = MaterialTheme.colorScheme.error,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+    )
 }
 
 @Composable
@@ -299,30 +347,37 @@ private fun AuthPrimaryButton(label: String, onClick: () -> Unit) {
     }
 }
 
-private fun validateRegistrationStep1(email: String, password: String, username: String): String? {
+private fun validateRegistrationStep1(email: String, password: String, username: String): Pair<String, String>? {
     val clean = username.trim().lowercase().replace(" ", "")
     return when {
-        clean.length < 3 -> "Username minimal 3 karakter"
-        !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "Email tidak valid"
-        password.length < 8 -> "Password minimal 8 karakter"
+        clean.length < 5 || !clean.matches(Regex("[a-z0-9]+")) -> "username" to "Username minimal 5 karakter huruf dan angka"
+        !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "email" to "Email tidak valid"
+        password.length < 8 -> "password" to "Password minimal 8 karakter"
         else -> null
     }
 }
 
-private fun validateRegistrationStep2(business: String, businessType: String, phone: String): String? {
+private fun validateRegistrationStep2(business: String, businessType: String, phone: String): Pair<String, String>? {
     return when {
-        business.trim().length < 2 -> "Nama bisnis wajib diisi"
-        businessType.trim().length < 2 -> "Tipe bisnis wajib diisi"
-        phone.trim().length < 8 -> "Nomor HP tidak valid"
+        business.trim().length < 2 -> "business" to "Nama bisnis wajib diisi"
+        businessType.trim().length < 2 -> "businessType" to "Tipe bisnis wajib diisi"
+        phone.trim().length < 8 -> "phone" to "Nomor HP tidak valid"
         else -> null
     }
 }
 
-@Composable
-private fun AlertBox(message: String) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-        Text(message, Modifier.padding(14.dp), color = MaterialTheme.colorScheme.onErrorContainer)
+private fun AuthErrorTarget(message: String, register: Boolean, step: Int): Pair<String, String> {
+    val lower = message.lowercase()
+    val target = when {
+        lower.contains("username") -> "username"
+        lower.contains("email") -> "email"
+        lower.contains("password") -> "password"
+        lower.contains("bisnis") -> "business"
+        lower.contains("tipe") -> "businessType"
+        lower.contains("hp") || lower.contains("nomor") || lower.contains("phone") -> "phone"
+        register && step == 2 -> "business"
+        register -> "username"
+        else -> "password"
     }
+    return target to message
 }
-
-

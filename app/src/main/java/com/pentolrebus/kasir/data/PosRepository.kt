@@ -45,7 +45,7 @@ interface PosRepository {
 class FirebasePosRepository(private val auth:FirebaseAuth=FirebaseAuth.getInstance(), private val root:DatabaseReference=FirebaseDatabase.getInstance().reference, private val secure:SecureLocalStore, private val log:(String,String)->Unit):PosRepository {
  private suspend fun <T> timed(block:suspend()->T)=withTimeout(15_000){block()}
  override suspend fun registerOwner(email:String,password:String,username:String,displayName:String,businessName:String?,businessType:String?,whatsapp:String?):Result<Session> = runCatching {
-  val clean=username.trim().lowercase().replace(" ",""); if(clean.length<3) error("Username minimal 3 karakter")
+  val clean=username.trim().lowercase().replace(" ",""); if(clean.length<5 || !clean.matches(Regex("[a-z0-9]+"))) error("Username minimal 5 karakter huruf dan angka")
   val existing=timed{root.child("loginIndex").child(clean).get().await()}; if(existing.exists()) error("Username sudah dipakai")
   val result=timed{auth.createUserWithEmailAndPassword(email.trim(),password).await()}; val uid=result.user?.uid ?: error("Firebase UID tidak tersedia")
   val businessId=businessName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}; val outletId=businessName?.takeIf{it.isNotBlank()}?.let{UUID.randomUUID().toString()}
@@ -105,7 +105,7 @@ class FirebasePosRepository(private val auth:FirebaseAuth=FirebaseAuth.getInstan
   outlets.flatMap{o->timed{root.child("outlets/${o.id}/workers").get().await()}.children.mapNotNull{it.getValue(Worker::class.java)}}
  }.getOrDefault(emptyList())
  override suspend fun saveWorker(w:Worker,password:String?)=runCatching{
-  val clean=w.username.trim().lowercase().replace(" ",""); if(clean.length<3) error("Username minimal 3 karakter")
+  val clean=w.username.trim().lowercase().replace(" ",""); if(clean.length<5 || !clean.matches(Regex("[a-z0-9]+"))) error("Username minimal 5 karakter huruf dan angka")
   val idx=timed{root.child("loginIndex").child(clean).get().await()}
   val existing=if(idx.exists()) idx.child("uid").getValue(String::class.java) else null
   if(existing!=null && existing!=w.authUid) error("Username sudah dipakai")

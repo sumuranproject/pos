@@ -1,22 +1,20 @@
-V64 REGISTRATION FORM PATCH — based on V62
+V65 UI/UX FORM PATCH — based on V64
 
-Registration UI:
-- Owner registration is now split into 2 pages/steps.
-- Step 1: Username, Email, Password.
-- Step 2: Nama Bisnis, Tipe Bisnis, Nomor HP.
-- Step 1 validates before advancing to Step 2.
-- Back button/system Back returns from Step 2 to Step 1 before leaving registration.
-- Removed old Owner Name, Confirm Password, Outlet Name, and optional WhatsApp fields from the registration UI.
-- Existing login screen and V62 centered login layout are preserved.
+Applied requested registration/login refinements:
+- Registration header now uses “Saku Kasir”.
+- Registration subtitle now uses “Buat akun untuk mulai mengelola bisnis Anda”.
+- Registration/login form spacing remains aligned with the existing login form measurements.
+- Password visibility uses the same eye icon; state is indicated by tint only (no crossed-eye slash).
+- Removed red AlertBox errors from the auth form. Validation/auth errors are shown inline beneath the relevant field.
+- Registration username requires at least 5 alphanumeric characters.
+- Exact username validation message: “Username minimal 5 karakter huruf dan angka”.
+- Login footer changed to “Belum punya akun? Daftar”; only “Daftar” is clickable and accent-colored.
+- Firebase repository validation uses the same username rule for Owner and Cashier usernames.
 
-Registration data:
-- Firebase owner registration now accepts business type.
-- Business record stores name, type, and phone.
-- A default initial outlet is created using the business name so the existing POS flow still has an outlet.
-- Owner displayName falls back to username because the old Owner Name field is no longer part of registration.
-
-Preserved:
-- V62 Auth/Firebase flow.
-- V62 Firebase Rules.
-- V62 UI/IME/status-bar/navigation handling.
+Preserved from V64:
+- V63 two-step Owner registration flow and data mapping.
+- V64 compile fix for verticalScroll imports.
+- Compose horizontal-scroll force-close fix: no outer/nested horizontal scroll was reintroduced around KChips.
+- Firebase Auth flow and Rules unchanged.
 - No diagnostic/log feature added.
+- Status-bar, navigation-bar, IME, and existing UI scale handling unchanged.

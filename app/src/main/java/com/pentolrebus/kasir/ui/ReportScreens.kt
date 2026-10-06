@@ -1,6 +1,5 @@
 package com.pentolrebus.kasir.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
@@ -46,7 +45,7 @@ private fun DayFilter(day: Long, onDay: (Long) -> Unit) {
     val pick = rememberDatePicker(onDay)
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("Hari ini" to (day == today), "Kemarin" to (day == today - DAY), (if (day != today && day != today - DAY) fmtDate(day) else "Pilih tanggal") to (day != today && day != today - DAY)).forEach { (label, selected) ->
-            Surface(Modifier.height(38.dp).clickable { when(label) { "Hari ini" -> onDay(today); "Kemarin" -> onDay(today - DAY); else -> pick() } }, shape = RoundedCornerShape(20.dp), color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface) { Box(Modifier.padding(horizontal = 15.dp), contentAlignment = Alignment.Center) { Text(label, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold) } }
+            Surface(Modifier.height(38.dp).kRoundedClickable(RoundedCornerShape(20.dp)) { when(label) { "Hari ini" -> onDay(today); "Kemarin" -> onDay(today - DAY); else -> pick() } }, shape = RoundedCornerShape(20.dp), color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface) { Box(Modifier.padding(horizontal = 15.dp), contentAlignment = Alignment.Center) { Text(label, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold) } }
         }
     }
 }
@@ -163,7 +162,7 @@ fun ReportsScreen(vm: PosViewModel, session: Session, nav: Nav) {
     }
 }
 
-private fun Modifier.clickableCompat(onClick: () -> Unit): Modifier = this.then(Modifier.clickable(onClick = onClick))
+private fun Modifier.clickableCompat(onClick: () -> Unit): Modifier = this.kRoundedClickable(RoundedCornerShape(12.dp), onClick = onClick)
 
 @Composable
 private fun TxItem(t: Transaction, nav: Nav) {
