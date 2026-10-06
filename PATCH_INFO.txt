@@ -1,4 +1,4 @@
-V63 REGISTRATION FORM PATCH — based on V62
+V64 REGISTRATION FORM PATCH — based on V62
 
 Registration UI:
 - Owner registration is now split into 2 pages/steps.
