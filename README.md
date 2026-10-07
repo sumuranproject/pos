@@ -57,3 +57,15 @@ SakuKasir bundles Inter and JetBrains Mono inside `app/src/main/res/font/`; no r
 `download_fonts.sh` first validates the TTF files already bundled in the repository. This is the normal build path and avoids a network dependency. If a TTF is missing or invalid, the script falls back to the Google Fonts repository URLs and validates the downloaded TrueType header before continuing. Codemagic runs this script before the Android build.
 
 Inter is the default Material 3 UI typeface. JetBrains Mono is used explicitly for TRX IDs and receipt/audit timestamp-style content.
+
+## Revision r5 audit fixes
+
+- Replaced the Java-21 custom Gradle wrapper dependency with a Java-17-compatible launcher script. It delegates to an installed `gradle` binary or downloads Gradle 8.7 when needed.
+- Kept the project toolchain on Java 17 and explicitly configured the Kotlin JVM toolchain to 17.
+- Made the offline sync outbox persistent across process restarts using local SharedPreferences-backed storage.
+- QRIS proof capture now uses the actual generated transaction ID, creates the camera file only when capture starts, honors configured QRIS retention, and rejects proof older than five minutes at checkout.
+- QRIS proof expiry is evaluated from `expiredAt` when displayed instead of relying on a stale boolean.
+- Bluetooth printer writes now fail when disconnected, flush output, handle Android 12+ permissions, and the printer screen can scan paired devices, connect, and test-print.
+- Removed the Java-21 `gradle-wrapper.jar` that caused `UnsupportedClassVersionError` under Codemagic Java 17.
+
+A real Firebase backend is intentionally not enabled in this revision because the bundled `google-services.json` is still a placeholder. Firebase SDK dependencies remain present for the later backend integration.

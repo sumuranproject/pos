@@ -54,14 +54,33 @@ fun PosScreen(vm:PosViewModel) {
 }
 
 @Composable private fun CheckoutSheet(vm:PosViewModel,onDismiss:()->Unit) {
-    val s by vm.state.collectAsState();val t=vm.totals();var method by remember{mutableStateOf(PaymentMethod.CASH)};var received by remember{mutableLongStateOf(t.total)};var proof by remember{mutableStateOf<QrisProof?>(null)};var cameraFile by remember{mutableStateOf<File?>(null)};val context=LocalContext.current
+    val s by vm.state.collectAsState();val t=vm.totals();var method by remember{mutableStateOf(PaymentMethod.CASH)};var received by remember{mutableLongStateOf(t.total)};var proof by remember{mutableStateOf<QrisProof?>(null)};var cameraFile by remember{mutableStateOf<File?>(null)};val context=LocalContext.current;val trxId=remember{vm.nextTransactionId()};val retentionDays=vm.settings.collectAsState().value.qrisRetentionDays
     val scope=rememberCoroutineScope()
-    val requestCamera=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->if(granted&&cameraFile!=null)takePicture.launch(FileProvider.getUriForFile(context,context.packageName+".fileprovider",cameraFile!!))};val takePicture=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){ok->if(ok&&cameraFile!=null){scope.launch{proof=QrisProof.processCapture(context,cameraFile!!,s.user!!.displayName,s.selectedOutlet,"TRX-PENDING",System.currentTimeMillis())}}}
+    val takePicture=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){ok->
+        if(ok&&cameraFile!=null){
+            scope.launch{proof=QrisProof.processCapture(context,cameraFile!!,s.user!!.displayName,s.selectedOutlet,trxId,System.currentTimeMillis(),retentionDays)}
+        }
+    }
+    val requestCamera=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->
+        if(granted){
+            val file=cameraFile ?: File(context.cacheDir,"qris_capture").apply{mkdirs()}
+                .let{dir->File(dir,"capture_${System.currentTimeMillis()}.jpg")}
+            cameraFile=file
+            takePicture.launch(FileProvider.getUriForFile(context,context.packageName+".fileprovider",file))
+        }
+    }
     SkSheet(true,onDismiss){Column(Modifier.fillMaxWidth().padding(16.dp)){Text("Pembayaran",style=MaterialTheme.typography.titleLarge);Text("Total ${rupiah(t.total)}",style=MaterialTheme.typography.headlineSmall);Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){SkChip("Cash",method==PaymentMethod.CASH){method=PaymentMethod.CASH};SkChip("QRIS",method==PaymentMethod.QRIS){method=PaymentMethod.QRIS}}
         if(method==PaymentMethod.CASH){SkRupiahField(received,{received=it},"Uang diterima");Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf(t.total,50000,100000).distinct().forEach{v->AssistChip(onClick={received=v},label={Text(if(v==t.total)"Pas" else rupiah(v).removePrefix("Rp "))})}};Text("Kembalian ${rupiah((received-t.total).coerceAtLeast(0))}")}else{
-            SkCard(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),horizontalAlignment=Alignment.CenterHorizontally){Icon(Icons.Default.QrCode2,null,Modifier.size(120.dp));Text("Scan QRIS outlet");Text("Bukti pembayaran wajib dari kamera",color=MaterialTheme.colorScheme.onSurfaceVariant);if(proof!=null)SkBadge("Bukti siap",Color(0xFF16A34A));val file=File(context.cacheDir,"qris_proofs");file.mkdirs();cameraFile=File(file,"capture_${System.currentTimeMillis()}.jpg");SkButton("Ambil Foto Bukti",{if(context.checkSelfPermission(android.Manifest.permission.CAMERA)==android.content.pm.PackageManager.PERMISSION_GRANTED)takePicture.launch(FileProvider.getUriForFile(context,context.packageName+".fileprovider",cameraFile!!)) else requestCamera.launch(android.Manifest.permission.CAMERA)})}}
+            SkCard(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),horizontalAlignment=Alignment.CenterHorizontally){Icon(Icons.Default.QrCode2,null,Modifier.size(120.dp));Text("Scan QRIS outlet");Text("Bukti pembayaran wajib dari kamera",color=MaterialTheme.colorScheme.onSurfaceVariant);if(proof!=null)SkBadge("Bukti siap",Color(0xFF16A34A));SkButton("Ambil Foto Bukti",{
+                if(context.checkSelfPermission(android.Manifest.permission.CAMERA)==android.content.pm.PackageManager.PERMISSION_GRANTED){
+                    val file=cameraFile ?: File(context.cacheDir,"qris_capture").apply{mkdirs()}
+                        .let{dir->File(dir,"capture_${System.currentTimeMillis()}.jpg")}
+                    cameraFile=file
+                    takePicture.launch(FileProvider.getUriForFile(context,context.packageName+".fileprovider",file))
+                }else requestCamera.launch(android.Manifest.permission.CAMERA)
+            })}}
         }
-        Spacer(Modifier.height(10.dp));SkButton("Bayar",onClick={vm.checkout(method,received,proof){onDismiss()}},enabled=method==PaymentMethod.CASH&&received>=t.total || method==PaymentMethod.QRIS&&proof!=null,block=true)
+        Spacer(Modifier.height(10.dp));SkButton("Bayar",onClick={vm.checkout(method,received,proof,trxId){onDismiss()}},enabled=method==PaymentMethod.CASH&&received>=t.total || method==PaymentMethod.QRIS&&proof!=null,block=true)
     }}
 }
 
@@ -76,7 +95,7 @@ fun TransactionScreen(vm:PosViewModel) {
 @Composable private fun TransactionDetail(vm:PosViewModel,tx:Transaction,onDismiss:()->Unit){
     val user=vm.state.collectAsState().value.user!!;var voidReason by remember{mutableStateOf("Salah input")};var refundReason by remember{mutableStateOf("Barang rusak")}
     var showVoid by remember{mutableStateOf(false)};var showRefund by remember{mutableStateOf(false)}
-    SkSheet(true,onDismiss){Column(Modifier.fillMaxWidth().padding(16.dp)){Text(tx.id,style=trxMonoStyle(FontWeight.Medium, 18.sp));Text(rupiah(tx.total),style=MaterialTheme.typography.headlineSmall);Text("${tx.cashier} · ${tx.outlet}");Text("Status: ${tx.status}");tx.items.forEach{Text("${it.name} × ${it.qty} · ${rupiah(it.price*it.qty)}")};if(tx.qrisProof!=null)Text(if(tx.qrisProof.expired)"Bukti QRIS kadaluarsa (retensi 35 hari)" else "Bukti QRIS tersedia");if(tx.status==TransactionStatus.COMPLETED){if(user.can(Permission.VOID))SkButton("Void",{showVoid=true},block=true);if(user.can(Permission.REFUND))SkButton("Refund",{showRefund=true},block=true)}}}
+    SkSheet(true,onDismiss){Column(Modifier.fillMaxWidth().padding(16.dp)){Text(tx.id,style=trxMonoStyle(FontWeight.Medium, 18.sp));Text(rupiah(tx.total),style=MaterialTheme.typography.headlineSmall);Text("${tx.cashier} · ${tx.outlet}");Text("Status: ${tx.status}");tx.items.forEach{Text("${it.name} × ${it.qty} · ${rupiah(it.price*it.qty)}")};if(tx.qrisProof!=null){val expired=System.currentTimeMillis()>=tx.qrisProof.expiredAt;Text(if(expired)"Bukti QRIS kadaluarsa (retensi ${((tx.qrisProof.expiredAt-tx.qrisProof.capturedAt)/(24L*60*60*1000))} hari)" else "Bukti QRIS tersedia")};if(tx.status==TransactionStatus.COMPLETED){if(user.can(Permission.VOID))SkButton("Void",{showVoid=true},block=true);if(user.can(Permission.REFUND))SkButton("Refund",{showRefund=true},block=true)}}}
     if(showVoid){SkModal(true,{showVoid=false},"Alasan Void"){Text("Pilih alasan");Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){listOf("Salah input","Customer batal","Double entry","Lainnya").forEach{SkChip(it,voidReason==it){voidReason=it}}};SkButton("Konfirmasi",onClick={vm.voidTransaction(tx,voidReason){_,_->showVoid=false;onDismiss()}})}}
     if(showRefund){SkModal(true,{showRefund=false},"Refund"){Text("Refund seluruh transaksi demo");Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){listOf("Barang rusak","Salah pesan","Komplain","Lainnya").forEach{SkChip(it,refundReason==it){refundReason=it}}};SkButton("Konfirmasi",onClick={vm.refundTransaction(tx,tx.items.map{RefundItem(it.productId,it.name,it.qty,it.price*it.qty)},RefundMethod.CASH,refundReason){_,_->showRefund=false;onDismiss()}})}}
 }

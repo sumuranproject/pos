@@ -57,13 +57,23 @@ class PosViewModel(private val repo: PosRepository): ViewModel() {
     fun addToCart(p:Product){_state.update{s-> val found=s.cart.find{it.productId==p.id};s.copy(cart=if(found==null)s.cart+CartItem(p.id,p.name,p.price,1,p.unit) else s.cart.map{if(it.productId==p.id)it.copy(qty=it.qty+1)else it})}}
     fun changeQty(id:Int,delta:Int){_state.update{s->s.copy(cart=s.cart.mapNotNull{if(it.productId!=id)it else {val q=it.qty+delta;if(q<=0)null else it.copy(qty=q)}})}}
     fun clearCart(){_state.update{it.copy(cart=emptyList(),discount=0,taxPct=0)}}
+    fun nextTransactionId(): String {
+        val date = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
+        val prefix = "TRX-$date-"
+        val next = (repo.transactions.value.mapNotNull {
+            if (it.id.startsWith(prefix)) it.id.removePrefix(prefix).toIntOrNull() else null
+        }.maxOrNull() ?: 0) + 1
+        return prefix + next.toString().padStart(4, '0')
+    }
+
     fun totals():Totals {val s=_state.value;val sub=s.cart.sumOf{it.price*it.qty};val d=s.discount.coerceIn(0,sub);val after=sub-d;val tax=after*s.taxPct/100;return Totals(sub,d,after,tax,after+tax,s.taxPct)}
-    fun checkout(method:PaymentMethod,received:Long,qrisProof:QrisProof?,onDone:(Transaction)->Unit) {
+    fun checkout(method:PaymentMethod,received:Long,qrisProof:QrisProof?,transactionId:String?=null,onDone:(Transaction)->Unit) {
         val s=_state.value;val t=totals();if(s.cart.isEmpty())return
         if(method==PaymentMethod.CASH && received<t.total){_state.update{it.copy(notice="Uang diterima kurang dari total.")};return}
         if(method==PaymentMethod.QRIS && qrisProof==null){_state.update{it.copy(notice="Foto bukti QRIS wajib.")};return}
+        if(method==PaymentMethod.QRIS && qrisProof!=null && System.currentTimeMillis()-qrisProof.capturedAt>5*60_000L){_state.update{it.copy(notice="Bukti QRIS lebih dari 5 menit. Ambil foto ulang.")};return}
         val now=System.currentTimeMillis();val date=SimpleDateFormat("yyyyMMdd",Locale.US).format(Date(now))
-        val id="TRX-$date-${(repo.transactions.value.size+43).toString().padStart(4,'0')}"
+        val id=transactionId?.takeIf { it.startsWith("TRX-$date-") } ?: nextTransactionId()
         val tx=Transaction(id,now,SimpleDateFormat("yyyy-MM-dd",Locale.US).format(Date(now)),SimpleDateFormat("HH:mm",Locale.US).format(Date(now)),s.cart,t.total,method,s.user!!.displayName,s.user.username,s.selectedOutlet,t.discount,t.tax,t.taxPct,received,(received-t.total).coerceAtLeast(0),qrisProof=qrisProof)
         viewModelScope.launch {repo.addTransaction(tx);repo.addNotification(AppNotification(now,"transaction","Transaksi baru","${s.user.displayName} · ${rupiah(tx.total)}",now));clearCart();onDone(tx)}
     }
@@ -72,7 +82,7 @@ class PosViewModel(private val repo: PosRepository): ViewModel() {
         if(tx.status!=TransactionStatus.COMPLETED){onDone(false,"Transaksi tidak eligible.");return}
         val owner=s.user.role==Role.OWNER
         if(!owner && tx.cashierId!=s.user.username){onDone(false,"Hanya transaksi sendiri.");return}
-        if(!owner && System.currentTimeMillis()-tx.timestamp>settings.value.security.voidWindowMinutes*60_000L){onDone(false,"Window void kasir hanya 5 menit. Hubungi owner.");return}
+        if(!owner && System.currentTimeMillis()-tx.timestamp>settings.value.security.voidWindowMinutes*60_000L){onDone(false,"Window void kasir hanya ${settings.value.security.voidWindowMinutes} menit. Hubungi owner.");return}
         if(!owner && tx.total>settings.value.security.voidLimitCashier && pin!=settings.value.security.ownerPin){onDone(false,"Void di atas limit membutuhkan PIN owner.");return}
         val updated=tx.copy(status=TransactionStatus.VOID,syncStatus=SyncStatus.PENDING_SYNC)
         viewModelScope.launch {

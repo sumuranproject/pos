@@ -8,7 +8,7 @@ import java.io.FileOutputStream
 import kotlin.math.min
 
 object QrisProof {
-    suspend fun processCapture(context: Context, source: File, cashier: String, outlet: String, trxId: String, capturedAt: Long): com.sakukasir.pos.domain.QrisProof {
+    suspend fun processCapture(context: Context, source: File, cashier: String, outlet: String, trxId: String, capturedAt: Long, retentionDays: Int = 35): com.sakukasir.pos.domain.QrisProof {
         val bitmap=BitmapFactory.decodeFile(source.absolutePath) ?: error("Foto kamera tidak dapat dibaca")
         val maxSide=1080
         val scale=min(1f,maxSide.toFloat()/maxOf(bitmap.width,bitmap.height))
@@ -21,6 +21,6 @@ object QrisProof {
         FileOutputStream(out).use{resized.compress(if (Build.VERSION.SDK_INT >= 30) Bitmap.CompressFormat.WEBP_LOSSY else Bitmap.CompressFormat.WEBP,75,it)}
         if(resized!==bitmap)resized.recycle();bitmap.recycle();source.delete()
         val size=out.length()
-        return com.sakukasir.pos.domain.QrisProof(out.absolutePath,capturedAt,Build.MANUFACTURER+" "+Build.MODEL,size,capturedAt+35L*24*60*60*1000)
+        return com.sakukasir.pos.domain.QrisProof(out.absolutePath,capturedAt,Build.MANUFACTURER+" "+Build.MODEL,size,capturedAt+retentionDays.coerceIn(1,3650).toLong()*24*60*60*1000)
     }
 }

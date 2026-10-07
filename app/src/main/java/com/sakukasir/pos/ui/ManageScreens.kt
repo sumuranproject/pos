@@ -7,7 +7,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.sakukasir.pos.domain.*
+import com.sakukasir.pos.util.BluetoothPrinter
 
 @Composable fun ManageScreen(vm:PosViewModel){
     val products by vm.products.collectAsState();val cats by vm.categories.collectAsState();var tab by remember{mutableIntStateOf(0)};var add by remember{mutableStateOf(false)}
@@ -44,5 +50,35 @@ import com.sakukasir.pos.domain.*
 @Composable fun SecurityScreen(vm:PosViewModel){val set by vm.settings.collectAsState();var win by remember(set){mutableIntStateOf(set.security.voidWindowMinutes)};var limit by remember(set){mutableLongStateOf(set.security.voidLimitCashier)};Column(Modifier.fillMaxSize().padding(16.dp)){Text("Keamanan",style=MaterialTheme.typography.headlineSmall);SkTextField(win.toString(),{win=it.toIntOrNull()?:5},"Window void kasir (menit)");SkRupiahField(limit,{limit=it},"Limit void kasir");SkButton("Simpan",{vm.updateSettings(set.copy(security=set.security.copy(voidWindowMinutes=win,voidLimitCashier=limit)))},block=true)}}
 
 @Composable fun PrinterScreen(vm:PosViewModel){
-    Column(Modifier.fillMaxSize().padding(16.dp)){Text("Printer Bluetooth",style=MaterialTheme.typography.headlineSmall);Text("Format struk 58mm · Bluetooth Classic SPP / BLE");Spacer(Modifier.height(12.dp));SkCard(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp)){Text("SK-Printer-58mm");Text("Status dikelola oleh BluetoothPrinter");SkButton("Scan perangkat",{}) ;SkButton("Test print",{})}}}
+    val context=LocalContext.current
+    val printer=remember{BluetoothPrinter(context.applicationContext)}
+    val status by printer.status.collectAsState()
+    var devices by remember{mutableStateOf(emptyList<android.bluetooth.BluetoothDevice>())}
+    val scan={devices=printer.pairedDevices().toList().sortedBy{it.name ?: it.address}}
+    val permissionLauncher=rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()){scan()}
+    Column(Modifier.fillMaxSize().padding(16.dp)){
+        Text("Printer Bluetooth",style=MaterialTheme.typography.headlineSmall)
+        Text("Format struk 58mm · Bluetooth Classic SPP")
+        Spacer(Modifier.height(12.dp))
+        SkCard(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp)){
+            Text("Status: $status")
+            Spacer(Modifier.height(8.dp))
+            SkButton("Scan perangkat",{
+                if(Build.VERSION.SDK_INT>=31 &&
+                    androidx.core.content.ContextCompat.checkSelfPermission(context,Manifest.permission.BLUETOOTH_CONNECT)!=android.content.pm.PackageManager.PERMISSION_GRANTED){
+                    permissionLauncher.launch(arrayOf(Manifest.permission.BLUETOOTH_CONNECT,Manifest.permission.BLUETOOTH_SCAN))
+                }else scan()
+            },block=true)
+            devices.forEach{device->
+                ListItem(
+                    headlineContent={Text(device.name ?: "Perangkat tanpa nama")},
+                    supportingContent={Text(device.address)},
+                    trailingContent={TextButton({printer.connect(device)}){Text("Hubungkan")}}
+                )
+            }
+            SkButton("Test print",{
+                if(!printer.testPrint()) vm.setNotice("Printer belum terhubung atau gagal mencetak.")
+            },enabled=status=="Connected",block=true)
+        }}
+    }
 }
