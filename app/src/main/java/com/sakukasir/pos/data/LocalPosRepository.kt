@@ -26,6 +26,8 @@ class LocalPosRepository(
     private val _products = MutableStateFlow(seedProducts())
     private val _categories = MutableStateFlow(seedCategories())
     private val _outlets = MutableStateFlow(seedOutlets())
+    private val _workers = MutableStateFlow(seedWorkers())
+    private val _shiftHistory = MutableStateFlow(listOf(ShiftSummary("SH-041","08:15","16:30",850000,420000,24,0)))
     private val _settings = MutableStateFlow(AppSettings())
     private val _shift = MutableStateFlow<Shift?>(null)
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -47,6 +49,8 @@ class LocalPosRepository(
     override val products: StateFlow<List<Product>> = _products.asStateFlow()
     override val categories: StateFlow<List<Category>> = _categories.asStateFlow()
     override val outlets: StateFlow<List<Outlet>> = _outlets.asStateFlow()
+    override val workers: StateFlow<List<Worker>> = _workers.asStateFlow()
+    override val shiftHistory: StateFlow<List<ShiftSummary>> = _shiftHistory.asStateFlow()
     override val settings: StateFlow<AppSettings> = _settings.asStateFlow()
     override val activeShift: StateFlow<Shift?> = _shift.asStateFlow()
     override val syncQueue = queue.items
@@ -90,6 +94,20 @@ class LocalPosRepository(
         _products.value = _products.value.map { if (it.id == product.id) product else it }
     }
 
+    override suspend fun deleteProduct(id: Int) { _products.value = _products.value.filterNot { it.id == id } }
+    override suspend fun upsertCategory(category: Category) {
+        _categories.value = if (_categories.value.any { it.id == category.id }) _categories.value.map { if (it.id == category.id) category else it } else _categories.value + category
+    }
+    override suspend fun deleteCategory(id: Int) { _categories.value = _categories.value.filterNot { it.id == id } }
+    override suspend fun upsertOutlet(outlet: Outlet) {
+        _outlets.value = if (_outlets.value.any { it.id == outlet.id }) _outlets.value.map { if (it.id == outlet.id) outlet else it } else _outlets.value + outlet
+    }
+    override suspend fun deleteOutlet(id: Int) { _outlets.value = _outlets.value.filterNot { it.id == id } }
+    override suspend fun upsertWorker(worker: Worker) {
+        _workers.value = if (_workers.value.any { it.id == worker.id }) _workers.value.map { if (it.id == worker.id) worker else it } else _workers.value + worker
+    }
+    override suspend fun updateExpense(expense: Expense) { _expenses.value = _expenses.value.map { if (it.id == expense.id) expense else it } }
+    override suspend fun addShiftHistory(item: ShiftSummary) { _shiftHistory.value = listOf(item) + _shiftHistory.value }
     override suspend fun updateSettings(settings: AppSettings) { _settings.value = settings }
     override suspend fun setShift(shift: Shift?) { _shift.value = shift }
 
@@ -140,11 +158,21 @@ class LocalPosRepository(
             Product(8,"Mie Instan Goreng",12000,"porsi","Makanan",2,5)
         )
         private fun seedCategories() = listOf(Category(1,"Makanan"),Category(2,"Minuman"),Category(3,"Snack"),Category(4,"Lainnya"))
-        private fun seedOutlets() = listOf(Outlet(1,"Toko Berkah","Jl. Merdeka 12"),Outlet(2,"Cabang Pasar","Pasar Baru Blok C"))
-        private fun seedExpenses() = listOf(
-            Expense("EXP-001",150000,"Bahan","Beli kopi 2kg",System.currentTimeMillis()-86400000,"Budi"),
-            Expense("EXP-002",50000,"Operasional","Token listrik",System.currentTimeMillis()-82800000,"Budi"),
-            Expense("EXP-003",120000,"Gaji","Kasbon Andi",System.currentTimeMillis()-90000000,"Budi")
+        private fun seedOutlets() = listOf(Outlet(1,"Toko Berkah","Jl. Merdeka 12",true,"0812-1111-2222"),Outlet(2,"Cabang Pasar","Pasar Baru Blok C",true,"0812-3333-4444"))
+        private fun seedExpenses(): List<Expense> {
+            fun at(dayOffset: Int, h: Int, m: Int): Long = Calendar.getInstance().apply {
+                add(Calendar.DAY_OF_YEAR, dayOffset); set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m); set(Calendar.SECOND, 0)
+            }.timeInMillis
+            return listOf(
+                Expense("EXP-001",150000,"Bahan","Beli kopi 2kg",at(0,8,0),"Budi"),
+                Expense("EXP-002",50000,"Operasional","Token listrik",at(0,9,30),"Budi"),
+                Expense("EXP-003",120000,"Gaji","Kasbon Andi",at(-1,17,0),"Budi")
+            )
+        }
+        private fun seedWorkers() = listOf(
+            Worker(1,"Andi Wijaya","kasir","Toko Berkah",true,"0812-5555-6666", Permission.entries.toSet(), "kasir123"),
+            Worker(2,"Siti Aminah","kasir2","Cabang Pasar",true,"0812-7777-8888",setOf(Permission.POS,Permission.TRANSACTIONS,Permission.SHIFT,Permission.PRINTER,Permission.SYNC,Permission.THEME,Permission.PROFILE), "kasir123"),
+            Worker(3,"Rudi Hartono","kasir3","Toko Berkah",false,"0812-9999-0000",setOf(Permission.POS,Permission.PRINTER,Permission.THEME,Permission.PROFILE), "kasir123")
         )
         private fun seedNotifications() = listOf(
             AppNotification(1,"stock_low","Stok menipis","Teh Manis · sisa 3",System.currentTimeMillis()-1800000),

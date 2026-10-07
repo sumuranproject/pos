@@ -22,7 +22,14 @@ data class User(
     fun can(permission: Permission) = role == Role.OWNER || permissions.contains(permission)
 }
 
-data class Outlet(val id: Int, val name: String, val address: String, val active: Boolean = true)
+data class Outlet(val id: Int, val name: String, val address: String, val active: Boolean = true, val phone: String = "")
+data class Worker(
+    val id: Int, val name: String, val username: String, val outlet: String,
+    val active: Boolean = true, val whatsapp: String = "",
+    val permissions: Set<Permission> = Permission.entries.toSet(),
+    val password: String = ""
+)
+data class ShiftSummary(val id: String, val start: String, val end: String, val cash: Long, val qris: Long, val tx: Int, val variance: Long)
 data class Category(val id: Int, val name: String, val active: Boolean = true)
 data class Product(
     val id: Int, val name: String, val price: Long, val unit: String,
@@ -115,13 +122,24 @@ data class SecuritySettings(
     val alertVoidPerDay: Int = 5
 )
 
+data class ReceiptSettings(
+    val bizName: String = "Toko Berkah", val showOutlet: Boolean = true, val showTrxNumber: Boolean = true,
+    val showCashier: Boolean = true, val showMethod: Boolean = true, val showChange: Boolean = true,
+    val footer: String = "Terima kasih sudah berbelanja"
+)
+
 data class AppSettings(
     val qrisEnabled: Boolean = true,
     val qrisOutlet: String = "Toko Berkah",
+    val qrisImageUri: String? = null,
     val qrisRetentionDays: Int = 35,
     val printerName: String = "SK-Printer-58mm",
     val printerConnected: Boolean = false,
-    val security: SecuritySettings = SecuritySettings()
+    val security: SecuritySettings = SecuritySettings(),
+    val receipt: ReceiptSettings = ReceiptSettings(),
+    val notifStockLow: Boolean = true,
+    val notifStockOut: Boolean = true,
+    val notifSystem: Boolean = true
 )
 
 data class Totals(val subtotal: Long, val discount: Long, val taxable: Long, val tax: Long, val total: Long, val taxPct: Int)

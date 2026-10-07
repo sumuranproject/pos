@@ -4,24 +4,29 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import com.sakukasir.pos.domain.*
+import kotlinx.coroutines.delay
 
 @Composable
 fun rememberOnlineState(): Boolean {
@@ -45,215 +50,352 @@ fun rememberOnlineState(): Boolean {
     return online
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** .app-main: padding 16, scrollable. [overlay] is drawn above the content (cart bar / FAB). */
+@Composable
+fun Screen(bottomSpace: Dp = 24.dp, overlay: (@Composable BoxScope.() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = bottomSpace), content = content)
+        if (overlay != null) overlay()
+    }
+}
+
+@Composable
+fun SyncDot(status: String, size: Int = 10) { // synced | pending | error
+    val c = Sk.c
+    val (fg, soft) = when (status) { "pending" -> c.warn to c.warnSoft; "error" -> c.alert to c.alertSoft; else -> c.cash to c.cashSoft }
+    Box(Modifier.size((size + 6).dp).background(soft, CircleShape), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(size.dp).background(fg, CircleShape))
+    }
+}
+
 @Composable
 fun AppShell(vm: PosViewModel, onLogout: () -> Unit) {
     val s by vm.state.collectAsState()
     val user = s.user ?: return
+    val c = Sk.c
     val nav = rememberNavController()
-    var drawer by remember { mutableStateOf(false) }
-    val online = rememberOnlineState()
-    val routes = if (user.role == Role.OWNER) listOf("dashboard", "pos", "reports") else buildList {
+    var sheet by remember { mutableStateOf<String?>(null) } // outlet | notif | sync
+    var confirmLogout by remember { mutableStateOf(false) }
+    var toast by remember { mutableStateOf<Pair<String, String>?>(null) }
+    val systemOnline = rememberOnlineState()
+    val online = systemOnline && !s.simulateOffline
+    val queue by vm.syncQueue.collectAsState()
+    val notifs by vm.notifications.collectAsState()
+    val outlets by vm.outlets.collectAsState()
+    val activeShift by vm.shift.collectAsState()
+    val owner = user.role == Role.OWNER
+
+    val routes = if (owner) listOf("dashboard", "pos", "reports") else buildList {
         if (user.can(Permission.DASHBOARD)) add("dashboard")
         if (user.can(Permission.POS)) add("pos")
         if (user.can(Permission.TRANSACTIONS)) add("transactions")
         if (user.can(Permission.SHIFT)) add("shift")
     }.take(4)
     if (routes.isEmpty()) {
-        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Icon(Icons.Default.Lock, null, Modifier.size(40.dp)); Text("Tidak ada akses fitur. Hubungi owner.", modifier = Modifier.padding(16.dp)); TextButton(onClick = onLogout) { Text("Keluar") }
+        Column(Modifier.fillMaxSize().background(c.surface), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            SkIcon(SkIcons.Lock, 40.dp, c.textFaint)
+            Txt("Tidak ada akses fitur. Hubungi owner.", 13, color = c.textMuted, modifier = Modifier.padding(16.dp))
+            BtnLink("Keluar", onLogout)
         }
         return
     }
-    LaunchedEffect(Unit) { nav.navigate(routes.first()) { popUpTo(0) } }
+    val start = if (!owner && "pos" in routes) "pos" else routes.first()
+    val backEntry by nav.currentBackStackEntryAsState()
+    val route = backEntry?.destination?.route
+    var lastTab by remember { mutableStateOf(start) }
+    LaunchedEffect(route) { if (route != null && route in routes) lastTab = route }
+    val toastFn: (String, String) -> Unit = { m, t -> toast = m to t }
+    LaunchedEffect(toast) { if (toast != null) { delay(2500); toast = null } }
 
-    Scaffold(
-        topBar = {
-            Column {
-                TopAppBar(
-                    title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                modifier = Modifier.size(36.dp).clickable { drawer = true },
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = RoundedCornerShape(10.dp)
-                            ) { Box(contentAlignment = Alignment.Center) { Text("SK", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.titleSmall) } }
-                            Spacer(Modifier.width(10.dp))
-                            SkOutletChip(s.selectedOutlet, user.role == Role.OWNER) { if (user.role == Role.OWNER) drawer = true }
+    val goTab: (String) -> Unit = { r ->
+        nav.navigate(r) { popUpTo(nav.graph.findStartDestination().id) { saveState = false }; launchSingleTop = true }
+    }
+    val goPage: (String) -> Unit = { r -> nav.navigate(r) { launchSingleTop = true } }
+    val goHome: () -> Unit = { goTab(if (owner) "dashboard" else if ("pos" in routes) "pos" else routes.first()) }
+
+    CompositionLocalProvider(LocalToast provides toastFn) {
+        Box(Modifier.fillMaxSize().background(c.surface)) {
+            Column(Modifier.fillMaxSize()) {
+                /* ---- header (56dp, card bg, bottom border) ---- */
+                Row(
+                    Modifier.fillMaxWidth().height(56.dp).background(c.card).padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Box(Modifier.size(32.dp).clip(RSm).background(c.primary).clickable { sheet = "menu" }, contentAlignment = Alignment.Center) {
+                            Txt("SK", 13, FontWeight.Bold, Color.White, spacing = -.26f)
                         }
-                    },
-                    navigationIcon = {},
-                    actions = {
-                        SkSyncDot(online = online)
-                        IconButton(onClick = {}) { Icon(Icons.Default.Print, contentDescription = "Printer") }
-                        Box {
-                            IconButton(onClick = { vm.markNotificationsRead() }) { Icon(Icons.Default.NotificationsNone, contentDescription = "Notifikasi") }
-                            if (vm.notifications.collectAsState().value.any { !it.read }) {
-                                Box(Modifier.size(7.dp).background(MaterialTheme.colorScheme.error, RoundedCornerShape(50)).align(Alignment.TopEnd).offset((-7).dp, 9.dp))
-                            }
+                        val chipMod = Modifier.widthIn(max = 180.dp).clip(RPill).background(c.surfaceAlt).border(1.dp, c.border, RPill)
+                        Row(
+                            (if (owner) chipMod.clickable { sheet = "outlet" } else chipMod).padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Txt(if (owner) s.selectedOutlet else (user.outlet.ifBlank { s.selectedOutlet }), 13, FontWeight.Medium, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
+                            if (owner) SkIcon(SkIcons.ChevronDown, 14.dp, c.text)
                         }
-                        IconButton(onClick = { if (user.can(Permission.THEME)) vm.toggleTheme() }) {
-                            Icon(if (s.darkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, contentDescription = "Tema")
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Box(Modifier.size(40.dp).clip(RSm).clickable { sheet = "sync" }, contentAlignment = Alignment.Center) {
+                            SyncDot(if (!online || queue.isNotEmpty()) "pending" else "synced")
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-                )
+                        IconBtn(SkIcons.Printer, { if (owner || user.can(Permission.PRINTER)) goPage("printer") else toastFn("Tidak ada akses printer", "error") })
+                        IconBtn(SkIcons.Bell, { sheet = "notif"; vm.markNotificationsRead() }, badge = notifs.any { !it.read })
+                        IconBtn(if (s.darkTheme) SkIcons.Sun else SkIcons.Moon, { if (user.can(Permission.THEME)) vm.toggleTheme() else toastFn("Tidak ada akses tema", "error") })
+                    }
+                }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(c.border))
                 if (!online) {
-                    Surface(color = Color(0xFFFFF2C7), modifier = Modifier.fillMaxWidth()) {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            SkSyncDot(online = false)
-                            Spacer(Modifier.width(14.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text("Mode offline · ${vm.syncQueue.collectAsState().value.size} transaksi menunggu", style = MaterialTheme.typography.bodyLarge)
-                            }
-                            TextButton(onClick = { vm.sync() }, enabled = false) { Text("Sync sekarang", color = Color(0xFFD97706)) }
+                    Row(
+                        Modifier.fillMaxWidth().background(c.warnSoft).padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        SyncDot("pending", 8)
+                        Txt(if (queue.isEmpty()) "Mode offline" else "Mode offline · ${queue.size} transaksi menunggu", 13, FontWeight.Medium, modifier = Modifier.weight(1f))
+                        BtnLink("Sync sekarang", { toastFn("Tidak ada koneksi", "error") }, color = c.warn)
+                    }
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(c.border))
+                }
+
+                /* ---- content ---- */
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    NavHost(
+                        nav, startDestination = start, modifier = Modifier.fillMaxSize(),
+                        enterTransition = { EnterTransition.None }, exitTransition = { ExitTransition.None },
+                        popEnterTransition = { EnterTransition.None }, popExitTransition = { ExitTransition.None }
+                    ) {
+                        composable("dashboard") { DashboardScreen(vm) }
+                        composable("pos") { PosScreen(vm) }
+                        composable("reports") { ReportScreen(vm) }
+                        composable("transactions") { TransactionScreen(vm) }
+                        composable("shift") { ShiftScreen(vm) }
+                        composable("products") { ProductsPage(vm, goHome) }
+                        composable("categories") { CategoriesPage(vm, goHome) }
+                        composable("inventory") { InventoryPage(vm, goHome) }
+                        composable("outlets") { OutletsPage(vm, goHome) }
+                        composable("workers") { WorkersPage(vm, goHome) }
+                        composable("qris") { QrisScreen(vm, goHome) }
+                        composable("printer") { PrinterScreen(vm, goHome) }
+                        composable("receipt") { ReceiptSettingsPage(vm, goHome) }
+                        composable("notif-settings") { NotifSettingsPage(vm, goHome) }
+                        composable("sync-settings") { SyncSettingsPage(vm, goHome) }
+                        composable("security") { SecurityScreen(vm, goHome) }
+                        composable("audit") { AuditScreen(vm, goHome) }
+                        composable("theme") { ThemeScreen(vm, goHome) }
+                        composable("profile") { ProfileScreen(vm, goHome) { confirmLogout = true } }
+                        composable("about") { AboutScreen(goHome) }
+                        composable("expenses") { ExpensesPage(vm, goHome) }
+                    }
+                }
+
+                /* ---- bottom nav (64dp) ---- */
+                Box(Modifier.fillMaxWidth().height(1.dp).background(c.border))
+                Row(Modifier.fillMaxWidth().height(64.dp).background(c.card).navigationBarsPadding()) {
+                    routes.forEach { r ->
+                        val icon: ImageVector = when (r) { "dashboard" -> SkIcons.Dashboard; "pos" -> SkIcons.Pos; "reports" -> SkIcons.Chart; "transactions" -> SkIcons.Receipt; else -> SkIcons.Clock }
+                        val label = when (r) { "dashboard" -> "Dashboard"; "pos" -> "POS"; "reports" -> "Laporan"; "transactions" -> "Transaksi"; else -> "Shift" }
+                        val on = lastTab == r
+                        Column(
+                            Modifier.weight(1f).fillMaxHeight().clickable { goTab(r) }.padding(horizontal = 4.dp, vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
+                        ) {
+                            SkIcon(icon, 22.dp, if (on) c.primary else c.textMuted)
+                            Txt(label, 11, FontWeight.Medium, if (on) c.primary else c.textMuted, lineHeight = 1.2f)
                         }
                     }
                 }
             }
-        },
-        bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                routes.forEach { route ->
-                    val selected = nav.currentBackStackEntryAsState().value?.destination?.route == route
-                    val icon = when (route) {
-                        "dashboard" -> Icons.Default.GridView
-                        "pos" -> Icons.Default.GridOn
-                        "reports" -> Icons.Default.ShowChart
-                        "transactions" -> Icons.Default.ReceiptLong
-                        else -> Icons.Default.Schedule
+
+            /* ---- toast ---- */
+            toast?.let { (msg, type) ->
+                Box(Modifier.fillMaxWidth().padding(top = 68.dp), contentAlignment = Alignment.TopCenter) {
+                    Box(
+                        Modifier.padding(horizontal = 16.dp).widthIn(max = 400.dp).fillMaxWidth().shadow(8.dp, RSm).clip(RSm)
+                            .background(when (type) { "success" -> c.cash; "error" -> c.alert; else -> c.text })
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                    ) { Txt(msg, 13, FontWeight.Medium, if (type == "") c.surface else Color.White) }
+                }
+            }
+
+        /* ---- sheets / dialogs ---- */
+        when (sheet) {
+            "menu" -> MenuSheet(vm, owner, user, { sheet = null }, goPage) { confirmLogout = true; sheet = null }
+            "outlet" -> SkSheet({ sheet = null }) {
+                Txt("Pilih outlet", 17, FontWeight.SemiBold, lineHeight = 1.3f)
+                Spacer(Modifier.height(12.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    outlets.filter { it.active }.forEach { o ->
+                        ListRow(onClick = { vm.selectOutlet(o.name); sheet = null; toastFn("Outlet diganti: ${o.name}", "") }) {
+                            Column(Modifier.weight(1f)) {
+                                Txt(o.name, 14, FontWeight.Medium)
+                                Txt(o.address, 12, color = c.textMuted, modifier = Modifier.padding(top = 2.dp))
+                            }
+                            if (s.selectedOutlet == o.name) Txt("Aktif", 14, FontWeight.SemiBold, c.primary)
+                        }
                     }
-                    val label = when (route) { "reports" -> "Laporan"; "transactions" -> "Transaksi"; "shift" -> "Shift"; else -> route.replaceFirstChar { it.uppercase() } }
-                    NavigationBarItem(selected, { nav.navigate(route) { launchSingleTop = true } }, icon = { Icon(icon, null) }, label = { Text(label) })
+                }
+            }
+            "notif" -> SkSheet({ sheet = null }) {
+                Txt("Notifikasi", 17, FontWeight.SemiBold, lineHeight = 1.3f)
+                Spacer(Modifier.height(12.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (notifs.isEmpty()) EmptyState("Belum ada notifikasi")
+                    notifs.forEach { n -> NotifCard(n) }
+                }
+            }
+            "sync" -> SkSheet({ sheet = null }) {
+                Txt("Sinkronisasi", 17, FontWeight.SemiBold, lineHeight = 1.3f)
+                Txt("Status: " + if (online) "Online" else "Offline", 12, color = c.textMuted, modifier = Modifier.padding(top = 4.dp, bottom = 16.dp))
+                KeyRow("Pending", queue.size.toString(), divider = false)
+                Spacer(Modifier.height(8.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Btn("Sync sekarang", { if (online) { vm.sync(); sheet = null; toastFn("Sinkronisasi berjalan…", "success") } else toastFn("Tidak ada koneksi", "error") }, Modifier.fillMaxWidth())
+                    Btn(if (s.simulateOffline) "Kembali online" else "Simulasikan offline", { vm.toggleOffline(); sheet = null }, Modifier.fillMaxWidth(), kind = 1)
                 }
             }
         }
-    ) { pad ->
-        NavHost(nav, startDestination = routes.first(), Modifier.padding(pad).fillMaxSize()) {
-            composable("dashboard") { DashboardScreen(vm) }
-            composable("pos") { PosScreen(vm) }
-            composable("reports") { ReportScreen(vm) }
-            composable("transactions") { TransactionScreen(vm) }
-            composable("shift") { ShiftScreen(vm) }
-            composable("manage") { ManageScreen(vm) }
-            composable("expenses") { ExpenseScreen(vm) }
-            composable("printer") { PrinterScreen(vm) }
-            composable("profile") { ProfileScreen(vm) }
-            composable("audit") { AuditScreen(vm) }
-            composable("security") { SecurityScreen(vm) }
-            composable("notifications") { NotificationScreen(vm) }
-            composable("qris") { QrisScreen(vm) }
-            composable("theme") { ThemeScreen(vm) }
-        }
-    }
-
-    if (drawer) {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = .32f)).clickable { drawer = false }) {
-            Surface(
-                Modifier.fillMaxHeight().width(328.dp).clickable(enabled = false) {},
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 0.dp
-            ) {
-                if (user.role == Role.OWNER) OwnerDrawer(vm, nav, onClose = { drawer = false }) { drawer = false; onLogout() } else CashierDrawer(vm, nav, onClose = { drawer = false }) { drawer = false; onLogout() }
-            }
+        if (confirmLogout) {
+            if (activeShift != null) ConfirmModal("Shift masih aktif", "Tutup shift dulu sebelum keluar. Kalau tetap keluar, shift akan tercatat sebagai anomali.", "Tetap keluar", true, true, { confirmLogout = false }) { confirmLogout = false; onLogout() }
+            else ConfirmModal("Keluar dari SakuKasir?", "Kamu perlu login lagi untuk masuk.", "Keluar", false, true, { confirmLogout = false }) { confirmLogout = false; onLogout() }
         }
     }
 }
 
 @Composable
-private fun DrawerHeader(title: String, subtitle: String, onClose: () -> Unit) {
-    Column {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(modifier = Modifier.size(42.dp), color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(10.dp)) {
-                Box(contentAlignment = Alignment.Center) { Text("SK", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.titleMedium) }
-            }
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) { Text(title, style = MaterialTheme.typography.titleLarge); Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            IconButton(onClick = onClose) { Icon(Icons.Default.Close, null) }
-        }
-        HorizontalDivider()
+private fun NotifCard(n: AppNotification) {
+    val c = Sk.c
+    val (label, col) = when (n.type) {
+        "stock_low" -> "⚠ Stok menipis" to c.warn
+        "stock_out" -> "⚠ Stok habis" to c.alert
+        "void" -> "⚠ Void" to c.alert
+        "refund" -> "↩ Refund" to c.warn
+        "transaction" -> "✓ Transaksi" to c.cash
+        else -> "↓ Sistem" to c.textMuted
     }
+    val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(java.util.Date(n.time))
+    SkCard(Modifier.fillMaxWidth(), padding = 12) {
+        Txt(label.uppercase(), 10, FontWeight.SemiBold, col, mono = true, spacing = .3f)
+        Txt(n.title, 14, FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+        Txt("${n.body} · $time", 12, color = c.textMuted, modifier = Modifier.padding(top = 2.dp))
+    }
+}
+
+/* ---------------- menu sheet ---------------- */
+private data class MenuItem(
+    val label: String,
+    val route: String,
+    val count: Int? = null,
+    val badge: String? = null,
+    val badgeKind: String = "muted"
+)
+
+@Composable
+private fun MenuSheet(
+    vm: PosViewModel,
+    owner: Boolean,
+    user: User,
+    close: () -> Unit,
+    go: (String) -> Unit,
+    logout: () -> Unit
+) {
+    val c = Sk.c
+    val products by vm.products.collectAsState()
+    val cats by vm.categories.collectAsState()
+    val outlets by vm.outlets.collectAsState()
+    val workers by vm.workers.collectAsState()
+    val settings by vm.settings.collectAsState()
+    val queue by vm.syncQueue.collectAsState()
+    val audit by vm.audit.collectAsState()
+    val dark = vm.state.collectAsState().value.darkTheme
+    val open = remember { mutableStateMapOf("katalog" to true, "bisnis" to true, "pengaturan" to true) }
+
+    SkSheet(close) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(32.dp).clip(RSm).background(c.primary), contentAlignment = Alignment.Center) { Txt("SK", 13, FontWeight.Bold, Color.White, spacing = -.26f) }
+            Column(Modifier.weight(1f)) {
+                Txt(if (owner) "Kelola" else "Akun Saya", 15, FontWeight.SemiBold)
+                Txt(if (owner) "Menu owner" else "Pengaturan kasir", 12, color = c.textMuted)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        if (owner) {
+            val low = products.count { it.trackStock && it.stock > 0 && it.stock <= it.lowStock }
+            val out = products.count { it.trackStock && it.stock == 0 }
+            val groups = listOf(
+                Triple("katalog", "Katalog", listOf(
+                    MenuItem("Produk", "products", count = products.size),
+                    MenuItem("Kategori", "categories", count = cats.size),
+                    MenuItem("Stok", "inventory", badge = if (low + out > 0) "${low + out} low" else null, badgeKind = "warn")
+                )),
+                Triple("bisnis", "Bisnis", listOf(
+                    MenuItem("Outlet", "outlets", count = outlets.size),
+                    MenuItem("Kasir", "workers", count = workers.size)
+                )),
+                Triple("pengaturan", "Pengaturan", listOf(
+                    MenuItem("QRIS", "qris", badge = if (settings.qrisEnabled) "Aktif" else "Off", badgeKind = if (settings.qrisEnabled) "cash" else "muted"),
+                    MenuItem("Printer", "printer", badge = if (settings.printerConnected) "On" else "Off", badgeKind = if (settings.printerConnected) "cash" else "muted"),
+                    MenuItem("Struk", "receipt"),
+                    MenuItem("Notifikasi", "notif-settings"),
+                    MenuItem("Sinkronisasi", "sync-settings", count = queue.size.takeIf { it > 0 }),
+                    MenuItem("Keamanan", "security"),
+                    MenuItem("Audit Log", "audit", count = audit.size.takeIf { it > 0 }),
+                    MenuItem("Tema", "theme", badge = if (dark) "Gelap" else "Terang"),
+                    MenuItem("Profil", "profile"),
+                    MenuItem("Tentang", "about")
+                ))
+            )
+            groups.forEach { (id, title, items) ->
+                val isOpen = open[id] == true
+                Row(Modifier.fillMaxWidth().clip(RSm).clickable { open[id] = !isOpen }.padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Txt(title.uppercase(), 11, FontWeight.SemiBold, c.textMuted, spacing = .66f, modifier = Modifier.weight(1f))
+                    SkIcon(SkIcons.ChevronDown, 14.dp, c.textFaint, if (isOpen) Modifier.graphicsLayer(rotationZ = 180f) else Modifier)
+                }
+                if (isOpen) items.forEach { item -> MenuRow(item) { close(); go(item.route) } }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(c.border))
+            }
+        } else {
+            val items = buildList {
+                if (user.can(Permission.PROFILE)) add(MenuItem("Profil", "profile"))
+                if (user.can(Permission.PRINTER)) add(MenuItem("Printer", "printer"))
+                if (user.can(Permission.SYNC)) add(MenuItem("Sinkronisasi", "sync-settings", count = queue.size.takeIf { it > 0 }))
+                if (user.can(Permission.EXPENSE)) add(MenuItem("Pengeluaran", "expenses"))
+                if (user.can(Permission.THEME)) add(MenuItem("Tema", "theme", badge = if (dark) "Gelap" else "Terang"))
+                add(MenuItem("Tentang", "about"))
+            }
+            items.forEach { MenuRow(it) { close(); go(it.route) } }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(c.border))
+        Row(
+            Modifier.fillMaxWidth().clip(RSm).background(c.alertSoft).clickable(onClick = logout).padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            SkIcon(SkIcons.Logout, 18.dp, c.alert)
+            Txt("Keluar", 14, FontWeight.SemiBold, c.alert)
+        }
+    }
+}
 }
 
 @Composable
-private fun OwnerDrawer(vm: PosViewModel, nav: NavHostController, onClose: () -> Unit, onLogout: () -> Unit) {
-    var katalog by remember { mutableStateOf(true) }
-    var bisnis by remember { mutableStateOf(true) }
-    var settings by remember { mutableStateOf(true) }
-    val products by vm.products.collectAsState(); val cats by vm.categories.collectAsState(); val settingsState by vm.settings.collectAsState()
-    val go: (String) -> Unit = { route -> nav.navigate(route); onClose() }
-    Column(Modifier.fillMaxSize()) {
-        DrawerHeader("Kelola", "Menu owner", onClose)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            AccordionHeader("KATALOG", katalog) { katalog = !katalog }
-            if (katalog) {
-                DrawerTextItem("Produk", products.size.toString()) { go("manage") }
-                DrawerTextItem("Kategori", cats.size.toString()) { go("manage") }
-                val low = products.count { it.trackStock && it.stock in 1..it.lowStock }
-                val out = products.count { it.trackStock && it.stock == 0 }
-                DrawerTextItem("Stok", if (low + out > 0) "${low + out} LOW" else null, warn = low + out > 0) { go("manage") }
+private fun MenuRow(item: MenuItem, onClick: () -> Unit) {
+    val c = Sk.c
+    Row(
+        Modifier.fillMaxWidth().clip(RSm).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Txt(item.label, 14, FontWeight.Medium, modifier = Modifier.weight(1f), maxLines = 1)
+        if (item.badge != null) {
+            val (bg, fg) = when (item.badgeKind) {
+                "warn" -> c.warnSoft to c.warn
+                "cash" -> c.cashSoft to c.cash
+                else -> c.surfaceAlt to c.textMuted
             }
-            AccordionHeader("BISNIS", bisnis) { bisnis = !bisnis }
-            if (bisnis) {
-                DrawerTextItem("Outlet", "2") { go("manage") }
-                DrawerTextItem("Kasir", "3") { go("manage") }
-            }
-            AccordionHeader("PENGATURAN", settings) { settings = !settings }
-            if (settings) {
-                DrawerTextItem("QRIS", if (settingsState.qrisEnabled) "AKTIF" else "OFF", success = settingsState.qrisEnabled) { go("qris") }
-                DrawerTextItem("Printer", if (settingsState.printerConnected) "AKTIF" else "OFF", success = false) { go("printer") }
-                DrawerTextItem("Struk") { go("profile") }
-                DrawerTextItem("Notifikasi") { go("notifications") }
-                DrawerTextItem("Sinkronisasi") { vm.sync(); onClose() }
-                DrawerTextItem("Keamanan") { go("security") }
-                DrawerTextItem("Audit Log") { go("audit") }
-                DrawerTextItem("Tema", if (vm.state.collectAsState().value.darkTheme) "GELAP" else "TERANG") { go("theme") }
-                DrawerTextItem("Profil") { go("profile") }
-                DrawerTextItem("Tentang") { go("profile") }
-            }
+            Tag(item.badge, bg, fg)
         }
-        HorizontalDivider()
-        Button(onClick = onLogout, modifier = Modifier.fillMaxWidth().padding(20.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFE1E1), contentColor = Color(0xFFCC2E35)), shape = RoundedCornerShape(12.dp)) {
-            Icon(Icons.Default.Logout, null); Spacer(Modifier.width(8.dp)); Text("Keluar")
-        }
-    }
-}
-
-@Composable
-private fun CashierDrawer(vm: PosViewModel, nav: NavHostController, onClose: () -> Unit, onLogout: () -> Unit) {
-    val user = vm.state.collectAsState().value.user!!
-    val go: (String) -> Unit = { route -> nav.navigate(route); onClose() }
-    Column(Modifier.fillMaxSize()) {
-        DrawerHeader("Akun Saya", "Pengaturan kasir", onClose)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            DrawerTextItem("Profil") { go("profile") }
-            if (user.can(Permission.PRINTER)) DrawerTextItem("Printer") { go("printer") }
-            if (user.can(Permission.SYNC)) DrawerTextItem("Sinkronisasi") { vm.sync(); onClose() }
-            if (user.can(Permission.EXPENSE)) DrawerTextItem("Pengeluaran") { go("expenses") }
-            if (user.can(Permission.THEME)) DrawerTextItem("Tema", if (vm.state.collectAsState().value.darkTheme) "GELAP" else "TERANG") { go("theme") }
-            DrawerTextItem("Tentang") { go("profile") }
-        }
-        HorizontalDivider()
-        Button(onClick = onLogout, modifier = Modifier.fillMaxWidth().padding(20.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFE1E1), contentColor = Color(0xFFCC2E35)), shape = RoundedCornerShape(12.dp)) {
-            Icon(Icons.Default.Logout, null); Spacer(Modifier.width(8.dp)); Text("Keluar")
-        }
-    }
-}
-
-@Composable private fun AccordionHeader(title: String, expanded: Boolean, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 15.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-        Icon(if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable private fun DrawerTextItem(text: String, badge: String? = null, success: Boolean = false, warn: Boolean = false, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 20.dp, end = 20.dp, top = 13.dp, bottom = 13.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        if (badge != null) {
-            val c = when { success -> Color(0xFF219653); warn -> Color(0xFFD97706); else -> MaterialTheme.colorScheme.onSurfaceVariant }
-            val bg = when { success -> Color(0xFFDDF7E7); warn -> Color(0xFFFFF0C2); else -> MaterialTheme.colorScheme.surfaceVariant }
-            Surface(color = bg, shape = RoundedCornerShape(7.dp)) { Text(badge, color = c, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp)) }
+        if (item.count != null && item.count != 0) {
+            Box(Modifier.clip(RPill).background(c.surfaceAlt).padding(horizontal = 8.dp, vertical = 2.dp)) { Txt(item.count.toString(), 12, FontWeight.SemiBold, c.textMuted) }
         }
     }
 }

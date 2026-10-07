@@ -17,7 +17,7 @@ Native Android POS untuk `com.sakukasir.pos`.
 ## Demo login
 - `owner` — Budi Santoso (OWNER)
 - `kasir` — Andi Wijaya (CASHIER), password `kasir123`
-- `kasir2` dan `kasir3` juga tersedia untuk pengujian permission.
+- `kasir2` tersedia untuk pengujian permission. `kasir3` tersedia sebagai akun nonaktif untuk pengujian pembatasan login.
 
 ## Build
 ```bash
@@ -57,6 +57,16 @@ SakuKasir bundles Inter and JetBrains Mono inside `app/src/main/res/font/`; no r
 `download_fonts.sh` first validates the TTF files already bundled in the repository. This is the normal build path and avoids a network dependency. If a TTF is missing or invalid, the script falls back to the Google Fonts repository URLs and validates the downloaded TrueType header before continuing. Codemagic runs this script before the Android build.
 
 Inter is the default Material 3 UI typeface. JetBrains Mono is used explicitly for TRX IDs and receipt/audit timestamp-style content.
+
+## Revision r8 UI parity and navigation fixes
+
+- Audited against the supplied `acuan.zip`, `app.js`, and `style.css`.
+- Kept Products, Categories, Stock, Outlets, and Cashiers as separate pages; Reports is the only tabbed area.
+- Replaced the sidebar/drawer shell with a scrollable secondary menu sheet.
+- Corrected secondary-page routing and back-to-home behavior.
+- Added working QRIS merchant image selection/removal.
+- Tightened cashier authentication/active-account/password handling and worker password validation.
+- Synchronized light/dark system bar appearance with the app theme.
 
 ## Revision r5 audit fixes
 

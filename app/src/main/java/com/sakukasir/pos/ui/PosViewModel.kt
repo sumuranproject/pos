@@ -18,7 +18,8 @@ data class PosUiState(
     val search: String = "",
     val darkTheme: Boolean = false,
     val selectedOutlet: String = "Toko Berkah",
-    val notice: String? = null
+    val notice: String? = null,
+    val simulateOffline: Boolean = false
 )
 
 class PosViewModel(private val repo: PosRepository): ViewModel() {
@@ -33,25 +34,42 @@ class PosViewModel(private val repo: PosRepository): ViewModel() {
     val settings=repo.settings
     val shift=repo.activeShift
     val syncQueue=repo.syncQueue
+    val outlets=repo.outlets
+    val workers=repo.workers
+    val shiftHistory=repo.shiftHistory
 
     fun login(username:String,password:String) {
-        val user=when(username.lowercase()) {
-            "owner" -> User("owner","Budi Santoso",Role.OWNER,"Toko Berkah")
-            "kasir" -> User("kasir","Andi Wijaya",Role.CASHIER,"Toko Berkah",Permission.entries.toSet())
-            "kasir2" -> User("kasir2","Siti Aminah",Role.CASHIER,"Cabang Pasar",setOf(Permission.POS,Permission.TRANSACTIONS,Permission.SHIFT,Permission.PRINTER,Permission.SYNC,Permission.THEME,Permission.PROFILE))
-            "kasir3" -> User("kasir3","Rudi Hartono",Role.CASHIER,"Toko Berkah",setOf(Permission.POS,Permission.PRINTER,Permission.THEME,Permission.PROFILE))
-            else -> null
+        val normalized = username.trim().lowercase()
+        if (normalized.isBlank() || password.isBlank()) {
+            _state.update { it.copy(notice = "Username dan password wajib diisi.") }
+            return
         }
-        if(user==null || (username.lowercase()!="owner" && password!="kasir123")) {
-            _state.update{it.copy(notice="Username atau password salah.")}; return
+        val user = if (normalized == "owner") {
+            User("owner", "Budi Santoso", Role.OWNER, "Toko Berkah")
+        } else {
+            val worker = repo.workers.value.firstOrNull { it.username.equals(normalized, true) }
+            when {
+                worker == null -> null
+                !worker.active -> {
+                    _state.update { it.copy(notice = "Akun dinonaktifkan. Hubungi owner.") }
+                    return
+                }
+                worker.password.isNotBlank() && worker.password != password -> null
+                else -> User(worker.username, worker.name, Role.CASHIER, worker.outlet, worker.permissions)
+            }
         }
-        _state.update{it.copy(user=user,selectedOutlet=user.outlet,notice=null)}
+        if (user == null) {
+            _state.update { it.copy(notice = "Username atau password salah.") }
+            return
+        }
+        _state.update { it.copy(user = user, selectedOutlet = user.outlet, notice = null) }
     }
     fun logout(){_state.value=PosUiState()}
     fun setSearch(v:String)=_state.update{it.copy(search=v)}
     fun setCategory(v:String)=_state.update{it.copy(selectedCategory=v)}
     fun setDiscount(v:Long)=_state.update{it.copy(discount=v)}
     fun setTax(v:Int)=_state.update{it.copy(taxPct=v.coerceIn(0,100))}
+    fun toggleOffline(){_state.update{it.copy(simulateOffline=!it.simulateOffline)}}
     fun toggleTheme(){_state.update{it.copy(darkTheme=!it.darkTheme)}}
     fun selectOutlet(name:String){_state.update{it.copy(selectedOutlet=name)}}
     fun addToCart(p:Product){_state.update{s-> val found=s.cart.find{it.productId==p.id};s.copy(cart=if(found==null)s.cart+CartItem(p.id,p.name,p.price,1,p.unit) else s.cart.map{if(it.productId==p.id)it.copy(qty=it.qty+1)else it})}}
@@ -120,11 +138,29 @@ class PosViewModel(private val repo: PosRepository): ViewModel() {
         }
     }
     fun startShift(opening:Long){val s=_state.value; if(s.user==null)return; viewModelScope.launch{repo.setShift(Shift("SH-${System.currentTimeMillis().toString().takeLast(4)}",System.currentTimeMillis(),openingCash=opening,cashierId=s.user.username))}}
-    fun closeShift(closing:Long){val sh=shift.value?:return;val tx=transactions.value.filter{it.cashierId==_state.value.user?.username&&it.timestamp>=sh.startAt&&it.status==TransactionStatus.COMPLETED};val cash=tx.filter{it.method==PaymentMethod.CASH}.sumOf{it.total};val qris=tx.filter{it.method==PaymentMethod.QRIS}.sumOf{it.total};val expected=sh.openingCash+cash;viewModelScope.launch{repo.setShift(sh.copy(endAt=System.currentTimeMillis(),closingCash=closing,expectedCash=expected,variance=closing-expected,cashSales=cash,qrisSales=qris,transactionCount=tx.size))}}
+    fun closeShift(closing:Long){
+        val sh=shift.value?:return
+        val tx=transactions.value.filter{it.cashierId==_state.value.user?.username&&it.timestamp>=sh.startAt&&it.status==TransactionStatus.COMPLETED}
+        val cash=tx.filter{it.method==PaymentMethod.CASH}.sumOf{it.total};val qris=tx.filter{it.method==PaymentMethod.QRIS}.sumOf{it.total}
+        val expected=sh.openingCash+cash
+        val fmt=SimpleDateFormat("HH:mm",Locale.US)
+        viewModelScope.launch{
+            repo.addShiftHistory(ShiftSummary(sh.id,fmt.format(Date(sh.startAt)),fmt.format(Date()),cash,qris,tx.size,closing-expected))
+            repo.setShift(null)
+        }
+    }
+    fun expectedCash():Long{val sh=shift.value?:return 0L;val cash=transactions.value.filter{it.cashierId==_state.value.user?.username&&it.timestamp>=sh.startAt&&it.status==TransactionStatus.COMPLETED&&it.method==PaymentMethod.CASH}.sumOf{it.total};return sh.openingCash+cash}
     fun addExpense(amount:Long,cat:String,note:String){val s=_state.value;viewModelScope.launch{repo.addExpense(Expense("EXP-${System.currentTimeMillis()}",amount,cat,note,System.currentTimeMillis(),s.user?.displayName?:"-"))}}
     fun deleteExpense(id:String)=viewModelScope.launch{repo.deleteExpense(id)}
     fun sync()=viewModelScope.launch{repo.sync()}
     fun markNotificationsRead()=viewModelScope.launch{repo.markNotificationsRead()}
+    fun deleteProduct(id:Int)=viewModelScope.launch{repo.deleteProduct(id)}
+    fun upsertCategory(c:Category)=viewModelScope.launch{repo.upsertCategory(c)}
+    fun deleteCategory(id:Int)=viewModelScope.launch{repo.deleteCategory(id)}
+    fun upsertOutlet(o:Outlet)=viewModelScope.launch{repo.upsertOutlet(o)}
+    fun deleteOutlet(id:Int)=viewModelScope.launch{repo.deleteOutlet(id)}
+    fun upsertWorker(w:Worker)=viewModelScope.launch{repo.upsertWorker(w)}
+    fun updateExpense(e:Expense)=viewModelScope.launch{repo.updateExpense(e)}
     fun addProduct(p:Product)=viewModelScope.launch{repo.addProduct(p)}
     fun updateProduct(p:Product)=viewModelScope.launch{repo.updateProduct(p)}
     fun updateSettings(settings:AppSettings)=viewModelScope.launch{repo.updateSettings(settings)}

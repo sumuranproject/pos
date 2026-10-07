@@ -11,6 +11,8 @@ interface PosRepository {
     val products: StateFlow<List<Product>>
     val categories: StateFlow<List<Category>>
     val outlets: StateFlow<List<Outlet>>
+    val workers: StateFlow<List<Worker>>
+    val shiftHistory: StateFlow<List<ShiftSummary>>
     val settings: StateFlow<AppSettings>
     val activeShift: StateFlow<Shift?>
     val syncQueue: StateFlow<List<SyncQueueItem>>
@@ -23,6 +25,14 @@ interface PosRepository {
     suspend fun markNotificationsRead()
     suspend fun addProduct(product: Product)
     suspend fun updateProduct(product: Product)
+    suspend fun deleteProduct(id: Int)
+    suspend fun upsertCategory(category: Category)
+    suspend fun deleteCategory(id: Int)
+    suspend fun upsertOutlet(outlet: Outlet)
+    suspend fun deleteOutlet(id: Int)
+    suspend fun upsertWorker(worker: Worker)
+    suspend fun updateExpense(expense: Expense)
+    suspend fun addShiftHistory(item: ShiftSummary)
     suspend fun updateSettings(settings: AppSettings)
     suspend fun setShift(shift: Shift?)
     suspend fun sync()
