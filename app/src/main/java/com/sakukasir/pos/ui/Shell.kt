@@ -45,6 +45,7 @@ fun rememberOnlineState(): Boolean {
     return online
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppShell(vm: PosViewModel, onLogout: () -> Unit) {
     val s by vm.state.collectAsState()

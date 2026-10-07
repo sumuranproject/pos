@@ -42,6 +42,7 @@ fun formatInput(value: String): String {
     var text by remember(value) { mutableStateOf(if(value==0L) "" else formatInput(value.toString())) }
     SkTextField(text,{ v -> text=formatInput(v); onValueChange(digits(v).toLongOrNull()?:0L)},label,modifier)
 }
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun SkSheet(show:Boolean,onDismiss:()->Unit,content:@Composable ColumnScope.()->Unit) {
     if(show) ModalBottomSheet(onDismissRequest=onDismiss, content=content)
 }
