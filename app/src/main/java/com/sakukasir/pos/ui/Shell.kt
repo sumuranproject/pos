@@ -3,6 +3,9 @@ package com.sakukasir.pos.ui
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -68,6 +71,7 @@ fun SyncDot(status: String, size: Int = 10) { // synced | pending | error
     }
 }
 
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun AppShell(vm: PosViewModel, onLogout: () -> Unit) {
     val s by vm.state.collectAsState()
@@ -215,6 +219,7 @@ fun AppShell(vm: PosViewModel, onLogout: () -> Unit) {
                     ) { Txt(msg, 13, FontWeight.Medium, if (type == "") c.surface else Color.White) }
                 }
             }
+        }
 
         /* ---- sheets / dialogs ---- */
         when (sheet) {
@@ -375,7 +380,6 @@ private fun MenuSheet(
             Txt("Keluar", 14, FontWeight.SemiBold, c.alert)
         }
     }
-}
 }
 
 @Composable

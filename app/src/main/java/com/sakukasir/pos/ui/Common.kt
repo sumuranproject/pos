@@ -19,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -80,7 +81,7 @@ fun Modifier.skCard(shape: RoundedCornerShape = RMd, bg: Color? = null): Modifie
 private fun cardColor() = Sk.c.card
 
 private fun Modifier.composed2(bg: Color?, shape: RoundedCornerShape): Modifier =
-    androidx.compose.ui.composed {
+    composed {
         this.background(bg ?: Sk.c.card, shape).border(1.dp, Sk.c.border, shape)
     }
 

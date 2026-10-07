@@ -40,15 +40,15 @@ fun DashboardScreen(vm: PosViewModel) {
     val expense = ex.filter { fmt.format(Date(it.date)) == today }.sumOf { it.amount }
     val owner = user.role == Role.OWNER
     val first = user.displayName.substringBefore(' ')
+    val recap = todayTx.groupBy { it.cashier }.mapValues { (_, rows) ->
+        val vc = rows.count { it.status == TransactionStatus.VOID }
+        val rc = rows.count { it.status == TransactionStatus.REFUNDED || it.status == TransactionStatus.PARTIAL_REFUND }
+        Triple(vc, rc, rows.filter { it.status == TransactionStatus.VOID }.sumOf { it.total } + rows.sumOf { it.refundAmount })
+    }
 
     Screen {
         PageHead("Halo, $first", if (owner) "Ringkasan hari ini" else "Ringkasan shift kamu")
         if (owner) {
-            val recap = todayTx.groupBy { it.cashier }.mapValues { (_, rows) ->
-                val vc = rows.count { it.status == TransactionStatus.VOID }
-                val rc = rows.count { it.status == TransactionStatus.REFUNDED || it.status == TransactionStatus.PARTIAL_REFUND }
-                Triple(vc, rc, rows.filter { it.status == TransactionStatus.VOID }.sumOf { it.total } + rows.sumOf { it.refundAmount })
-            }
             val threshold = settings.security.alertVoidPerDay
             recap.filter { it.value.first >= threshold }.forEach { (name, r) ->
                 Row(Modifier.fillMaxWidth().padding(bottom = 16.dp).clip(RMd).background(c.alertSoft).padding(horizontal = 16.dp, vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
