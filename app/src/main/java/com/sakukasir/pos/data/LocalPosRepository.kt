@@ -4,6 +4,14 @@ import com.sakukasir.pos.domain.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.collectLatest
+import org.json.JSONArray
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -20,6 +28,17 @@ class LocalPosRepository(
     private val _outlets = MutableStateFlow(seedOutlets())
     private val _settings = MutableStateFlow(AppSettings())
     private val _shift = MutableStateFlow<Shift?>(null)
+    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val persistenceReady = CompletableDeferred<Boolean>()
+
+    init {
+        ioScope.launch {
+            store.transactions.collectLatest { rows ->
+                if (!persistenceReady.isCompleted) persistenceReady.complete(rows.isNotEmpty())
+                if (rows.isNotEmpty()) _transactions.value = rows.map(::toTransaction)
+            }
+        }
+    }
 
     override val transactions: StateFlow<List<Transaction>> = _transactions.asStateFlow()
     override val expenses: StateFlow<List<Expense>> = _expenses.asStateFlow()
@@ -33,15 +52,19 @@ class LocalPosRepository(
     override val syncQueue = queue.items
 
     override suspend fun addTransaction(tx: Transaction) {
+        val hasPersistedRows = persistenceReady.await()
+        if (!hasPersistedRows) {
+            _transactions.value.forEach { store.save(toEntity(it)) }
+        }
         _transactions.value = listOf(tx) + _transactions.value
-        store.save(TransactionEntity(tx.id, tx.timestamp, tx.date, tx.time, tx.items.joinToString("|"){ "${it.productId}:${it.qty}:${it.price}" },
-            tx.total, tx.method.name, tx.cashier, tx.cashierId, tx.outlet, tx.discount, tx.tax, tx.taxPct, tx.received, tx.change,
-            tx.status.name, tx.syncStatus.name))
+        store.save(toEntity(tx))
         queue.enqueue(SyncQueueItem(tx.id, "transaction", tx.id))
     }
 
     override suspend fun updateTransaction(tx: Transaction) {
+        persistenceReady.await()
         _transactions.value = _transactions.value.map { if (it.id == tx.id) tx else it }
+        store.save(toEntity(tx))
         queue.enqueue(SyncQueueItem(tx.id, "transaction_update", tx.id))
     }
 
@@ -74,6 +97,33 @@ class LocalPosRepository(
         kotlinx.coroutines.delay(250)
         queue.items.value.forEach { queue.markSynced(it.id) }
         _transactions.value = _transactions.value.map { it.copy(syncStatus = SyncStatus.SYNCED) }
+    }
+
+    private fun toEntity(tx: Transaction): TransactionEntity = TransactionEntity(
+        id = tx.id, timestamp = tx.timestamp, date = tx.date, time = tx.time,
+        itemsJson = tx.items.joinToString("|") { "${it.productId}:${it.qty}:${it.price}:${it.name.replace("|", " ")}:${it.unit.replace("|", " ")}" },
+        total = tx.total, method = tx.method.name, cashier = tx.cashier, cashierId = tx.cashierId, outlet = tx.outlet,
+        discount = tx.discount, tax = tx.tax, taxPct = tx.taxPct, received = tx.received, change = tx.change,
+        status = tx.status.name, syncStatus = tx.syncStatus.name, qrisProofJson = tx.qrisProof?.let {
+            JSONObject().apply { put("localPath", it.localPath); put("capturedAt", it.capturedAt); put("deviceModel", it.deviceModel); put("fileSize", it.fileSize); put("expiredAt", it.expiredAt); put("url", it.url) }.toString()
+        },
+        refundAmount = tx.refundAmount, refundMethod = tx.refundMethod?.name, refundReason = tx.refundReason,
+        refundedAt = tx.refundedAt, refundedBy = tx.refundedBy,
+        refundedItemsJson = JSONArray().apply { tx.refundedItems.forEach { item -> put(JSONObject().apply { put("productId", item.productId); put("name", item.name); put("qty", item.qty); put("amount", item.amount) }) } }.toString()
+    )
+
+    private fun toTransaction(e: TransactionEntity): Transaction {
+        val items = e.itemsJson.split("|").filter { it.isNotBlank() }.mapNotNull { raw ->
+            val p = raw.split(":", limit = 5)
+            if (p.size < 5) null else CartItem(p[0].toIntOrNull() ?: return@mapNotNull null, p[3], p[2].toLongOrNull() ?: return@mapNotNull null, p[1].toIntOrNull() ?: return@mapNotNull null, p[4])
+        }
+        val proof = e.qrisProofJson?.let { raw -> runCatching {
+            val o=JSONObject(raw); QrisProof(o.getString("localPath"),o.getLong("capturedAt"),o.getString("deviceModel"),o.getLong("fileSize"),o.getLong("expiredAt"),o.optString("url").takeIf{it.isNotBlank()})
+        }.getOrNull() }
+        val refunded = runCatching {
+            val a=JSONArray(e.refundedItemsJson); buildList { for(i in 0 until a.length()){val o=a.getJSONObject(i);add(RefundItem(o.getInt("productId"),o.getString("name"),o.getInt("qty"),o.getLong("amount"))) } }
+        }.getOrDefault(emptyList())
+        return Transaction(e.id,e.timestamp,e.date,e.time,items,e.total,PaymentMethod.valueOf(e.method),e.cashier,e.cashierId,e.outlet,e.discount,e.tax,e.taxPct,e.received,e.change,TransactionStatus.valueOf(e.status),runCatching{SyncStatus.valueOf(e.syncStatus)}.getOrDefault(SyncStatus.PENDING_SYNC),proof,e.refundAmount,e.refundMethod?.let{runCatching{RefundMethod.valueOf(it)}.getOrNull()},e.refundReason,e.refundedAt,e.refundedBy,refunded)
     }
 
     companion object {

@@ -73,9 +73,12 @@ import com.sakukasir.pos.util.BluetoothPrinter
                 ListItem(
                     headlineContent={Text(device.name ?: "Perangkat tanpa nama")},
                     supportingContent={Text(device.address)},
-                    trailingContent={TextButton({printer.connect(device)}){Text("Hubungkan")}}
+                    trailingContent={TextButton({
+                        if (printer.connect(device)) vm.updateSettings(vm.settings.value.copy(printerConnected=true, printerName=device.name ?: device.address))
+                    }){Text("Hubungkan")}}
                 )
             }
+            SkButton("Putuskan",{ printer.disconnect(); vm.updateSettings(vm.settings.value.copy(printerConnected=false)) }, enabled=status=="Connected", block=true);
             SkButton("Test print",{
                 if(!printer.testPrint()) vm.setNotice("Printer belum terhubung atau gagal mencetak.")
             },enabled=status=="Connected",block=true)

@@ -71,7 +71,12 @@ class PosViewModel(private val repo: PosRepository): ViewModel() {
         val s=_state.value;val t=totals();if(s.cart.isEmpty())return
         if(method==PaymentMethod.CASH && received<t.total){_state.update{it.copy(notice="Uang diterima kurang dari total.")};return}
         if(method==PaymentMethod.QRIS && qrisProof==null){_state.update{it.copy(notice="Foto bukti QRIS wajib.")};return}
-        if(method==PaymentMethod.QRIS && qrisProof!=null && System.currentTimeMillis()-qrisProof.capturedAt>5*60_000L){_state.update{it.copy(notice="Bukti QRIS lebih dari 5 menit. Ambil foto ulang.")};return}
+        if(method==PaymentMethod.QRIS && qrisProof!=null) {
+            val nowCheck=System.currentTimeMillis()
+            if(qrisProof.capturedAt > nowCheck || nowCheck - qrisProof.capturedAt > 5*60_000L || nowCheck >= qrisProof.expiredAt || qrisProof.localPath.isBlank() || !java.io.File(qrisProof.localPath).isFile) {
+                _state.update{it.copy(notice="Bukti QRIS tidak valid atau sudah kedaluwarsa. Ambil foto ulang.")};return
+            }
+        }
         val now=System.currentTimeMillis();val date=SimpleDateFormat("yyyyMMdd",Locale.US).format(Date(now))
         val id=transactionId?.takeIf { it.startsWith("TRX-$date-") } ?: nextTransactionId()
         val tx=Transaction(id,now,SimpleDateFormat("yyyy-MM-dd",Locale.US).format(Date(now)),SimpleDateFormat("HH:mm",Locale.US).format(Date(now)),s.cart,t.total,method,s.user!!.displayName,s.user.username,s.selectedOutlet,t.discount,t.tax,t.taxPct,received,(received-t.total).coerceAtLeast(0),qrisProof=qrisProof)
@@ -93,11 +98,19 @@ class PosViewModel(private val repo: PosRepository): ViewModel() {
         }
     }
     fun refundTransaction(tx:Transaction,items:List<RefundItem>,method:RefundMethod,reason:String,pin:String?=null,onDone:(Boolean,String)->Unit) {
-        val s=_state.value;val amount=items.sumOf{it.amount};val owner=s.user?.role==Role.OWNER
+        val s=_state.value; val owner=s.user?.role==Role.OWNER
+        if(s.user==null){onDone(false,"Belum login");return}
+        if(items.isEmpty()){onDone(false,"Pilih item refund.");return}
         if(tx.status==TransactionStatus.VOID || tx.status==TransactionStatus.REFUNDED){onDone(false,"Transaksi tidak eligible.");return}
-        if(!owner && tx.cashierId!=s.user?.username){onDone(false,"Hanya transaksi sendiri.");return}
+        if(!owner && tx.cashierId!=s.user.username){onDone(false,"Hanya transaksi sendiri.");return}
+        val alreadyRefunded=tx.refundedItems.groupBy{it.productId}.mapValues{(_,rows)->rows.sumOf{it.qty}}
+        val originalById=tx.items.associateBy{it.productId}
+        if(items.any { it.qty<=0 || it.amount<=0L || it.qty > (originalById[it.productId]?.qty ?: 0) - (alreadyRefunded[it.productId] ?: 0) }){onDone(false,"Jumlah refund melebihi item yang tersedia.");return}
+        val amount=items.sumOf{it.amount}
+        val remaining=tx.total-tx.refundAmount
+        if(amount<=0L || amount>remaining){onDone(false,"Nominal refund melebihi sisa transaksi.");return}
         if(!owner && amount>settings.value.security.refundLimitCashier && pin!=settings.value.security.ownerPin){onDone(false,"Refund di atas limit membutuhkan PIN owner.");return}
-        val full=amount>=tx.total
+        val full=amount>=remaining
         val updated=tx.copy(status=if(full)TransactionStatus.REFUNDED else TransactionStatus.PARTIAL_REFUND,refundAmount=tx.refundAmount+amount,refundMethod=method,refundReason=reason,refundedAt=System.currentTimeMillis(),refundedBy=s.user?.displayName,refundedItems=tx.refundedItems+items)
         viewModelScope.launch {
             repo.updateTransaction(updated)

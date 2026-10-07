@@ -21,7 +21,14 @@ data class TransactionEntity(
     val received: Long,
     val change: Long,
     val status: String,
-    val syncStatus: String
+    val syncStatus: String,
+    val qrisProofJson: String? = null,
+    val refundAmount: Long = 0,
+    val refundMethod: String? = null,
+    val refundReason: String? = null,
+    val refundedAt: Long? = null,
+    val refundedBy: String? = null,
+    val refundedItemsJson: String = ""
 )
 
 @Dao
@@ -34,7 +41,7 @@ interface TransactionDao {
     suspend fun delete(id: String)
 }
 
-@Database(entities = [TransactionEntity::class], version = 1, exportSchema = false)
+@Database(entities = [TransactionEntity::class], version = 2, exportSchema = false)
 abstract class OfflineDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
 }

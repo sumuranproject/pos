@@ -21,7 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
 import com.sakukasir.pos.domain.*
-import com.sakukasir.pos.util.QrisProof
+import com.sakukasir.pos.domain.QrisProof as QrisProofModel
+import com.sakukasir.pos.util.QrisProof as QrisProofProcessor
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -54,11 +55,14 @@ fun PosScreen(vm:PosViewModel) {
 }
 
 @Composable private fun CheckoutSheet(vm:PosViewModel,onDismiss:()->Unit) {
-    val s by vm.state.collectAsState();val t=vm.totals();var method by remember{mutableStateOf(PaymentMethod.CASH)};var received by remember{mutableLongStateOf(t.total)};var proof by remember{mutableStateOf<QrisProof?>(null)};var cameraFile by remember{mutableStateOf<File?>(null)};val context=LocalContext.current;val trxId=remember{vm.nextTransactionId()};val retentionDays=vm.settings.collectAsState().value.qrisRetentionDays
+    val s by vm.state.collectAsState();val t=vm.totals();var method by remember{mutableStateOf(PaymentMethod.CASH)};var received by remember{mutableLongStateOf(t.total)};var proof by remember{mutableStateOf<QrisProofModel?>(null)};var captureStartedAt by remember{mutableLongStateOf(0L)};var cameraFile by remember{mutableStateOf<File?>(null)};val context=LocalContext.current;val trxId=remember{vm.nextTransactionId()};val retentionDays=vm.settings.collectAsState().value.qrisRetentionDays
     val scope=rememberCoroutineScope()
     val takePicture=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){ok->
         if(ok&&cameraFile!=null){
-            scope.launch{proof=QrisProof.processCapture(context,cameraFile!!,s.user!!.displayName,s.selectedOutlet,trxId,System.currentTimeMillis(),retentionDays)}
+            scope.launch{
+                val capturedAt = captureStartedAt.takeIf { it > 0L } ?: System.currentTimeMillis()
+                proof=QrisProofProcessor.processCapture(context,cameraFile!!,s.user!!.displayName,s.selectedOutlet,trxId,capturedAt,retentionDays)
+            }
         }
     }
     val requestCamera=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->
@@ -66,6 +70,7 @@ fun PosScreen(vm:PosViewModel) {
             val file=cameraFile ?: File(context.cacheDir,"qris_capture").apply{mkdirs()}
                 .let{dir->File(dir,"capture_${System.currentTimeMillis()}.jpg")}
             cameraFile=file
+            captureStartedAt=System.currentTimeMillis()
             takePicture.launch(FileProvider.getUriForFile(context,context.packageName+".fileprovider",file))
         }
     }
