@@ -2,196 +2,259 @@ package com.sakukasir.pos.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sakukasir.pos.domain.*
 import com.sakukasir.pos.util.ReportExport
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-private fun todayStr() = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+private val dayFmt get() = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+private fun todayStr() = dayFmt.format(Date())
+private fun shift(days: Int): String = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, days) }.let { dayFmt.format(it.time) }
 private fun net(t: Transaction) = t.total - t.refundAmount
 
-/* ============================== Dashboard ============================== */
+private data class Range(val from: String, val to: String)
+internal data class Growth(val dir: String, val pct: Double)
+
+private fun monthRange(offset: Int): Range {
+    val cal = Calendar.getInstance().apply { set(Calendar.DAY_OF_MONTH, 1); add(Calendar.MONTH, offset) }
+    val from = dayFmt.format(cal.time)
+    cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH))
+    return Range(from, dayFmt.format(cal.time))
+}
+
+private fun periodRange(p: String, from: String, to: String): Range = when (p) {
+    "today" -> Range(todayStr(), todayStr())
+    "week" -> Range(shift(-6), todayStr())
+    "month" -> monthRange(0)
+    "lastmonth" -> monthRange(-1)
+    "custom" -> Range(from.ifBlank { todayStr() }, to.ifBlank { todayStr() })
+    else -> Range("0000-01-01", "9999-12-31")
+}
+
+private fun prevRange(p: String, from: String, to: String): Range = when (p) {
+    "today" -> Range(shift(-1), shift(-1))
+    "week" -> Range(shift(-13), shift(-7))
+    "month" -> monthRange(-1)
+    "lastmonth" -> monthRange(-2)
+    "custom" -> {
+        val f = runCatching { dayFmt.parse(from)!!.time }.getOrDefault(0L); val t = runCatching { dayFmt.parse(to)!!.time }.getOrDefault(0L)
+        val len = ((t - f) / 86400000L).toInt() + 1
+        val c1 = Calendar.getInstance().apply { time = Date(f); add(Calendar.DAY_OF_YEAR, -len) }
+        val c2 = Calendar.getInstance().apply { time = Date(f); add(Calendar.DAY_OF_YEAR, -1) }
+        Range(dayFmt.format(c1.time), dayFmt.format(c2.time))
+    }
+    else -> Range("0000-00-00", "0000-00-00")
+}
+
+private fun periodLabel(p: String) = when (p) { "today" -> "Hari ini"; "week" -> "7 hari"; "month" -> "Bulan ini"; "lastmonth" -> "Bulan lalu"; "custom" -> "Custom"; else -> "Semua" }
+
+private fun growth(cur: Long, prev: Long): Growth {
+    if (prev == 0L) return if (cur > 0) Growth("up", 100.0) else Growth("flat", 0.0)
+    val pct = Math.abs(cur - prev).toDouble() / prev * 100
+    return Growth(if (cur > prev) "up" else if (cur < prev) "down" else "flat", pct)
+}
+
+@Composable
+private fun GrowthLine(g: Growth, suffix: String, invert: Boolean = false) {
+    val c = Sk.c
+    val good = if (invert) g.dir == "down" else g.dir == "up"
+    val bad = if (invert) g.dir == "up" else g.dir == "down"
+    val col = if (good) c.cash else if (bad) c.alert else c.textMuted
+    Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (g.dir == "up") SkIcon(SkIcons.TrendUp, 14.dp, col) else if (g.dir == "down") SkIcon(SkIcons.TrendDown, 14.dp, col)
+        Txt("${g.pct.toInt()}% $suffix", 12, FontWeight.SemiBold, col)
+    }
+}
+
+@Composable
+private fun HeroExtra(content: @Composable ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(top = 14.dp)) {
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Sk.c.border))
+        Column(Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
+    }
+}
+
+@Composable
+private fun ExtraRow(l: String, v: String, vc: Color = Sk.c.text) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Txt(l, 12, color = Sk.c.textMuted); Txt(v, 12, FontWeight.SemiBold, vc) }
+}
+
+/* ============================== Laporan Kasir (dashboard) ============================== */
 @Composable
 fun DashboardScreen(vm: PosViewModel) {
     val c = Sk.c
     val tx by vm.transactions.collectAsState()
-    val ex by vm.expenses.collectAsState()
-    val settings by vm.settings.collectAsState()
     val shift by vm.shift.collectAsState()
     val user = vm.state.collectAsState().value.user!!
     var detail by remember { mutableStateOf<Transaction?>(null) }
-    val today = todayStr()
-    val todayTx = tx.filter { it.date == today }.ifEmpty { tx }
+    val mine = tx.filter { it.cashierId == user.username }
+    val todayTx = mine.filter { it.date == todayStr() }.ifEmpty { mine }
     val active = todayTx.filter { it.status != TransactionStatus.VOID }
-    val voided = todayTx.filter { it.status == TransactionStatus.VOID }
-    val refunded = todayTx.filter { it.status == TransactionStatus.REFUNDED || it.status == TransactionStatus.PARTIAL_REFUND }
     val sales = active.sumOf { net(it) }
     val cash = active.filter { it.method == PaymentMethod.CASH }.sumOf { net(it) }
     val qris = active.filter { it.method == PaymentMethod.QRIS }.sumOf { net(it) }
-    val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-    val expense = ex.filter { fmt.format(Date(it.date)) == today }.sumOf { it.amount }
-    val owner = user.role == Role.OWNER
-    val first = user.displayName.substringBefore(' ')
-    val recap = todayTx.groupBy { it.cashier }.mapValues { (_, rows) ->
-        val vc = rows.count { it.status == TransactionStatus.VOID }
-        val rc = rows.count { it.status == TransactionStatus.REFUNDED || it.status == TransactionStatus.PARTIAL_REFUND }
-        Triple(vc, rc, rows.filter { it.status == TransactionStatus.VOID }.sumOf { it.total } + rows.sumOf { it.refundAmount })
-    }
-
+    val voidAmt = todayTx.filter { it.status == TransactionStatus.VOID }.sumOf { it.total }
+    val refundAmt = todayTx.sumOf { it.refundAmount }
+    val ySales = mine.filter { it.date == shift(-1) && it.status != TransactionStatus.VOID }.sumOf { net(it) }
+    val g = growth(sales, ySales)
     Screen {
-        PageHead("Halo, $first", if (owner) "Ringkasan hari ini" else "Ringkasan shift kamu")
-        if (owner) {
-            val threshold = settings.security.alertVoidPerDay
-            recap.filter { it.value.first >= threshold }.forEach { (name, r) ->
-                Row(Modifier.fillMaxWidth().padding(bottom = 16.dp).clip(RMd).background(c.alertSoft).padding(horizontal = 16.dp, vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SkIcon(SkIcons.AlertCircle, 18.dp, c.alert, Modifier.padding(top = 2.dp))
-                    Column {
-                        Txt("Alert: $name void ${r.first}× hari ini", 13, FontWeight.SemiBold, c.alert)
-                        Txt("Melebihi ambang batas $threshold×/hari.", 12, modifier = Modifier.padding(top = 2.dp))
-                    }
+        PageHead("Laporan", "Ringkasan & riwayat hari ini")
+        SkCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), padding = 20) {
+            Txt("Ringkasan Penjualan · Hari ini", 13, color = c.textMuted)
+            Txt(rupiah(sales), 32, FontWeight.Bold, modifier = Modifier.padding(top = 4.dp, bottom = 6.dp), lineHeight = 1.1f, spacing = -.64f)
+            Txt("${active.size} transaksi", 13, FontWeight.Medium, c.cash)
+            GrowthLine(g, "dari kemarin")
+            HeroExtra { ExtraRow("Kemarin", rupiah(ySales)) }
+        }
+        KpiGrid(listOf(Triple("Cash", rupiah(cash), null), Triple("QRIS", rupiah(qris), null), Triple("Void", rupiah(voidAmt), c.alert), Triple("Refund", rupiah(refundAmt), c.warn)))
+        shift?.let { sh ->
+            val st = todayTx.filter { it.timestamp >= sh.startAt && it.status == TransactionStatus.COMPLETED }
+            val sc = st.filter { it.method == PaymentMethod.CASH }.sumOf { it.total }; val sq = st.filter { it.method == PaymentMethod.QRIS }.sumOf { it.total }
+            SkCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), padding = 20) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                    Box(Modifier.size(8.dp).background(c.cash, CircleShape)); Txt("SHIFT AKTIF", 12, FontWeight.SemiBold, c.cash, spacing = .48f)
+                }
+                Txt("Mulai ${SimpleDateFormat("HH:mm", Locale.US).format(Date(sh.startAt))}", 12, color = c.textMuted)
+                Column(Modifier.padding(top = 12.dp)) {
+                    KeyRow("Transaksi shift ini", st.size.toString()); KeyRow("Cash", rupiah(sc)); KeyRow("QRIS", rupiah(sq)); KeyRow("Total", rupiah(sc + sq), c.primary, divider = false, big = true)
                 }
             }
         }
-        KpiHero("Penjualan hari ini", rupiah(sales), "${active.size} transaksi")
-        if (owner) {
-            KpiGrid(listOf(
-                Triple("Cash", rupiah(cash), null), Triple("QRIS", rupiah(qris), null),
-                Triple("Void", rupiah(voided.sumOf { it.total }), c.alert), Triple("Refund", rupiah(refunded.sumOf { it.refundAmount }), c.warn)
-            ))
-            KpiGrid(listOf(Triple("Pengeluaran", rupiah(expense), null), Triple("Laba bersih", rupiah(sales - expense), null)))
-            if (recap.isNotEmpty()) {
-                SectionTitle("Rekap void/refund per kasir", true)
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    recap.forEach { (name, r) ->
-                        Row(Modifier.fillMaxWidth().skCard().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Txt(name, 13, FontWeight.Medium)
-                                Txt("Void ${r.first}× · Refund ${r.second}×", 11, color = c.textMuted, modifier = Modifier.padding(top = 2.dp))
-                            }
-                            Txt(if (r.third > 0) "-" + rupiah(r.third) else rupiah(0), 13, FontWeight.Bold, c.alert)
-                        }
-                    }
-                }
-                Spacer(Modifier.height(16.dp))
-            }
-            // 7 hari terakhir
-            val bars = listOf(1200L, 1800L, 1400L, 2100L, 1900L, 2200L, Math.round(sales / 1000.0))
-            val max = maxOf(bars.max(), 1000L).toFloat()
-            val days = listOf("S", "S", "R", "K", "J", "S", "M")
-            SkCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), padding = 16) {
-                Txt("7 hari terakhir", 13, color = c.textMuted, modifier = Modifier.padding(bottom = 12.dp))
-                Row(Modifier.fillMaxWidth().height(100.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
-                    bars.forEachIndexed { i, v ->
-                        Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.Bottom)) {
-                            Box(Modifier.fillMaxWidth().height(maxOf(4f, 80f * maxOf(8f, v / max * 100f) / 100f).dp).clip(RXs).background(if (i == 6) c.primary else c.surfaceAlt))
-                            Txt(days[i], 11, color = c.textFaint, lineHeight = 1.2f)
-                        }
-                    }
-                }
-            }
-            SkCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), padding = 16) {
-                Txt("Metode pembayaran", 13, color = c.textMuted, modifier = Modifier.padding(bottom = 12.dp))
-                MethodRow("Cash", cash, sales, c.cash, false)
-                MethodRow("QRIS", qris, sales, c.qris, true)
-            }
-        } else {
-            KpiGrid(listOf(Triple("Cash", rupiah(cash), null), Triple("QRIS", rupiah(qris), null)))
-            shift?.let { sh ->
-                val mine = active.filter { it.cashierId == user.username && it.timestamp >= sh.startAt }
-                SkCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), padding = 20) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 12.dp)) {
-                        Box(Modifier.size(8.dp).background(c.cash, androidx.compose.foundation.shape.CircleShape)); Txt("SHIFT AKTIF", 12, FontWeight.SemiBold, c.cash, spacing = .48f)
-                    }
-                    Txt("Mulai ${SimpleDateFormat("HH:mm", Locale.US).format(Date(sh.startAt))}", 12, color = c.textMuted)
-                    Column(Modifier.padding(top = 12.dp)) {
-                        KeyRow("Transaksi", mine.size.toString()); KeyRow("Total penjualan", rupiah(mine.sumOf { it.total }), divider = false)
-                    }
-                }
-            }
-        }
-        SectionTitle("Transaksi terbaru", !owner && false)
-        if (todayTx.isEmpty()) EmptyState("Belum ada transaksi")
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { todayTx.take(if (owner) 4 else 5).forEach { t -> TxItem(t) { detail = t } } }
+        SectionTitle("Riwayat Transaksi Hari Ini (${todayTx.size})")
+        if (todayTx.isEmpty()) EmptyState("Belum ada transaksi hari ini", "Transaksi yang kamu buat hari ini akan muncul di sini.")
+        else Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { todayTx.forEach { t -> TxItem(t) { detail = t } } }
     }
     detail?.let { cur -> TransactionDetail(vm, tx.find { it.id == cur.id } ?: cur) { detail = null } }
 }
 
-@Composable
-private fun MethodRow(label: String, amount: Long, total: Long, color: Color, divider: Boolean) {
-    val c = Sk.c
-    if (divider) Box(Modifier.fillMaxWidth().height(1.dp).background(c.border))
-    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Txt(label, 13, FontWeight.Medium, modifier = Modifier.width(52.dp))
-        Box(Modifier.weight(1f).height(8.dp).clip(RXs).background(c.surfaceAlt)) {
-            Box(Modifier.fillMaxHeight().fillMaxWidth(if (total <= 0L) 0f else (amount.toFloat() / total).coerceIn(0f, 1f)).clip(RXs).background(color))
-        }
-        Txt(rupiah(amount), 13, FontWeight.SemiBold, modifier = Modifier.widthIn(min = 88.dp), align = androidx.compose.ui.text.style.TextAlign.End)
-    }
-}
-
-/* ============================== Reports ============================== */
+/* ============================== Laporan Owner ============================== */
 @Composable
 fun ReportScreen(vm: PosViewModel) {
     val c = Sk.c
     val txAll by vm.transactions.collectAsState()
-    val ex by vm.expenses.collectAsState()
+    val exAll by vm.expenses.collectAsState()
+    val workers by vm.workers.collectAsState()
+    val s by vm.state.collectAsState()
     val toast = LocalToast.current
     var tab by remember { mutableIntStateOf(0) }
-    val labels = listOf("Ringkasan", "Outlet", "Kasir", "Harian", "Bulanan", "Keuangan", "Pengeluaran")
-    val today = todayStr()
-    val tx = if (tab == 4) txAll.filter { it.date.startsWith(today.take(7)) } else txAll.filter { it.date == today }.ifEmpty { txAll }
-    val active = tx.filter { it.status != TransactionStatus.VOID }
+    var filter by remember { mutableStateOf(false) }
+    var detail by remember { mutableStateOf<Transaction?>(null) }
+    val range = periodRange(s.reportPeriod, s.reportFrom, s.reportTo)
+    val prev = prevRange(s.reportPeriod, s.reportFrom, s.reportTo)
+    val userList = txAll.filter { it.date >= range.from && it.date <= range.to && (s.reportUser == "all" || it.cashierId == s.reportUser) }
+    val active = userList.filter { it.status != TransactionStatus.VOID }
     val sales = active.sumOf { net(it) }
     val cash = active.filter { it.method == PaymentMethod.CASH }.sumOf { net(it) }
     val qris = active.filter { it.method == PaymentMethod.QRIS }.sumOf { net(it) }
-    val discount = tx.sumOf { it.discount }; val tax = tx.sumOf { it.tax }
-    val voidAmt = tx.filter { it.status == TransactionStatus.VOID }.sumOf { it.total }
-    val refundAmt = tx.sumOf { it.refundAmount }
-    val expense = ex.sumOf { it.amount }
-    val profit = sales - expense
+    val discount = userList.sumOf { it.discount }; val tax = userList.sumOf { it.tax }
+    val voidAmt = userList.filter { it.status == TransactionStatus.VOID }.sumOf { it.total }
+    val refundAmt = userList.sumOf { it.refundAmount }
+    val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    val expIn = exAll.filter { val d = fmt.format(Date(it.date)); d >= range.from && d <= range.to }
+    val expense = expIn.sumOf { it.amount }
+    val netProfit = sales - expense
+    val prevActive = txAll.filter { it.date >= prev.from && it.date <= prev.to && (s.reportUser == "all" || it.cashierId == s.reportUser) && it.status != TransactionStatus.VOID }
+    val prevSales = prevActive.sumOf { net(it) }
+    val prevExpense = exAll.filter { val d = fmt.format(Date(it.date)); d >= prev.from && d <= prev.to }.sumOf { it.amount }
+    val periodText = if (s.reportPeriod == "custom") "${s.reportFrom} → ${s.reportTo}" else periodLabel(s.reportPeriod)
+    val userText = if (s.reportUser == "all") "Semua kasir" else (workers.find { it.username == s.reportUser }?.name ?: s.reportUser)
 
     Screen {
-        if (tab != 6) PageHead("Laporan", "Periode: " + if (tab == 4) "Bulan ini" else "Hari ini") {
-            Btn("Export XLSX", { val f = ReportExport.exportExpenses(ex); toast("Export tersimpan: ${f.name}", "success") }, kind = 1)
-        } else PageHead("Laporan", "Periode: Hari ini")
-        SegTabs(labels, tab) { tab = it }
+        PageHead("Laporan", "$periodText · $userText") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Btn("Filter", { filter = true }, kind = 1, icon = SkIcons.Filter)
+                Btn("Export", { ReportExport.exportExpenses(exAll); toast("Export XLSX diproses backend", "success") }, kind = 1)
+            }
+        }
+        SegTabs(listOf("Transaksi", "Pengeluaran", "Ringkasan"), tab, { tab = it }, listOf(SkIcons.Receipt, SkIcons.Wallet, SkIcons.Chart))
         when (tab) {
-            0 -> {
-                KpiHero("Penjualan hari ini", rupiah(sales), "${active.size} transaksi")
-                KpiCompact(listOf(Triple("Cash", rupiah(cash), null), Triple("QRIS", rupiah(qris), null), Triple("Void", rupiah(voidAmt), c.alert), Triple("Refund", rupiah(refundAmt), c.warn)))
-                KpiCompact(listOf(Triple("Pengeluaran", rupiah(expense), null), Triple("Laba bersih", rupiah(profit), null)))
-            }
-            1 -> { SectionTitle("Penjualan per outlet", true); NameAmountRows(active.groupBy { it.outlet }.map { it.key to it.value.sumOf { t -> net(t) } }) }
-            2 -> { SectionTitle("Penjualan per kasir", true); NameAmountRows(active.groupBy { it.cashier }.map { it.key to it.value.sumOf { t -> net(t) } }) }
-            3 -> {
-                KpiHero("Penjualan hari ini", rupiah(sales))
-                KpiCompact(listOf(Triple("Transaksi", active.size.toString(), null), Triple("Cash", rupiah(cash), null), Triple("QRIS", rupiah(qris), null), Triple("Pengeluaran", rupiah(expense), null)))
-            }
-            4 -> {
-                KpiHero("Penjualan bulan ini", rupiah(sales), "${active.size} transaksi")
-                KpiCompact(listOf(Triple("Cash", rupiah(cash), null), Triple("QRIS", rupiah(qris), null), Triple("Pengeluaran", rupiah(expense), null), Triple("Laba", rupiah(profit), null)))
-            }
-            5 -> {
+            0 -> if (userList.isEmpty()) EmptyState("Belum ada transaksi", "Coba ubah filter periode atau kasir.")
+                 else Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { userList.forEach { t -> TxItem(t) { detail = t } } }
+            1 -> ExpensesBody(vm, expIn, periodText, growth(expense, prevExpense))
+            else -> {
+                SkCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), padding = 20) {
+                    Txt("Ringkasan Penjualan · $periodText", 13, color = c.textMuted)
+                    Txt(rupiah(sales), 32, FontWeight.Bold, modifier = Modifier.padding(top = 4.dp, bottom = 6.dp), lineHeight = 1.1f, spacing = -.64f)
+                    Txt("${active.size} transaksi", 13, FontWeight.Medium, c.cash)
+                    HeroExtra {
+                        GrowthLine(growth(sales, prevSales), "dari periode lalu")
+                        ExtraRow("Periode lalu", rupiah(prevSales)); ExtraRow("Transaksi lalu", prevActive.size.toString())
+                    }
+                }
+                KpiGrid(listOf(
+                    Triple("Cash", rupiah(cash), null), Triple("QRIS", rupiah(qris), null), Triple("Void", rupiah(voidAmt), c.alert), Triple("Refund", rupiah(refundAmt), c.warn),
+                    Triple("Pengeluaran", rupiah(expense), c.alert), Triple("Laba bersih", rupiah(netProfit), c.cash)
+                ))
+                // 7 hari terakhir
+                val days = (6 downTo 0).map { off ->
+                    val cal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -off) }
+                    val ds = dayFmt.format(cal.time)
+                    Triple(listOf("M", "S", "S", "R", "K", "J", "S")[cal.get(Calendar.DAY_OF_WEEK) - 1], txAll.filter { it.date == ds && it.status != TransactionStatus.VOID }.sumOf { net(it) }, off == 0)
+                }
+                val max = maxOf(days.maxOf { it.second }, 1L).toFloat()
+                SkCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), padding = 16) {
+                    Txt("7 hari terakhir", 13, color = c.textMuted, modifier = Modifier.padding(bottom = 12.dp))
+                    Row(Modifier.fillMaxWidth().height(100.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
+                        days.forEach { (label, total, today) ->
+                            Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.Bottom)) {
+                                Box(Modifier.fillMaxWidth().height(maxOf(4f, 78f * maxOf(6f, total / max * 100f) / 100f).dp).clip(RXs).background(if (today) c.primary else c.surfaceAlt))
+                                Txt(label, 11, color = c.textFaint, lineHeight = 1.2f)
+                            }
+                        }
+                    }
+                }
+                SkCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), padding = 16) {
+                    Txt("Metode pembayaran", 13, color = c.textMuted, modifier = Modifier.padding(bottom = 4.dp))
+                    MethodBlock("Cash", cash, sales, c.cash, false); MethodBlock("QRIS", qris, sales, c.qris, true)
+                }
                 SectionTitle("Ringkasan keuangan", true)
-                Column(Modifier.fillMaxWidth().padding(bottom = 16.dp).skCard().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    KeyRow("Gross sales", rupiah(sales + discount))
-                    KeyRow("Diskon", "- " + rupiah(discount), c.alert); KeyRow("Pajak", "- " + rupiah(tax), c.alert)
+                Column(Modifier.fillMaxWidth().padding(bottom = 16.dp).skCard().padding(horizontal = 16.dp, vertical = 4.dp)) {
+                    KeyRow("Gross sales", rupiah(sales + discount)); KeyRow("Diskon", "- " + rupiah(discount), c.alert); KeyRow("Pajak", "- " + rupiah(tax), c.alert)
                     if (voidAmt > 0) KeyRow("Void", "- " + rupiah(voidAmt), c.alert)
                     if (refundAmt > 0) KeyRow("Refund", "- " + rupiah(refundAmt), c.warn)
                     KeyRow("Net sales", rupiah(sales)); KeyRow("Pengeluaran", "- " + rupiah(expense), c.alert)
-                    KeyRow("Net profit", rupiah(profit), c.primary, divider = false, big = true)
+                    KeyRow("Net profit", rupiah(netProfit), c.primary, divider = false, big = true)
                 }
-                KpiCompact(listOf(Triple("Cash", rupiah(cash), null), Triple("QRIS", rupiah(qris), null)))
+                SectionTitle("Rekap void/refund per kasir")
+                val recap = userList.groupBy { it.cashier }
+                if (recap.isEmpty()) EmptyState("Belum ada data") else Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    recap.forEach { (name, rows) ->
+                        val vc = rows.count { it.status == TransactionStatus.VOID }; val rc = rows.count { it.status == TransactionStatus.REFUNDED || it.status == TransactionStatus.PARTIAL_REFUND }
+                        val amt = rows.filter { it.status == TransactionStatus.VOID }.sumOf { it.total } + rows.sumOf { it.refundAmount }
+                        Row(Modifier.fillMaxWidth().skCard().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) { Txt(name, 13, FontWeight.Medium); Txt("Void $vc× · Refund $rc×", 11, color = c.textMuted, modifier = Modifier.padding(top = 2.dp)) }
+                            Txt(if (amt > 0) "-" + rupiah(amt) else rupiah(0), 13, FontWeight.Bold, c.alert)
+                        }
+                    }
+                }
+                SectionTitle("Penjualan per outlet"); NameAmountRows(active.groupBy { it.outlet }.map { it.key to it.value.sumOf { t -> net(t) } })
+                SectionTitle("Penjualan per kasir"); NameAmountRows(active.groupBy { it.cashier }.map { it.key to it.value.sumOf { t -> net(t) } })
             }
-            else -> ExpensesBody(vm)
+        }
+    }
+    if (filter) FilterSheet(vm, workers) { filter = false }
+    detail?.let { cur -> TransactionDetail(vm, txAll.find { it.id == cur.id } ?: cur) { detail = null } }
+}
+
+@Composable
+private fun MethodBlock(label: String, amount: Long, total: Long, color: Color, divider: Boolean) {
+    val c = Sk.c
+    if (divider) Box(Modifier.fillMaxWidth().height(1.dp).background(c.border))
+    Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = if (divider) 0.dp else 12.dp)) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) { Txt(label, 13, FontWeight.Medium); Txt(rupiah(amount), 13, FontWeight.SemiBold) }
+        Box(Modifier.fillMaxWidth().height(8.dp).clip(RXs).background(c.surfaceAlt)) {
+            Box(Modifier.fillMaxHeight().fillMaxWidth(if (total <= 0L) 0f else (amount.toFloat() / total).coerceIn(0f, 1f)).clip(RXs).background(color))
         }
     }
 }
@@ -204,38 +267,68 @@ private fun NameAmountRows(rows: List<Pair<String, Long>>) {
     }
 }
 
-/* ============================== Expenses ============================== */
+@Composable
+private fun FilterSheet(vm: PosViewModel, workers: List<Worker>, onDismiss: () -> Unit) {
+    val s = vm.state.collectAsState().value
+    var period by remember { mutableStateOf(s.reportPeriod) }
+    var user by remember { mutableStateOf(s.reportUser) }
+    var from by remember { mutableStateOf(s.reportFrom.ifBlank { todayStr() }) }
+    var to by remember { mutableStateOf(s.reportTo.ifBlank { todayStr() }) }
+    SkSheet(onDismiss) {
+        Txt("Filter Laporan", 17, FontWeight.SemiBold, lineHeight = 1.3f)
+        Spacer(Modifier.height(12.dp))
+        SectionTitle("Periode", true)
+        ChipRow { listOf("all" to "Semua", "today" to "Hari ini", "week" to "7 hari", "month" to "Bulan ini", "lastmonth" to "Bulan lalu", "custom" to "Custom").forEach { (id, l) -> Chip(l, period == id) { period = id } } }
+        if (period == "custom") Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Field("Dari", from, { from = it }, Modifier.weight(1f), placeholder = "yyyy-MM-dd"); Field("Sampai", to, { to = it }, Modifier.weight(1f), placeholder = "yyyy-MM-dd")
+        }
+        SectionTitle("Kasir")
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            (listOf("all" to "Semua kasir") + workers.map { it.username to it.name }).forEach { (id, l) ->
+                ListRow(onClick = { user = id }) { Txt(l, 14, FontWeight.Medium, modifier = Modifier.weight(1f)); if (user == id) Txt("Aktif", 14, FontWeight.SemiBold, Sk.c.primary) }
+            }
+        }
+        FormActions("Reset", { period = "all"; user = "all"; from = todayStr(); to = todayStr() }, "Terapkan", { vm.setReportFilter(period, user, from, to); onDismiss() }, top = 16)
+    }
+}
+
+/* ============================== Pengeluaran ============================== */
 private val EXP_CATS = listOf("Bahan", "Operasional", "Gaji", "Lainnya")
 
 @Composable
 fun ExpensesPage(vm: PosViewModel, onHome: () -> Unit) {
+    val c = Sk.c
     val ex by vm.expenses.collectAsState()
+    val user = vm.state.collectAsState().value.user!!
     Screen {
-        Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column { Txt("Pengeluaran", 20, FontWeight.SemiBold, lineHeight = 1.3f); Txt("${ex.size} catatan", 13, color = Sk.c.textMuted) }
-            Btn("← Kembali", onHome, kind = 1)
-        }
-        ExpensesBody(vm, showTitle = false)
+        PageHead("Pengeluaran", "${ex.size} catatan") { BackHome(onHome) }
+        ExpensesBody(vm, ex, "", null, editable = user.role == Role.OWNER, compactCats = listOf("Bahan", "Operasional"))
     }
 }
 
 @Composable
-fun ExpensesBody(vm: PosViewModel, showTitle: Boolean = true) {
+internal fun ExpensesBody(vm: PosViewModel, ex: List<Expense>, periodText: String, g: Growth?, editable: Boolean = true, compactCats: List<String>? = null) {
     val c = Sk.c
-    val ex by vm.expenses.collectAsState()
     var form by remember { mutableStateOf<Expense?>(null) }
     var creating by remember { mutableStateOf(false) }
     var del by remember { mutableStateOf<Expense?>(null) }
     val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
-    Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Column { if (showTitle) { Txt("Pengeluaran", 15, FontWeight.SemiBold); Txt("${ex.size} catatan", 12, color = c.textMuted) } else Txt("${ex.size} catatan", 12, color = c.textMuted) }
-        Btn("+ Tambah", { creating = true })
+    val total = ex.sumOf { it.amount }
+    SkCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), padding = 20) {
+        Txt(if (periodText.isEmpty()) "Total pengeluaran" else "Total Pengeluaran · $periodText", 13, color = c.textMuted)
+        Txt(rupiah(total), 32, FontWeight.Bold, c.alert, Modifier.padding(top = 4.dp, bottom = 6.dp), lineHeight = 1.1f, spacing = -.64f)
+        Txt("${ex.size} catatan", 13, FontWeight.Medium, c.cash)
+        if (g != null) HeroExtra {
+            GrowthLine(g, "dari periode lalu", invert = true)
+            EXP_CATS.forEach { cat -> ExtraRow(cat, rupiah(ex.filter { it.category == cat }.sumOf { it.amount })) }
+        }
     }
-    SkCard(Modifier.fillMaxWidth().padding(bottom = 16.dp), padding = 16) {
-        Txt("Total pengeluaran", 13, color = c.textMuted)
-        Txt(rupiah(ex.sumOf { it.amount }), 32, FontWeight.Bold, c.alert, Modifier.padding(top = 4.dp), spacing = -.64f, lineHeight = 1.2f)
+    if (compactCats != null) KpiCompact(compactCats.map { cat -> Triple(cat, rupiah(ex.filter { it.category == cat }.sumOf { it.amount }), null) })
+    Row(Modifier.fillMaxWidth().padding(top = if (g != null) 0.dp else 0.dp, bottom = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Column { Txt("Daftar pengeluaran", 14, FontWeight.SemiBold); Txt("${ex.size} catatan" + if (periodText.isEmpty()) "" else " di periode ini", 12, color = c.textMuted) }
+        Box(Modifier.heightIn(min = 36.dp).clip(RSm).background(c.primary).clickable { creating = true }.padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) { Txt("+ Tambah", 13, FontWeight.SemiBold, Color.White) }
     }
-    KpiCompact(EXP_CATS.map { cat -> Triple(cat, rupiah(ex.filter { it.category == cat }.sumOf { it.amount }), null) })
+    if (ex.isEmpty()) EmptyState("Belum ada pengeluaran di periode ini")
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ex.forEach { e ->
             ListRow {
@@ -244,13 +337,15 @@ fun ExpensesBody(vm: PosViewModel, showTitle: Boolean = true) {
                     Txt("${e.category} · ${fmt.format(Date(e.date))} · ${e.by}", 12, color = c.textMuted, modifier = Modifier.padding(top = 2.dp))
                 }
                 Txt("-" + rupiah(e.amount), 14, FontWeight.Bold, c.alert)
-                IconBtn(SkIcons.Edit, { form = e }, size = 16, modifier = Modifier.size(32.dp))
-                IconBtn(SkIcons.Trash, { del = e }, size = 16, modifier = Modifier.size(32.dp))
+                if (editable) {
+                    IconBtn(SkIcons.Edit, { form = e }, size = 16, modifier = Modifier.size(32.dp))
+                    IconBtn(SkIcons.Trash, { del = e }, size = 16, modifier = Modifier.size(32.dp))
+                }
             }
         }
     }
-    if (creating || form != null) ExpenseSheet(vm, form, { creating = false; form = null })
-    del?.let { d -> ConfirmModal("Hapus pengeluaran?", "${d.note.ifBlank { d.category }} · ${rupiah(d.amount)} akan dihapus.", "Hapus", true, true, { del = null }) { vm.deleteExpense(d.id); del = null } }
+    if (creating || form != null) ExpenseSheet(vm, form) { creating = false; form = null }
+    del?.let { d -> ConfirmModal("Hapus pengeluaran?", "\"${d.note.ifBlank { d.category }}\" akan dihapus.", "Hapus", true, true, { del = null }) { vm.deleteExpense(d.id); del = null } }
 }
 
 @Composable

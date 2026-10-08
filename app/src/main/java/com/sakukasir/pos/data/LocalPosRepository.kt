@@ -170,9 +170,9 @@ class LocalPosRepository(
             )
         }
         private fun seedWorkers() = listOf(
-            Worker(1,"Andi Wijaya","kasir","Toko Berkah",true,"0812-5555-6666", Permission.entries.toSet(), "kasir123"),
-            Worker(2,"Siti Aminah","kasir2","Cabang Pasar",true,"0812-7777-8888",setOf(Permission.POS,Permission.TRANSACTIONS,Permission.SHIFT,Permission.PRINTER,Permission.SYNC,Permission.THEME,Permission.PROFILE), "kasir123"),
-            Worker(3,"Rudi Hartono","kasir3","Toko Berkah",false,"0812-9999-0000",setOf(Permission.POS,Permission.PRINTER,Permission.THEME,Permission.PROFILE), "kasir123")
+            Worker(1,"Andi Wijaya","kasir","Toko Berkah",true,"0812-5555-6666"),
+            Worker(2,"Siti Aminah","kasir2","Cabang Pasar",true,"0812-7777-8888",setOf(Permission.POS,Permission.TRANSACTIONS,Permission.SHIFT,Permission.PRINTER,Permission.SYNC,Permission.THEME,Permission.PROFILE)),
+            Worker(3,"Rudi Hartono","kasir3","Toko Berkah",false,"0812-9999-0000",setOf(Permission.POS,Permission.PRINTER,Permission.THEME,Permission.PROFILE))
         )
         private fun seedNotifications() = listOf(
             AppNotification(1,"stock_low","Stok menipis","Teh Manis · sisa 3",System.currentTimeMillis()-1800000),

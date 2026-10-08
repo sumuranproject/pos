@@ -19,7 +19,11 @@ data class PosUiState(
     val darkTheme: Boolean = false,
     val selectedOutlet: String = "Toko Berkah",
     val notice: String? = null,
-    val simulateOffline: Boolean = false
+    val simulateOffline: Boolean = false,
+    val reportPeriod: String = "all",
+    val reportUser: String = "all",
+    val reportFrom: String = "",
+    val reportTo: String = ""
 )
 
 class PosViewModel(private val repo: PosRepository): ViewModel() {
@@ -39,36 +43,24 @@ class PosViewModel(private val repo: PosRepository): ViewModel() {
     val shiftHistory=repo.shiftHistory
 
     fun login(username:String,password:String) {
-        val normalized = username.trim().lowercase()
-        if (normalized.isBlank() || password.isBlank()) {
-            _state.update { it.copy(notice = "Username dan password wajib diisi.") }
-            return
+        val user=when(username.lowercase()) {
+            "owner" -> User("owner","Budi Santoso",Role.OWNER,"Toko Berkah")
+            "kasir" -> User("kasir","Andi Wijaya",Role.CASHIER,"Toko Berkah",Permission.entries.toSet())
+            "kasir2" -> User("kasir2","Siti Aminah",Role.CASHIER,"Cabang Pasar",setOf(Permission.POS,Permission.TRANSACTIONS,Permission.SHIFT,Permission.PRINTER,Permission.SYNC,Permission.THEME,Permission.PROFILE))
+            "kasir3" -> User("kasir3","Rudi Hartono",Role.CASHIER,"Toko Berkah",setOf(Permission.POS,Permission.PRINTER,Permission.THEME,Permission.PROFILE))
+            else -> null
         }
-        val user = if (normalized == "owner") {
-            User("owner", "Budi Santoso", Role.OWNER, "Toko Berkah")
-        } else {
-            val worker = repo.workers.value.firstOrNull { it.username.equals(normalized, true) }
-            when {
-                worker == null -> null
-                !worker.active -> {
-                    _state.update { it.copy(notice = "Akun dinonaktifkan. Hubungi owner.") }
-                    return
-                }
-                worker.password.isNotBlank() && worker.password != password -> null
-                else -> User(worker.username, worker.name, Role.CASHIER, worker.outlet, worker.permissions)
-            }
+        if(user==null || (username.lowercase()!="owner" && password!="kasir123")) {
+            _state.update{it.copy(notice="Username atau password salah.")}; return
         }
-        if (user == null) {
-            _state.update { it.copy(notice = "Username atau password salah.") }
-            return
-        }
-        _state.update { it.copy(user = user, selectedOutlet = user.outlet, notice = null) }
+        _state.update{it.copy(user=user,selectedOutlet=user.outlet,notice=null)}
     }
     fun logout(){_state.value=PosUiState()}
     fun setSearch(v:String)=_state.update{it.copy(search=v)}
     fun setCategory(v:String)=_state.update{it.copy(selectedCategory=v)}
     fun setDiscount(v:Long)=_state.update{it.copy(discount=v)}
     fun setTax(v:Int)=_state.update{it.copy(taxPct=v.coerceIn(0,100))}
+    fun setReportFilter(period:String,user:String,from:String,to:String)=_state.update{it.copy(reportPeriod=period,reportUser=user,reportFrom=from,reportTo=to)}
     fun toggleOffline(){_state.update{it.copy(simulateOffline=!it.simulateOffline)}}
     fun toggleTheme(){_state.update{it.copy(darkTheme=!it.darkTheme)}}
     fun selectOutlet(name:String){_state.update{it.copy(selectedOutlet=name)}}

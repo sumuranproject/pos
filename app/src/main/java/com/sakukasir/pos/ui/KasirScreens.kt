@@ -46,13 +46,30 @@ fun PosScreen(vm: PosViewModel) {
     val state by vm.state.collectAsState()
     val products by vm.products.collectAsState()
     val cats by vm.categories.collectAsState()
+    val shift by vm.shift.collectAsState()
+    val user = state.user!!
     val toast = LocalToast.current
+    var startShift by remember { mutableStateOf(false) }
     var cartOpen by remember { mutableStateOf(false) }
     var checkout by remember { mutableStateOf(false) }
     var success by remember { mutableStateOf<Transaction?>(null) }
     var detail by remember { mutableStateOf<Transaction?>(null) }
     val filtered = products.filter { it.active && (state.selectedCategory == "Semua" || it.category == state.selectedCategory) && it.name.contains(state.search, true) }
     val count = state.cart.sumOf { it.qty }
+
+    if (user.role == Role.CASHIER && shift == null) {
+        Screen {
+            PageHead("Kasir", "Mulai shift dulu untuk transaksi")
+            Column(Modifier.fillMaxWidth().padding(top = 60.dp, start = 24.dp, end = 24.dp, bottom = 48.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                SkIcon(SkIcons.Clock, 64.dp, c.textFaint)
+                Txt("Shift belum dimulai", 15, FontWeight.SemiBold, align = TextAlign.Center)
+                Txt("Anda harus mulai shift dan mengisi kas awal sebelum bisa membuat transaksi.", 13, color = c.textMuted, align = TextAlign.Center, modifier = Modifier.widthIn(max = 280.dp), lineHeight = 1.5f)
+                Btn("Mulai Shift Sekarang", { startShift = true }, Modifier.padding(top = 8.dp))
+            }
+        }
+        if (startShift) PromptModal("Mulai shift", "Kas awal (Rp)", "200000", "Simpan", { startShift = false }) { v -> startShift = false; vm.startShift(digits(v).toLongOrNull() ?: 0L); toast("Shift dimulai", "success") }
+        return
+    }
 
     if (success != null) {
         SuccessScreen(vm, success!!, onNew = { success = null }, onDetail = { detail = success; success = null })
@@ -178,6 +195,69 @@ private fun CartSheet(vm: PosViewModel, onCheckout: () -> Unit, onDismiss: () ->
 
 /* ============================== Checkout ============================== */
 @Composable
+fun CheckoutScreen(vm: PosViewModel, onPos: () -> Unit) {
+    val c = Sk.c
+    val s by vm.state.collectAsState()
+    val products by vm.products.collectAsState()
+    val toast = LocalToast.current
+    var pay by remember { mutableStateOf(false) }
+    var confirmClear by remember { mutableStateOf(false) }
+    var success by remember { mutableStateOf<Transaction?>(null) }
+    var detail by remember { mutableStateOf<Transaction?>(null) }
+    val count = s.cart.sumOf { it.qty }
+    val subtotal = vm.totals().subtotal
+    if (success != null) {
+        SuccessScreen(vm, success!!, onNew = { success = null; onPos() }, onDetail = { detail = success; success = null })
+        return
+    }
+    Screen(bottomSpace = if (count > 0) 92.dp else 24.dp, overlay = {
+        if (count > 0) Row(
+            Modifier.align(Alignment.BottomCenter).padding(horizontal = 12.dp, vertical = 12.dp).fillMaxWidth().shadow(8.dp, RMd).clip(RMd)
+                .background(c.primary).clickable { pay = true }.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(Modifier.weight(1f)) {
+                Txt("$count item", 12, color = Color.White.copy(alpha = .85f), lineHeight = 1.3f)
+                Txt(rupiah(subtotal), 17, FontWeight.Bold, Color.White, lineHeight = 1.3f)
+            }
+            Box(Modifier.clip(RSm).background(Color.White.copy(alpha = .18f)).padding(horizontal = 14.dp, vertical = 8.dp)) { Txt("Bayar sekarang", 14, FontWeight.SemiBold, Color.White) }
+        }
+    }) {
+        PageHead("Checkout", if (count > 0) "$count item siap dibayar" else "Belum ada item di cart") {
+            if (count > 0) Btn("Kosongkan", { confirmClear = true }, kind = 1)
+        }
+        if (count == 0) EmptyState("Cart masih kosong", "Buka tab Kasir untuk memilih produk.", SkIcons.Bag, "Buka Kasir", onPos)
+        else Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            s.cart.forEach { item ->
+                Column(Modifier.fillMaxWidth().skCard().padding(14.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                        Column(Modifier.weight(1f)) {
+                            Txt(item.name, 15, FontWeight.SemiBold, lineHeight = 1.3f)
+                            Txt("${rupiah(item.price)} × ${item.qty}", 12, color = c.textMuted, modifier = Modifier.padding(top = 3.dp))
+                        }
+                        QtyControl(item.qty, { vm.changeQty(item.productId, -1) }, {
+                            val p = products.find { it.id == item.productId }
+                            if (p != null && p.trackStock && item.qty >= p.stock) toast("Stok tidak cukup", "error") else vm.changeQty(item.productId, 1)
+                        })
+                    }
+                    Box(Modifier.fillMaxWidth().drawBehind {
+                        drawLine(c.border, androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Offset(size.width, 0f), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 5f)))
+                    }.padding(top = 10.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Txt("SUBTOTAL", 12, FontWeight.SemiBold, c.textMuted, spacing = .48f)
+                            Txt(rupiah(item.price * item.qty), 16, FontWeight.Bold, c.primary, spacing = -.16f)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (pay) CheckoutSheet(vm, onDismiss = { pay = false }, onDone = { pay = false; success = it })
+    if (confirmClear) ConfirmModal("Kosongkan cart?", "Semua item akan dihapus.", "Kosongkan", true, true, { confirmClear = false }) { confirmClear = false; vm.clearCart() }
+    detail?.let { TransactionDetail(vm, it) { detail = null } }
+}
+
+
 private fun CheckoutSheet(vm: PosViewModel, onDismiss: () -> Unit, onDone: (Transaction) -> Unit) {
     val c = Sk.c
     val s by vm.state.collectAsState()
@@ -534,7 +614,7 @@ private fun RefundSheet(vm: PosViewModel, tx: Transaction, onDismiss: () -> Unit
 
 /* ============================== Shift ============================== */
 @Composable
-fun ShiftScreen(vm: PosViewModel) {
+fun ShiftScreen(vm: PosViewModel, onHome: (() -> Unit)? = null) {
     val c = Sk.c
     val shift by vm.shift.collectAsState()
     val history by vm.shiftHistory.collectAsState()
@@ -545,7 +625,7 @@ fun ShiftScreen(vm: PosViewModel) {
     var result by remember { mutableStateOf<String?>(null) }
     val toast = LocalToast.current
     Screen {
-        PageHead("Shift", "Riwayat & status")
+        if (onHome != null) PageHead("Shift", "Riwayat & status") { onHome() } else PageHead("Shift", "Riwayat & status")
         val sh = shift
         if (sh != null) {
             val mine = tx.filter { it.cashierId == user.username && it.timestamp >= sh.startAt && it.status == TransactionStatus.COMPLETED }

@@ -26,8 +26,7 @@ data class Outlet(val id: Int, val name: String, val address: String, val active
 data class Worker(
     val id: Int, val name: String, val username: String, val outlet: String,
     val active: Boolean = true, val whatsapp: String = "",
-    val permissions: Set<Permission> = Permission.entries.toSet(),
-    val password: String = ""
+    val permissions: Set<Permission> = Permission.entries.toSet()
 )
 data class ShiftSummary(val id: String, val start: String, val end: String, val cash: Long, val qris: Long, val tx: Int, val variance: Long)
 data class Category(val id: Int, val name: String, val active: Boolean = true)
@@ -131,7 +130,6 @@ data class ReceiptSettings(
 data class AppSettings(
     val qrisEnabled: Boolean = true,
     val qrisOutlet: String = "Toko Berkah",
-    val qrisImageUri: String? = null,
     val qrisRetentionDays: Int = 35,
     val printerName: String = "SK-Printer-58mm",
     val printerConnected: Boolean = false,

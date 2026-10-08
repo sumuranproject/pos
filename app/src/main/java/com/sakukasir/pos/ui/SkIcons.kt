@@ -36,8 +36,6 @@ object SkIcons {
     val Search by lazy { build("search", 1.75f, circ(11, 11, 7), "m21 21-4.3-4.3") }
     val Printer by lazy { build("printer", 1.75f, "M6 9V2h12v7", "M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2", "M6 14h12v8H6z") }
     val Bell by lazy { build("bell", 1.75f, "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9", "M10.3 21a1.94 1.94 0 0 0 3.4 0") }
-    val Moon by lazy { build("moon", 1.75f, "M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z") }
-    val Sun by lazy { build("sun", 1.75f, circ(12, 12, 4), "M12 2v2", "M12 20v2", "m4.93 4.93 1.41 1.41", "m17.66 17.66 1.41 1.41", "M2 12h2", "M20 12h2", "m6.34 17.66-1.41 1.41", "m19.07 4.93-1.41 1.41") }
     val ChevronDown by lazy { build("chevronDown", 2f, "m6 9 6 6 6-6") }
     val Close by lazy { build("close", 2f, "M18 6 6 18", "M6 6l12 12") }
     val Logout by lazy { build("logout", 2f, "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4", "m16 17 5-5-5-5", "M21 12H9") }
@@ -52,6 +50,21 @@ object SkIcons {
     val CheckCircle by lazy { build("checkCircle", 1.75f, circ(12, 12, 10), "m9 12 2 2 4-4") }
     val Lock by lazy { build("lock", 1.75f, "M5 11h14v10H5z", "M8 11V7a4 4 0 0 1 8 0v4") }
     val Lines by lazy { build("list", 1.5f, "M4 6h16", "M4 12h16", "M4 18h10") }
+    val Moon by lazy { build("moon", 1.75f, "M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z") }
+    val Sun by lazy { build("sun", 1.75f, circ(12, 12, 4), "M12 2v2", "M12 20v2", "m4.93 4.93 1.41 1.41", "m17.66 17.66 1.41 1.41", "M2 12h2", "M20 12h2", "m6.34 17.66-1.41 1.41", "m19.07 4.93-1.41 1.41") }
+    val ChevronRight by lazy { build("chevronRight", 2f, "m9 18 6-6-6-6") }
+    val Bag by lazy { build("bag", 1.75f, "M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z", "M3 6h18", "M16 10a4 4 0 0 1-8 0") }
+    val Wallet by lazy { build("wallet", 1.75f, "M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z", "M2 10h20", circ(17, 14, 1)) }
+    val Menu by lazy { build("menu", 1.75f, "M4 3.5h16", "M4 12h16", "M4 20.5h11") }
+    val Filter by lazy { build("filter", 2f, "M22 3H2l8 9.46V19l4 2v-8.54z") }
+    val ArrowLeft by lazy { build("arrowLeft", 2f, "M19 12H5", "m12 19-7-7 7-7") }
+    val Mail by lazy { build("mail", 1.75f, "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z", "m22 7-10 6L2 7") }
+    val User by lazy { build("user", 1.75f, circ(12, 8, 4), "M4 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2") }
+    val Chat by lazy { build("chat", 1.75f, "M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z") }
+    val Building by lazy { build("building", 1.75f, "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M9 3v18", "M14 8h4", "M14 12h4", "M14 16h4") }
+    val EyeOff by lazy { build("eyeOff", 1.75f, "M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94", "M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19", "M1 1l22 22") }
+    val TrendUp by lazy { build("trendUp", 2f, "m23 6-9.5 9.5-5-5L1 18", "M17 6h6v6") }
+    val TrendDown by lazy { build("trendDown", 2f, "m23 18-9.5-9.5-5 5L1 6", "M17 18h6v-6") }
     val Eye by lazy { build("eye", 1.75f, "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z", circ(12, 12, 3)) }
 }
 

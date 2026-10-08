@@ -51,6 +51,89 @@ private fun SearchBox(value: String, onChange: (String) -> Unit) {
     }
 }
 
+
+/* ============================== Kelola ============================== */
+@Composable
+fun ManageScreen(vm: PosViewModel, owner: Boolean, user: User, go: (String) -> Unit) {
+    val c = Sk.c
+    val products by vm.products.collectAsState()
+    val cats by vm.categories.collectAsState()
+    val outlets by vm.outlets.collectAsState()
+    val workers by vm.workers.collectAsState()
+    val settings by vm.settings.collectAsState()
+    val queue by vm.syncQueue.collectAsState()
+    val audit by vm.audit.collectAsState()
+    val dark = vm.state.collectAsState().value.darkTheme
+    val low = products.count { it.trackStock && it.stock > 0 && it.stock <= it.lowStock }
+    val out = products.count { it.trackStock && it.stock == 0 }
+
+    val ownerGroups = listOf(
+        "Katalog" to listOf(
+            ManageItem("Produk", "Kelola daftar produk", "products", products.size.toString()),
+            ManageItem("Kategori", "Kelompok produk", "categories", cats.size.toString()),
+            ManageItem("Stok", "Pantau & sesuaikan stok", "inventory", if (low + out > 0) "${low + out} low" else "")
+        ),
+        "Bisnis" to listOf(
+            ManageItem("Outlet", "Cabang & lokasi toko", "outlets", outlets.size.toString()),
+            ManageItem("Kasir", "Akun & hak akses", "workers", workers.size.toString()),
+            ManageItem("Shift", "Riwayat shift karyawan", "manage-shift", "")
+        ),
+        "Pengaturan" to listOf(
+            ManageItem("QRIS", "Metode pembayaran QR", "qris", if (settings.qrisEnabled) "Aktif" else "Off"),
+            ManageItem("Printer", "Printer Bluetooth struk", "printer", if (settings.printerConnected) "On" else "Off"),
+            ManageItem("Struk", "Format & konten struk", "receipt", ""),
+            ManageItem("Notifikasi", "Preferensi notifikasi", "notif-settings", ""),
+            ManageItem("Sinkronisasi", "Status & queue", "sync-settings", queue.size.takeIf { it > 0 }?.toString() ?: ""),
+            ManageItem("Keamanan", "Aturan void & refund", "security", ""),
+            ManageItem("Audit Log", "Riwayat aktivitas", "audit", audit.size.takeIf { it > 0 }?.toString() ?: ""),
+            ManageItem("Tema", if (dark) "Mode gelap" else "Mode terang", "theme", ""),
+            ManageItem("Profil", "Info akun kamu", "profile", ""),
+            ManageItem("Tentang", "Info aplikasi", "about", "")
+        )
+    )
+    val cashierItems = buildList {
+        if (user.can(Permission.EXPENSE)) add(ManageItem("Pengeluaran", "Catat pengeluaran harian", "expenses", ""))
+        if (user.can(Permission.PRINTER)) add(ManageItem("Printer", "Printer Bluetooth struk", "printer", ""))
+        if (user.can(Permission.SYNC)) add(ManageItem("Sinkronisasi", "Status & queue", "sync-settings", queue.size.takeIf { it > 0 }?.toString() ?: ""))
+        if (user.can(Permission.THEME)) add(ManageItem("Tema", if (dark) "Mode gelap" else "Mode terang", "theme", ""))
+        if (user.can(Permission.PROFILE)) add(ManageItem("Profil", "Info akun kamu", "profile", ""))
+        add(ManageItem("Tentang", "Info aplikasi", "about", ""))
+    }
+
+    Screen(bottomSpace = 24.dp) {
+        PageHead("Kelola", if (owner) "Menu owner" else "Menu kasir")
+        if (owner) {
+            ownerGroups.forEachIndexed { index, (title, items) ->
+                SectionTitle(title, first = index == 0)
+                items.forEach { item -> ManageRow(item, c) { go(item.route) } }
+            }
+        } else {
+            if (cashierItems.isEmpty()) EmptyState("Tidak ada akses", "Hubungi owner untuk mengaktifkan fitur.")
+            else cashierItems.forEach { ManageRow(it, c) { go(it.route) } }
+        }
+    }
+}
+
+private data class ManageItem(val title: String, val sub: String, val route: String, val meta: String)
+
+@Composable
+private fun ManageRow(item: ManageItem, c: SkColors, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(bottom = 8.dp).clip(RMd).background(c.card).border(1.dp, c.border, RMd)
+            .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Txt(item.title, 14, FontWeight.SemiBold)
+            Txt(item.sub, 12, color = c.textMuted, modifier = Modifier.padding(top = 2.dp))
+        }
+        if (item.meta.isNotBlank()) {
+            Txt(item.meta, 11, FontWeight.SemiBold, c.textMuted, modifier = Modifier.padding(horizontal = 8.dp))
+        }
+        Txt("›", 24, FontWeight.Normal, c.textFaint)
+    }
+}
+
 /* ============================== Produk ============================== */
 @Composable
 fun ProductsPage(vm: PosViewModel, onHome: () -> Unit) {
@@ -287,7 +370,6 @@ fun WorkersPage(vm: PosViewModel, onHome: () -> Unit) {
         var active by remember { mutableStateOf(w?.active ?: true) }
         val perms = remember { mutableStateListOf<Permission>().apply { addAll(w?.permissions ?: Permission.entries) } }
         val close = { creating = false; edit = null }
-        val toast = LocalToast.current
         SkSheet(close) {
             SheetTitle(if (w == null) "Kasir baru" else "Edit kasir")
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -305,17 +387,8 @@ fun WorkersPage(vm: PosViewModel, onHome: () -> Unit) {
                 SwitchRow(label, desc, p in perms, { if (it) perms.add(p) else perms.remove(p) }, divider = i < Permission.entries.size - 1, pad = 12)
             }
             FormActions("Batal", close, "Simpan", {
-                if (name.isBlank() || user.isBlank()) {
-                    toast("Nama dan username wajib diisi", "error")
-                } else if (w == null && pass.length < 6) {
-                    toast("Password minimal 6 karakter", "error")
-                } else if (w != null && pass.isNotEmpty() && pass.length < 6) {
-                    toast("Password minimal 6 karakter", "error")
-                } else if (perms.isEmpty()) {
-                    toast("Minimal 1 fitur harus diaktifkan", "error")
-                } else {
-                    val password = if (pass.isNotEmpty()) pass else (w?.password ?: "kasir123")
-                    vm.upsertWorker(Worker(w?.id ?: ((workers.maxOfOrNull { it.id } ?: 0) + 1), name.trim(), user.trim(), outlet, active, wa.trim(), perms.toSet(), password)); close()
+                if (name.isNotBlank() && user.isNotBlank()) {
+                    vm.upsertWorker(Worker(w?.id ?: ((workers.maxOfOrNull { it.id } ?: 0) + 1), name.trim(), user.trim(), outlet, active, wa.trim(), perms.toSet())); close()
                 }
             }, top = 16)
         }

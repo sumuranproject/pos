@@ -19,9 +19,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -81,7 +81,7 @@ fun Modifier.skCard(shape: RoundedCornerShape = RMd, bg: Color? = null): Modifie
 private fun cardColor() = Sk.c.card
 
 private fun Modifier.composed2(bg: Color?, shape: RoundedCornerShape): Modifier =
-    composed {
+    androidx.compose.ui.composed {
         this.background(bg ?: Sk.c.card, shape).border(1.dp, Sk.c.border, shape)
     }
 
@@ -236,22 +236,62 @@ fun ChipRow(content: @Composable RowScope.() -> Unit) {
 }
 
 @Composable
-fun SegTabs(labels: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+fun SegTabs(labels: List<String>, selected: Int, onSelect: (Int) -> Unit, icons: List<ImageVector>? = null) {
     val c = Sk.c
-    val fit = labels.size <= 5
-    val rowMod = if (fit) Modifier.fillMaxWidth() else Modifier.horizontalScroll(rememberScrollState())
-    Box(Modifier.fillMaxWidth().padding(bottom = 16.dp).clip(RSm).background(c.surfaceAlt).padding(3.dp)) {
-        Row(rowMod, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            labels.forEachIndexed { i, l ->
-                val on = i == selected
-                Box(
-                    (if (fit) Modifier.weight(1f) else Modifier).clip(RoundedCornerShape(6.dp))
-                        .background(if (on) c.card else Color.Transparent).clickable { onSelect(i) }
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) { Txt(l, 13, if (on) FontWeight.SemiBold else FontWeight.Medium, if (on) c.text else c.textMuted, maxLines = 1) }
+    val cfg = androidx.compose.ui.platform.LocalConfiguration.current
+    val iconOnly = icons != null && cfg.screenWidthDp <= 480 && cfg.screenHeightDp <= 900
+    Row(
+        Modifier.fillMaxWidth().padding(bottom = 16.dp).clip(RoundedCornerShape(14.dp)).background(c.surfaceAlt)
+            .border(1.dp, c.border, RoundedCornerShape(14.dp)).padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        labels.forEachIndexed { i, l ->
+            val on = i == selected
+            val fg = if (on) Color.White else c.textMuted
+            Row(
+                Modifier.weight(1f).heightIn(min = if (iconOnly) 44.dp else 40.dp).clip(RoundedCornerShape(10.dp))
+                    .background(if (on) c.primary else Color.Transparent).clickable { onSelect(i) }.padding(horizontal = 8.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (icons != null) SkIcon(icons[i], if (iconOnly) 20.dp else 16.dp, fg)
+                if (!iconOnly) {
+                    if (icons != null) Spacer(Modifier.width(6.dp))
+                    Txt(l, 13, if (on) FontWeight.SemiBold else FontWeight.Medium, fg, maxLines = 1)
+                }
             }
         }
+    }
+}
+
+@Composable
+fun BrandMark(size: Int, radius: Int, modifier: Modifier = Modifier) {
+    val c = Sk.c
+    val sz = size.dp
+    androidx.compose.foundation.Canvas(modifier.size(sz).clip(RoundedCornerShape(radius.dp)).background(c.primary)) {
+        val k = this.size.width * 0.72f / 24f
+        val off = this.size.width * 0.14f
+        androidx.compose.ui.graphics.drawscope.translate(off, off) {
+            androidx.compose.ui.graphics.drawscope.scale(k, k, androidx.compose.ui.geometry.Offset.Zero) {
+                val path = androidx.compose.ui.graphics.vector.PathParser().parsePathString("M8 3.5l1 1 1-1 1 1 1-1 1 1 1-1 1 1 1-1v6H8v-6z").toPath()
+                drawPath(path, Color.White)
+                drawRoundRect(Color.White, androidx.compose.ui.geometry.Offset(3.5f, 10f), androidx.compose.ui.geometry.Size(17f, 10.5f), androidx.compose.ui.geometry.CornerRadius(2.5f, 2.5f))
+                drawCircle(c.primary, 1.6f, androidx.compose.ui.geometry.Offset(17f, 15f))
+            }
+        }
+    }
+}
+
+
+@Composable
+fun ToastView(toast: Pair<String, String>?, top: androidx.compose.ui.unit.Dp) {
+    val c = Sk.c
+    if (toast == null) return
+    Box(Modifier.fillMaxWidth().padding(top = top), contentAlignment = Alignment.TopCenter) {
+        Box(
+            Modifier.padding(horizontal = 16.dp).widthIn(max = 400.dp).fillMaxWidth().shadow(8.dp, RSm).clip(RSm)
+                .background(when (toast.second) { "success" -> c.cash; "error" -> c.alert; else -> c.text })
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) { Txt(toast.first, 13, FontWeight.Medium, if (toast.second == "") c.surface else Color.White) }
     }
 }
 
@@ -276,7 +316,7 @@ fun PageHead(title: String, sub: String? = null, action: (@Composable () -> Unit
     }
 }
 
-@Composable fun BackHome(onClick: () -> Unit) = Btn("← Beranda", onClick, kind = 1)
+@Composable fun BackHome(onClick: () -> Unit) = Btn("← Kelola", onClick, kind = 1)
 
 @Composable
 fun SectionTitle(text: String, first: Boolean = false) {
