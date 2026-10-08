@@ -258,6 +258,7 @@ fun CheckoutScreen(vm: PosViewModel, onPos: () -> Unit) {
 }
 
 
+@Composable
 private fun CheckoutSheet(vm: PosViewModel, onDismiss: () -> Unit, onDone: (Transaction) -> Unit) {
     val c = Sk.c
     val s by vm.state.collectAsState()

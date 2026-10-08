@@ -75,15 +75,9 @@ fun Txt(
 }
 
 /* ---------- surfaces ---------- */
-fun Modifier.skCard(shape: RoundedCornerShape = RMd, bg: Color? = null): Modifier = composed2(bg, shape)
-
 @Composable
-private fun cardColor() = Sk.c.card
-
-private fun Modifier.composed2(bg: Color?, shape: RoundedCornerShape): Modifier =
-    androidx.compose.ui.composed {
-        this.background(bg ?: Sk.c.card, shape).border(1.dp, Sk.c.border, shape)
-    }
+fun Modifier.skCard(shape: RoundedCornerShape = RMd, bg: Color? = null): Modifier =
+    this.background(bg ?: Sk.c.card, shape).border(1.dp, Sk.c.border, shape)
 
 @Composable
 fun SkCard(modifier: Modifier = Modifier, padding: Int = 0, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
@@ -270,8 +264,8 @@ fun BrandMark(size: Int, radius: Int, modifier: Modifier = Modifier) {
     androidx.compose.foundation.Canvas(modifier.size(sz).clip(RoundedCornerShape(radius.dp)).background(c.primary)) {
         val k = this.size.width * 0.72f / 24f
         val off = this.size.width * 0.14f
-        androidx.compose.ui.graphics.drawscope.translate(off, off) {
-            androidx.compose.ui.graphics.drawscope.scale(k, k, androidx.compose.ui.geometry.Offset.Zero) {
+        translate(off, off) {
+            scale(k, k, androidx.compose.ui.geometry.Offset.Zero) {
                 val path = androidx.compose.ui.graphics.vector.PathParser().parsePathString("M8 3.5l1 1 1-1 1 1 1-1 1 1 1-1 1 1 1-1v6H8v-6z").toPath()
                 drawPath(path, Color.White)
                 drawRoundRect(Color.White, androidx.compose.ui.geometry.Offset(3.5f, 10f), androidx.compose.ui.geometry.Size(17f, 10.5f), androidx.compose.ui.geometry.CornerRadius(2.5f, 2.5f))
