@@ -6,6 +6,10 @@ import android.net.NetworkCapabilities
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
@@ -163,10 +167,11 @@ fun AppShell(vm: PosViewModel, onLogout: () -> Unit) {
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     NavHost(
                         nav, startDestination = start, modifier = Modifier.fillMaxSize(),
-                        enterTransition = { if (initialState.destination.route == "manage" || targetState.destination.route == "manage") slideInHorizontally(tween(250)) { it } else EnterTransition.None },
-                        exitTransition = { if (initialState.destination.route == "manage" || targetState.destination.route == "manage") slideOutHorizontally(tween(200)) { -it } else ExitTransition.None },
-                        popEnterTransition = { if (initialState.destination.route == "manage" || targetState.destination.route == "manage") slideInHorizontally(tween(200)) { -it } else EnterTransition.None },
-                        popExitTransition = { if (initialState.destination.route == "manage" || targetState.destination.route == "manage") slideOutHorizontally(tween(200)) { it } else ExitTransition.None }
+                        // Lightweight transitions across every page; short durations avoid a heavy feeling.
+                        enterTransition = { fadeIn(tween(160)) + slideInVertically(tween(180)) { it / 36 } },
+                        exitTransition = { fadeOut(tween(110)) + slideOutVertically(tween(130)) { -it / 48 } },
+                        popEnterTransition = { fadeIn(tween(150)) + slideInVertically(tween(170)) { -it / 40 } },
+                        popExitTransition = { fadeOut(tween(100)) + slideOutVertically(tween(120)) { it / 48 } }
                     ) {
                         composable("pos") { PosScreen(vm) { goTab("checkout") } }
                         composable("checkout") { CheckoutScreen(vm) { goTab("pos") } }
@@ -262,7 +267,7 @@ fun AppShell(vm: PosViewModel, onLogout: () -> Unit) {
             }
         }
         if (confirmLogout) {
-            if (activeShift != null) ConfirmModal("Shift masih aktif", "Anda wajib menutup shift sebelum keluar dari akun. Buka halaman tutup shift untuk menyelesaikan shift aktif.", "Tutup shift", false, true, { confirmLogout = false }) { confirmLogout = false; goPage("shift") }
+            if (activeShift != null) ConfirmModal("Shift masih aktif", "Anda harus menutup shift dulu sebelum keluar. Kembali ke halaman Kasir, lalu ketuk kotak Shift Aktif untuk menutup shift.", "OK, buka Kasir", false, true, { confirmLogout = false }) { confirmLogout = false; goPage("pos") }
             else ConfirmModal("Keluar dari SakuKasir?", "Kamu perlu login lagi untuk masuk.", "Keluar", false, true, { confirmLogout = false }) { confirmLogout = false; onLogout() }
         }
     }

@@ -43,7 +43,7 @@ private fun IconField(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Txt(label, 14, FontWeight.Medium)
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RMd).background(c.card)
+            Modifier.fillMaxWidth().height(52.dp).clip(RMd).background(c.card)
                 .border(if (focused) 1.5.dp else 1.dp, if (focused) c.primary else c.borderStrong, RMd).padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -114,8 +114,8 @@ fun LoginScreen(vm: PosViewModel) {
     LaunchedEffect(toast) { if (toast != null) { delay(2500); toast = null } }
     LaunchedEffect(mode) { err = null }
 
-    Box(Modifier.fillMaxSize().background(c.surface).statusBarsPadding().imePadding()) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+    Box(Modifier.fillMaxSize().background(c.surface).statusBarsPadding()) {
+        Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())) {
             Column(
                 Modifier.widthIn(max = 460.dp).fillMaxWidth().align(Alignment.CenterHorizontally).padding(start = 24.dp, end = 24.dp, top = if (mode == "login") 80.dp else 24.dp, bottom = 40.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
@@ -178,7 +178,7 @@ fun LoginScreen(vm: PosViewModel) {
                                 Txt("Jenis Bisnis *", 14, FontWeight.Medium)
                                 Box {
                                     Row(
-                                        Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RMd).background(c.card).border(1.dp, c.borderStrong, RMd)
+                                        Modifier.fillMaxWidth().height(52.dp).clip(RMd).background(c.card).border(1.dp, c.borderStrong, RMd)
                                             .clickable { open = true }.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         SkIcon(SkIcons.Building, 18.dp, c.textFaint); Spacer(Modifier.width(10.dp))
