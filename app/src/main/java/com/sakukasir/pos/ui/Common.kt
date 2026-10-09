@@ -155,9 +155,12 @@ fun Field(
             visualTransformation = when {
                 !password -> VisualTransformation.None
                 revealLast -> VisualTransformation { text ->
-                    androidx.compose.ui.text.AnnotatedString(buildString {
-                        for (index in text.indices) append(if (index == text.lastIndex) text[index] else '\u2022')
-                    })
+                    androidx.compose.ui.text.input.TransformedText(
+                        androidx.compose.ui.text.AnnotatedString(buildString {
+                            for (index in text.indices) append(if (index == text.lastIndex) text[index] else '\u2022')
+                        }),
+                        androidx.compose.ui.text.input.OffsetMapping.Identity
+                    )
                 }
                 else -> PasswordVisualTransformation()
             },

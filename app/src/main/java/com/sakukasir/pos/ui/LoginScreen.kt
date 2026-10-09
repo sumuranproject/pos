@@ -78,7 +78,10 @@ private val LastCharacterPasswordTransformation = VisualTransformation { text ->
     val masked = buildString {
         for (index in text.indices) append(if (index == text.lastIndex) text[index] else '\u2022')
     }
-    androidx.compose.ui.text.AnnotatedString(masked)
+    androidx.compose.ui.text.input.TransformedText(
+        androidx.compose.ui.text.AnnotatedString(masked),
+        androidx.compose.ui.text.input.OffsetMapping.Identity
+    )
 }
 
 private val RoundedCornerShape6dp = androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
