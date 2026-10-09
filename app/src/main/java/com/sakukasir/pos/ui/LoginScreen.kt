@@ -38,6 +38,14 @@ private fun IconField(
 ) {
     val c = Sk.c
     var show by remember { mutableStateOf(false) }
+    var revealLast by remember { mutableStateOf(false) }
+    LaunchedEffect(value, password) {
+        if (password && value.isNotEmpty() && !show) {
+            revealLast = true
+            delay(700)
+            revealLast = false
+        } else revealLast = false
+    }
     val src = remember { MutableInteractionSource() }
     val focused by src.collectIsFocusedAsState()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -52,7 +60,11 @@ private fun IconField(
                 value, onChange, singleLine = true, readOnly = readOnly, interactionSource = src, cursorBrush = SolidColor(c.primary),
                 textStyle = TextStyle(fontFamily = Inter, fontSize = 15.sp, color = if (readOnly) c.textMuted else c.text),
                 keyboardOptions = KeyboardOptions(keyboardType = if (password) KeyboardType.Password else keyboard),
-                visualTransformation = if (password && !show) PasswordVisualTransformation() else VisualTransformation.None,
+                visualTransformation = when {
+                    !password || show -> VisualTransformation.None
+                    revealLast -> LastCharacterPasswordTransformation
+                    else -> PasswordVisualTransformation()
+                },
                 modifier = Modifier.weight(1f).padding(vertical = 14.dp),
                 decorationBox = { inner -> Box { if (value.isEmpty()) Txt(placeholder, 15, color = c.textFaint); inner() } }
             )
@@ -62,6 +74,13 @@ private fun IconField(
         }
     }
 }
+private val LastCharacterPasswordTransformation = VisualTransformation { text ->
+    val masked = buildString {
+        for (index in text.indices) append(if (index == text.lastIndex) text[index] else '\u2022')
+    }
+    androidx.compose.ui.text.AnnotatedString(masked)
+}
+
 private val RoundedCornerShape6dp = androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
 
 @Composable

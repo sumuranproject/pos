@@ -135,6 +135,14 @@ fun Field(
     keyboard: KeyboardType = KeyboardType.Text, singleLine: Boolean = true, hint: String? = null, trailing: (@Composable () -> Unit)? = null
 ) {
     val c = Sk.c
+    var revealLast by remember { mutableStateOf(false) }
+    LaunchedEffect(value, password) {
+        if (password && value.isNotEmpty()) {
+            revealLast = true
+            kotlinx.coroutines.delay(700)
+            revealLast = false
+        } else revealLast = false
+    }
     val src = remember { MutableInteractionSource() }
     val focused by src.collectIsFocusedAsState()
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -144,7 +152,15 @@ fun Field(
             interactionSource = src, cursorBrush = SolidColor(c.primary),
             textStyle = TextStyle(fontFamily = Inter, fontSize = 15.sp, color = if (enabled) c.text else c.textMuted),
             keyboardOptions = KeyboardOptions(keyboardType = if (password) KeyboardType.Password else keyboard),
-            visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
+            visualTransformation = when {
+                !password -> VisualTransformation.None
+                revealLast -> VisualTransformation { text ->
+                    androidx.compose.ui.text.AnnotatedString(buildString {
+                        for (index in text.indices) append(if (index == text.lastIndex) text[index] else '\u2022')
+                    })
+                }
+                else -> PasswordVisualTransformation()
+            },
             modifier = Modifier.fillMaxWidth(),
             decorationBox = { inner ->
                 Row(
