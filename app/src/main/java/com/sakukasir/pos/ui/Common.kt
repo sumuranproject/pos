@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -264,13 +265,14 @@ fun BrandMark(size: Int, radius: Int, modifier: Modifier = Modifier) {
     androidx.compose.foundation.Canvas(modifier.size(sz).clip(RoundedCornerShape(radius.dp)).background(c.primary)) {
         val k = this.size.width * 0.72f / 24f
         val off = this.size.width * 0.14f
-        translate(off, off) {
-            scale(k, k, androidx.compose.ui.geometry.Offset.Zero) {
-                val path = androidx.compose.ui.graphics.vector.PathParser().parsePathString("M8 3.5l1 1 1-1 1 1 1-1 1 1 1-1 1 1 1-1v6H8v-6z").toPath()
-                drawPath(path, Color.White)
-                drawRoundRect(Color.White, androidx.compose.ui.geometry.Offset(3.5f, 10f), androidx.compose.ui.geometry.Size(17f, 10.5f), androidx.compose.ui.geometry.CornerRadius(2.5f, 2.5f))
-                drawCircle(c.primary, 1.6f, androidx.compose.ui.geometry.Offset(17f, 15f))
-            }
+        withTransform({
+            translate(left = off, top = off)
+            scale(scaleX = k, scaleY = k, pivot = androidx.compose.ui.geometry.Offset.Zero)
+        }) {
+            val path = androidx.compose.ui.graphics.vector.PathParser().parsePathString("M8 3.5l1 1 1-1 1 1 1-1 1 1 1-1 1 1 1-1v6H8v-6z").toPath()
+            drawPath(path, Color.White)
+            drawRoundRect(Color.White, androidx.compose.ui.geometry.Offset(3.5f, 10f), androidx.compose.ui.geometry.Size(17f, 10.5f), androidx.compose.ui.geometry.CornerRadius(2.5f, 2.5f))
+            drawCircle(c.primary, 1.6f, androidx.compose.ui.geometry.Offset(17f, 15f))
         }
     }
 }
