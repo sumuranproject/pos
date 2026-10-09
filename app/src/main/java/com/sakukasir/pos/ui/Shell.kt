@@ -170,7 +170,7 @@ fun AppShell(vm: PosViewModel, onLogout: () -> Unit) {
                     ) {
                         composable("pos") { PosScreen(vm) { goTab("checkout") } }
                         composable("checkout") { CheckoutScreen(vm) { goTab("pos") } }
-                        composable("reports") { ReportScreen(vm) }
+                        composable("reports") { if (user.role == Role.CASHIER) DashboardScreen(vm) else ReportScreen(vm) }
                         composable("transactions") { TransactionScreen(vm) }
                         composable("shift") { ShiftScreen(vm) }
                         composable("manage") { ManageScreen(vm, owner, user, goPage) { confirmLogout = true } }
@@ -262,7 +262,7 @@ fun AppShell(vm: PosViewModel, onLogout: () -> Unit) {
             }
         }
         if (confirmLogout) {
-            if (activeShift != null) ConfirmModal("Shift masih aktif", "Tutup shift dulu sebelum keluar. Kalau tetap keluar, shift akan tercatat sebagai anomali.", "Tetap keluar", true, true, { confirmLogout = false }) { confirmLogout = false; onLogout() }
+            if (activeShift != null) ConfirmModal("Shift masih aktif", "Anda wajib menutup shift sebelum keluar dari akun. Buka halaman tutup shift untuk menyelesaikan shift aktif.", "Tutup shift", false, true, { confirmLogout = false }) { confirmLogout = false; goPage("shift") }
             else ConfirmModal("Keluar dari SakuKasir?", "Kamu perlu login lagi untuk masuk.", "Keluar", false, true, { confirmLogout = false }) { confirmLogout = false; onLogout() }
         }
     }

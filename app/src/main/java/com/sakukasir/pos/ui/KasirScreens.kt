@@ -52,6 +52,9 @@ fun PosScreen(vm: PosViewModel, onCheckout: () -> Unit) {
     var startShift by remember { mutableStateOf(false) }
     var success by remember { mutableStateOf<Transaction?>(null) }
     var detail by remember { mutableStateOf<Transaction?>(null) }
+    var shiftInfo by remember { mutableStateOf(false) }
+    var closeShiftSheet by remember { mutableStateOf(false) }
+    var physicalCash by remember { mutableLongStateOf(0L) }
     val filtered = products.filter { it.active && (state.selectedCategory == "Semua" || it.category == state.selectedCategory) && it.name.contains(state.search, true) }
     val count = state.cart.sumOf { it.qty }
 
@@ -86,6 +89,22 @@ fun PosScreen(vm: PosViewModel, onCheckout: () -> Unit) {
             Box(Modifier.clip(RSm).background(Color.White.copy(alpha = .18f)).padding(horizontal = 14.dp, vertical = 8.dp)) { Txt("Checkout", 14, FontWeight.SemiBold, Color.White) }
         }
     }) {
+        if (shift != null) {
+            val sh = shift!!
+            val shiftTx = vm.transactions.collectAsState().value.filter { it.cashierId == user.username && it.timestamp >= sh.startAt && it.status == TransactionStatus.COMPLETED }
+            val shiftSales = shiftTx.sumOf { it.total }
+            SkCard(Modifier.fillMaxWidth().padding(bottom = 12.dp).clickable { shiftInfo = true }, padding = 14) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(Modifier.size(10.dp).background(c.cash, CircleShape))
+                    Column(Modifier.weight(1f)) {
+                        Txt("Shift Aktif", 14, FontWeight.SemiBold, c.cash)
+                        Txt("Mulai ${java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(java.util.Date(sh.startAt))} · ${shiftTx.size} transaksi", 12, color = c.textMuted)
+                    }
+                    Txt(rupiah(shiftSales), 14, FontWeight.Bold)
+                    SkIcon(SkIcons.ChevronRight, 16.dp, c.textMuted)
+                }
+            }
+        }
         Row(
             Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(RSm).background(c.card).border(1.dp, c.borderStrong, RSm).padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -115,6 +134,32 @@ fun PosScreen(vm: PosViewModel, onCheckout: () -> Unit) {
                     if (row.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
+        }
+    }
+    if (shiftInfo && shift != null) {
+        val sh = shift!!
+        val shiftTx = vm.transactions.collectAsState().value.filter { it.cashierId == user.username && it.timestamp >= sh.startAt && it.status == TransactionStatus.COMPLETED }
+        val cashSales = shiftTx.filter { it.method == PaymentMethod.CASH }.sumOf { it.total }
+        val qrisSales = shiftTx.filter { it.method == PaymentMethod.QRIS }.sumOf { it.total }
+        SkSheet({ shiftInfo = false }) {
+            SheetTitle("Shift Aktif", "Informasi shift yang sedang berjalan")
+            KeyRow("Kasir", user.displayName)
+            KeyRow("Mulai", java.text.SimpleDateFormat("dd MMM yyyy · HH:mm", java.util.Locale("id", "ID")).format(java.util.Date(sh.startAt)))
+            KeyRow("Kas awal", rupiah(sh.openingCash))
+            KeyRow("Transaksi", shiftTx.size.toString())
+            KeyRow("Cash", rupiah(cashSales))
+            KeyRow("QRIS", rupiah(qrisSales))
+            KeyRow("Total penjualan", rupiah(cashSales + qrisSales), c.primary, divider = false, big = true)
+            Btn("Tutup Shift", { physicalCash = vm.expectedCash(); shiftInfo = false; closeShiftSheet = true }, Modifier.fillMaxWidth().padding(top = 16.dp), kind = 2)
+        }
+    }
+    if (closeShiftSheet && shift != null) {
+        val expected = vm.expectedCash()
+        SkSheet({ closeShiftSheet = false }) {
+            SheetTitle("Tutup Shift", "Hitung uang fisik sebelum mengakhiri shift.")
+            SummaryRow("Expected cash", rupiah(expected))
+            RupiahField("Uang fisik (Rp)", physicalCash, { physicalCash = it }, Modifier.padding(vertical = 12.dp))
+            Btn("Konfirmasi Tutup Shift", { vm.closeShift(physicalCash); closeShiftSheet = false; toast("Shift berhasil ditutup", "success") }, Modifier.fillMaxWidth(), kind = 2)
         }
     }
     detail?.let { TransactionDetail(vm, it) { detail = null } }

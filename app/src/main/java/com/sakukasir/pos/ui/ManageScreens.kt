@@ -106,7 +106,7 @@ fun ManageScreen(vm: PosViewModel, owner: Boolean, user: User, go: (String) -> U
                 Txt("Kelola", 24, FontWeight.Bold, lineHeight = 1.2f)
                 Txt(if (owner) "Menu owner" else "Menu kasir", 14, color = c.textMuted, modifier = Modifier.padding(top = 4.dp))
             }
-            Btn("Keluar", onLogout, kind = 1)
+            Btn("Keluar", onLogout, kind = 2)
         }
         if (owner) {
             ownerGroups.forEachIndexed { index, (title, items) ->
@@ -610,7 +610,7 @@ fun ProfileScreen(vm: PosViewModel, onHome: () -> Unit, onLogout: () -> Unit) {
             Field("Role", if (u.role == Role.OWNER) "Owner" else "Cashier", {}, enabled = false)
             if (u.role == Role.CASHIER) Field("Outlet", u.outlet, {}, enabled = false)
         }
-        Btn("Keluar", onLogout, Modifier.fillMaxWidth(), kind = 1)
+        Btn("Keluar", onLogout, Modifier.fillMaxWidth(), kind = 2)
     }
 }
 
