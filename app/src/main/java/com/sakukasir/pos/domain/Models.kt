@@ -22,7 +22,7 @@ data class User(
     fun can(permission: Permission) = role == Role.OWNER || permissions.contains(permission)
 }
 
-data class Outlet(val id: Int, val name: String, val address: String, val active: Boolean = true, val phone: String = "")
+data class Outlet(val id: Int, val name: String, val address: String, val active: Boolean = true, val phone: String = "", val branchEnabled: Boolean = false, val branchName: String = "")
 data class Worker(
     val id: Int, val name: String, val username: String, val outlet: String,
     val active: Boolean = true, val whatsapp: String = "",
@@ -72,7 +72,8 @@ data class Transaction(
     val refundReason: String? = null,
     val refundedAt: Long? = null,
     val refundedBy: String? = null,
-    val refundedItems: List<RefundItem> = emptyList()
+    val refundedItems: List<RefundItem> = emptyList(),
+    val outletAddress: String = ""
 )
 
 data class Shift(
@@ -122,7 +123,7 @@ data class SecuritySettings(
 )
 
 data class ReceiptSettings(
-    val bizName: String = "Toko Berkah", val showOutlet: Boolean = true, val showTrxNumber: Boolean = true,
+    val bizName: String = "Toko Berkah", val showTrxNumber: Boolean = true,
     val showCashier: Boolean = true, val showMethod: Boolean = true, val showChange: Boolean = true,
     val footer: String = "Terima kasih sudah berbelanja"
 )

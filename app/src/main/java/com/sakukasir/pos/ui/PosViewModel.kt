@@ -89,7 +89,7 @@ class PosViewModel(private val repo: PosRepository): ViewModel() {
         }
         val now=System.currentTimeMillis();val date=SimpleDateFormat("yyyyMMdd",Locale.US).format(Date(now))
         val id=transactionId?.takeIf { it.startsWith("TRX-$date-") } ?: nextTransactionId()
-        val tx=Transaction(id,now,SimpleDateFormat("yyyy-MM-dd",Locale.US).format(Date(now)),SimpleDateFormat("HH:mm",Locale.US).format(Date(now)),s.cart,t.total,method,s.user!!.displayName,s.user.username,s.selectedOutlet,t.discount,t.tax,t.taxPct,received,(received-t.total).coerceAtLeast(0),qrisProof=qrisProof)
+        val tx=Transaction(id,now,SimpleDateFormat("yyyy-MM-dd",Locale.US).format(Date(now)),SimpleDateFormat("HH:mm",Locale.US).format(Date(now)),s.cart,t.total,method,s.user!!.displayName,s.user.username,s.selectedOutlet,t.discount,t.tax,t.taxPct,received,(received-t.total).coerceAtLeast(0),qrisProof=qrisProof,outletAddress=outlets.value.firstOrNull { it.name == s.selectedOutlet }?.address.orEmpty())
         viewModelScope.launch {repo.addTransaction(tx);repo.addNotification(AppNotification(now,"transaction","Transaksi baru","${s.user.displayName} · ${rupiah(tx.total)}",now));clearCart();onDone(tx)}
     }
     fun voidTransaction(tx:Transaction,reason:String,pin:String?=null,onDone:(Boolean,String)->Unit) {

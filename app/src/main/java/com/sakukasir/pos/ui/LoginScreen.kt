@@ -117,12 +117,12 @@ fun LoginScreen(vm: PosViewModel) {
     Box(Modifier.fillMaxSize().background(c.surface).statusBarsPadding().imePadding()) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             Column(
-                Modifier.widthIn(max = 460.dp).fillMaxWidth().align(Alignment.CenterHorizontally).padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 40.dp),
+                Modifier.widthIn(max = 460.dp).fillMaxWidth().align(Alignment.CenterHorizontally).padding(start = 24.dp, end = 24.dp, top = if (mode == "login") 80.dp else 24.dp, bottom = 40.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 if (mode != "login") BackCircle { mode = when (mode) { "setup" -> "register"; else -> "login" } }
                 when (mode) {
-                    "login", "register" -> Column(Modifier.fillMaxWidth().padding(top = if (mode == "login") 24.dp else 0.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    "login", "register" -> Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                         BrandMark(72, 16)
                         Spacer(Modifier.height(20.dp))
                         Txt(if (mode == "login") "Selamat Datang" else "Buat Akun SakuKasir", 26, FontWeight.Bold, align = TextAlign.Center, spacing = -.52f, lineHeight = 1.25f)

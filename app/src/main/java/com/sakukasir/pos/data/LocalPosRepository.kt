@@ -120,7 +120,7 @@ class LocalPosRepository(
     private fun toEntity(tx: Transaction): TransactionEntity = TransactionEntity(
         id = tx.id, timestamp = tx.timestamp, date = tx.date, time = tx.time,
         itemsJson = tx.items.joinToString("|") { "${it.productId}:${it.qty}:${it.price}:${it.name.replace("|", " ")}:${it.unit.replace("|", " ")}" },
-        total = tx.total, method = tx.method.name, cashier = tx.cashier, cashierId = tx.cashierId, outlet = tx.outlet,
+        total = tx.total, method = tx.method.name, cashier = tx.cashier, cashierId = tx.cashierId, outlet = tx.outlet, outletAddress = tx.outletAddress,
         discount = tx.discount, tax = tx.tax, taxPct = tx.taxPct, received = tx.received, change = tx.change,
         status = tx.status.name, syncStatus = tx.syncStatus.name, qrisProofJson = tx.qrisProof?.let {
             JSONObject().apply { put("localPath", it.localPath); put("capturedAt", it.capturedAt); put("deviceModel", it.deviceModel); put("fileSize", it.fileSize); put("expiredAt", it.expiredAt); put("url", it.url) }.toString()
@@ -141,7 +141,7 @@ class LocalPosRepository(
         val refunded = runCatching {
             val a=JSONArray(e.refundedItemsJson); buildList { for(i in 0 until a.length()){val o=a.getJSONObject(i);add(RefundItem(o.getInt("productId"),o.getString("name"),o.getInt("qty"),o.getLong("amount"))) } }
         }.getOrDefault(emptyList())
-        return Transaction(e.id,e.timestamp,e.date,e.time,items,e.total,PaymentMethod.valueOf(e.method),e.cashier,e.cashierId,e.outlet,e.discount,e.tax,e.taxPct,e.received,e.change,TransactionStatus.valueOf(e.status),runCatching{SyncStatus.valueOf(e.syncStatus)}.getOrDefault(SyncStatus.PENDING_SYNC),proof,e.refundAmount,e.refundMethod?.let{runCatching{RefundMethod.valueOf(it)}.getOrNull()},e.refundReason,e.refundedAt,e.refundedBy,refunded)
+        return Transaction(e.id,e.timestamp,e.date,e.time,items,e.total,PaymentMethod.valueOf(e.method),e.cashier,e.cashierId,e.outlet,e.discount,e.tax,e.taxPct,e.received,e.change,TransactionStatus.valueOf(e.status),runCatching{SyncStatus.valueOf(e.syncStatus)}.getOrDefault(SyncStatus.PENDING_SYNC),proof,e.refundAmount,e.refundMethod?.let{runCatching{RefundMethod.valueOf(it)}.getOrNull()},e.refundReason,e.refundedAt,e.refundedBy,refunded,e.outletAddress)
     }
 
     companion object {

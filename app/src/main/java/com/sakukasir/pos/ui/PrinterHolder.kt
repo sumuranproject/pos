@@ -20,7 +20,7 @@ fun receiptLines(tx: Transaction, r: ReceiptSettings): List<String> = buildList 
     add(r.bizName); add(line)
     if (r.showTrxNumber) add(tx.id)
     add("${tx.date} · ${tx.time}")
-    if (r.showOutlet) add(tx.outlet)
+    if (tx.outletAddress.isNotBlank()) add(tx.outletAddress)
     if (r.showCashier) add("Kasir: ${tx.cashier}")
     add(line)
     tx.items.forEach { add(pad("${it.name.take(14)}  ${it.qty}x ${it.price / 1000}rb", rupiah(it.price * it.qty).removePrefix("Rp "))) }

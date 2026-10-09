@@ -54,7 +54,7 @@ private fun SearchBox(value: String, onChange: (String) -> Unit) {
 
 /* ============================== Kelola ============================== */
 @Composable
-fun ManageScreen(vm: PosViewModel, owner: Boolean, user: User, go: (String) -> Unit) {
+fun ManageScreen(vm: PosViewModel, owner: Boolean, user: User, go: (String) -> Unit, onLogout: () -> Unit) {
     val c = Sk.c
     val products by vm.products.collectAsState()
     val cats by vm.categories.collectAsState()
@@ -101,7 +101,13 @@ fun ManageScreen(vm: PosViewModel, owner: Boolean, user: User, go: (String) -> U
     }
 
     Screen(bottomSpace = 24.dp) {
-        PageHead("Kelola", if (owner) "Menu owner" else "Menu kasir")
+        Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f)) {
+                Txt("Kelola", 24, FontWeight.Bold, lineHeight = 1.2f)
+                Txt(if (owner) "Menu owner" else "Menu kasir", 14, color = c.textMuted, modifier = Modifier.padding(top = 4.dp))
+            }
+            Btn("Keluar", onLogout, kind = 1)
+        }
         if (owner) {
             ownerGroups.forEachIndexed { index, (title, items) ->
                 SectionTitle(title, first = index == 0)
@@ -313,6 +319,8 @@ fun OutletsPage(vm: PosViewModel, onHome: () -> Unit) {
         var addr by remember { mutableStateOf(o?.address ?: "") }
         var phone by remember { mutableStateOf(o?.phone ?: "") }
         var active by remember { mutableStateOf(o?.active ?: true) }
+        var branchEnabled by remember { mutableStateOf(o?.branchEnabled ?: false) }
+        var branchName by remember { mutableStateOf(o?.branchName ?: "") }
         val close = { creating = false; edit = null }
         SkSheet(close) {
             SheetTitle(if (o == null) "Outlet baru" else "Edit outlet")
@@ -320,9 +328,11 @@ fun OutletsPage(vm: PosViewModel, onHome: () -> Unit) {
                 Field("Nama outlet", name, { name = it }); Field("Alamat", addr, { addr = it })
                 Field("Nomor kontak", phone, { phone = it }, keyboard = KeyboardType.Phone)
                 SwitchRow("Aktif", null, active, { active = it })
+                SwitchRow("Gunakan cabang", "Aktifkan jika bisnis memiliki cabang", branchEnabled, { branchEnabled = it })
+                if (branchEnabled) Field("Nama cabang", branchName, { branchName = it }, placeholder = "Contoh: Cabang 1")
             }
             FormActions("Batal", close, "Simpan", {
-                if (name.isNotBlank()) { vm.upsertOutlet(Outlet(o?.id ?: ((outlets.maxOfOrNull { it.id } ?: 0) + 1), name.trim(), addr.trim(), active, phone.trim())); close() }
+                if (name.isNotBlank() && (!branchEnabled || branchName.isNotBlank())) { vm.upsertOutlet(Outlet(o?.id ?: ((outlets.maxOfOrNull { it.id } ?: 0) + 1), name.trim(), addr.trim(), active, phone.trim(), branchEnabled, branchName.trim())); close() }
             }, top = 16)
         }
     }
@@ -344,6 +354,7 @@ fun WorkersPage(vm: PosViewModel, onHome: () -> Unit) {
     val c = Sk.c
     val workers by vm.workers.collectAsState()
     val outlets by vm.outlets.collectAsState()
+    val appSettings by vm.settings.collectAsState()
     var edit by remember { mutableStateOf<Worker?>(null) }
     var creating by remember { mutableStateOf(false) }
     Page("Kasir", "${workers.size} pekerja", onHome, fab = { creating = true }) {
@@ -376,7 +387,7 @@ fun WorkersPage(vm: PosViewModel, onHome: () -> Unit) {
                 Field("Nama tampilan", name, { name = it })
                 Field("Username", user, { user = it }, enabled = w == null)
                 Field(if (w == null) "Password" else "Password baru (kosongkan jika tidak diubah)", pass, { pass = it }, password = true, placeholder = if (w == null) "" else "(tidak diubah)")
-                SelectField("Outlet", outlet, outlets.map { it.name }, { outlet = it })
+                SelectField("Cabang", outlet, outlets.map { o -> if (o.branchEnabled) "${appSettings.receipt.bizName} - ${o.branchName}" else appSettings.receipt.bizName }, { outlet = it })
                 Field("Nomor WhatsApp (opsional)", wa, { wa = it }, keyboard = KeyboardType.Phone)
                 SwitchRow("Akun aktif", null, active, { active = it })
             }
@@ -448,12 +459,18 @@ fun PrinterScreen(vm: PosViewModel, onHome: () -> Unit) {
 fun ReceiptSettingsPage(vm: PosViewModel, onHome: () -> Unit) {
     val c = Sk.c
     val set by vm.settings.collectAsState()
+    val outlets by vm.outlets.collectAsState()
+    val appState by vm.state.collectAsState()
+    val currentOutlet = outlets.firstOrNull { it.name == appState.selectedOutlet } ?: outlets.firstOrNull()
     var r by remember(set.receipt) { mutableStateOf(set.receipt) }
     val toast = LocalToast.current
     Page("Struk", "Format & konten", onHome) {
         Column(Modifier.fillMaxWidth().padding(bottom = 16.dp).skCard().padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Field("Nama bisnis (header)", r.bizName, { r = r.copy(bizName = it) })
-            SwitchRow("Tampilkan outlet", null, r.showOutlet, { r = r.copy(showOutlet = it) })
+            Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                Txt("Alamat outlet", 13, color = c.textMuted)
+                Txt(currentOutlet?.address?.takeIf { it.isNotBlank() } ?: "Alamat belum diisi di menu Outlet", 15, color = c.text, modifier = Modifier.padding(top = 4.dp))
+            }
             SwitchRow("Tampilkan nomor transaksi", null, r.showTrxNumber, { r = r.copy(showTrxNumber = it) })
             SwitchRow("Tampilkan kasir", null, r.showCashier, { r = r.copy(showCashier = it) })
             SwitchRow("Tampilkan metode bayar", null, r.showMethod, { r = r.copy(showMethod = it) })
@@ -466,7 +483,7 @@ fun ReceiptSettingsPage(vm: PosViewModel, onHome: () -> Unit) {
             appendLine(r.bizName); appendLine(line)
             if (r.showTrxNumber) appendLine("TRX-20261006-0042")
             appendLine("06 Okt 2026 · 14:32")
-            if (r.showOutlet) appendLine("Toko Berkah")
+            currentOutlet?.address?.takeIf { it.isNotBlank() }?.let { appendLine(it) }
             if (r.showCashier) appendLine("Kasir: Andi")
             appendLine(line); appendLine("Kopi Susu   2× 18.000"); appendLine("            36.000"); appendLine(line)
             appendLine("Subtotal        36.000")

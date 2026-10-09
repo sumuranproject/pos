@@ -41,7 +41,7 @@ import java.io.File
 
 /* ============================== POS ============================== */
 @Composable
-fun PosScreen(vm: PosViewModel) {
+fun PosScreen(vm: PosViewModel, onCheckout: () -> Unit) {
     val c = Sk.c
     val state by vm.state.collectAsState()
     val products by vm.products.collectAsState()
@@ -50,8 +50,6 @@ fun PosScreen(vm: PosViewModel) {
     val user = state.user!!
     val toast = LocalToast.current
     var startShift by remember { mutableStateOf(false) }
-    var cartOpen by remember { mutableStateOf(false) }
-    var checkout by remember { mutableStateOf(false) }
     var success by remember { mutableStateOf<Transaction?>(null) }
     var detail by remember { mutableStateOf<Transaction?>(null) }
     val filtered = products.filter { it.active && (state.selectedCategory == "Semua" || it.category == state.selectedCategory) && it.name.contains(state.search, true) }
@@ -78,14 +76,14 @@ fun PosScreen(vm: PosViewModel) {
     Screen(bottomSpace = if (count > 0) 92.dp else 24.dp, overlay = {
         if (count > 0) Row(
             Modifier.align(Alignment.BottomCenter).padding(horizontal = 12.dp, vertical = 12.dp).fillMaxWidth().shadow(8.dp, RMd).clip(RMd)
-                .background(c.primary).clickable { cartOpen = true }.padding(horizontal = 14.dp, vertical = 12.dp),
+                .background(c.primary).clickable { onCheckout() }.padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Column(Modifier.weight(1f)) {
                 Txt("$count item", 12, color = Color.White.copy(alpha = .85f), lineHeight = 1.3f)
                 Txt(rupiah(vm.totals().total), 17, FontWeight.Bold, Color.White, lineHeight = 1.3f)
             }
-            Box(Modifier.clip(RSm).background(Color.White.copy(alpha = .18f)).padding(horizontal = 14.dp, vertical = 8.dp)) { Txt("Lihat Cart", 14, FontWeight.SemiBold, Color.White) }
+            Box(Modifier.clip(RSm).background(Color.White.copy(alpha = .18f)).padding(horizontal = 14.dp, vertical = 8.dp)) { Txt("Checkout", 14, FontWeight.SemiBold, Color.White) }
         }
     }) {
         Row(
@@ -119,8 +117,6 @@ fun PosScreen(vm: PosViewModel) {
             }
         }
     }
-    if (cartOpen) CartSheet(vm, onCheckout = { cartOpen = false; checkout = true }, onDismiss = { cartOpen = false })
-    if (checkout) CheckoutSheet(vm, onDismiss = { checkout = false }, onDone = { checkout = false; success = it })
     detail?.let { TransactionDetail(vm, it) { detail = null } }
 }
 

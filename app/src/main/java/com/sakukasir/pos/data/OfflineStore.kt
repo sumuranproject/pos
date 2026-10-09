@@ -15,6 +15,7 @@ data class TransactionEntity(
     val cashier: String,
     val cashierId: String,
     val outlet: String,
+    val outletAddress: String = "",
     val discount: Long,
     val tax: Long,
     val taxPct: Int,
@@ -41,7 +42,7 @@ interface TransactionDao {
     suspend fun delete(id: String)
 }
 
-@Database(entities = [TransactionEntity::class], version = 2, exportSchema = false)
+@Database(entities = [TransactionEntity::class], version = 3, exportSchema = false)
 abstract class OfflineDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
 }

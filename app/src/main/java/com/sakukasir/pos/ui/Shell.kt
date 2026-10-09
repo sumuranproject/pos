@@ -168,12 +168,12 @@ fun AppShell(vm: PosViewModel, onLogout: () -> Unit) {
                         popEnterTransition = { if (initialState.destination.route == "manage" || targetState.destination.route == "manage") slideInHorizontally(tween(200)) { -it } else EnterTransition.None },
                         popExitTransition = { if (initialState.destination.route == "manage" || targetState.destination.route == "manage") slideOutHorizontally(tween(200)) { it } else ExitTransition.None }
                     ) {
-                        composable("pos") { PosScreen(vm) }
+                        composable("pos") { PosScreen(vm) { goTab("checkout") } }
                         composable("checkout") { CheckoutScreen(vm) { goTab("pos") } }
                         composable("reports") { ReportScreen(vm) }
                         composable("transactions") { TransactionScreen(vm) }
                         composable("shift") { ShiftScreen(vm) }
-                        composable("manage") { ManageScreen(vm, owner, user, goPage) }
+                        composable("manage") { ManageScreen(vm, owner, user, goPage) { confirmLogout = true } }
                         composable("manage-shift") { ShiftScreen(vm, backToManage) }
                         composable("products") { ProductsPage(vm, backToManage) }
                         composable("categories") { CategoriesPage(vm, backToManage) }
