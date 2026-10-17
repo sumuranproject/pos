@@ -358,6 +358,15 @@ private fun CheckoutSheet(vm: PosViewModel, onDismiss: () -> Unit, onDone: (Tran
                 Txt("Kembalian", 16); Txt(if (change >= 0) rupiah(change) else "—", 16, FontWeight.Bold, if (change >= 0) c.cash else c.textMuted)
             }
         } else {
+            Column(
+                Modifier.fillMaxWidth().clip(RMd).background(c.surfaceAlt).padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                QrisCodePreview(Modifier.fillMaxWidth().height(190.dp))
+                Txt("Scan QR ini untuk membayar", 13, FontWeight.Medium, color = c.textMuted, modifier = Modifier.padding(top = 8.dp))
+                Txt("Setelah pembayaran diterima, ambil foto bukti dari layar customer.", 11, color = c.textMuted, modifier = Modifier.padding(top = 4.dp))
+            }
+            Spacer(Modifier.height(12.dp))
             val dash = c.borderStrong
             Column(
                 Modifier.fillMaxWidth().padding(bottom = 16.dp).drawBehind {

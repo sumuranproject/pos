@@ -104,7 +104,8 @@ fun AppShell(vm: PosViewModel, onLogout: () -> Unit) {
     val start = if (!owner && "pos" in routes) "pos" else routes.first()
     val backEntry by nav.currentBackStackEntryAsState()
     val route = backEntry?.destination?.route
-    val inManage = route == "manage" || route?.startsWith("m/") == true
+    val manageRoutes = setOf("manage", "manage-shift", "products", "categories", "inventory", "outlets", "workers", "qris", "printer", "receipt", "notif-settings", "sync-settings", "security", "audit", "theme", "profile", "about", "expenses")
+    val inManage = route in manageRoutes || route?.startsWith("m/") == true
     var lastTab by remember { mutableStateOf(start) }
     LaunchedEffect(route) { if (route != null && route in routes) lastTab = route }
     val toastFn: (String, String) -> Unit = { m, t -> toast = m to t }
@@ -147,7 +148,6 @@ fun AppShell(vm: PosViewModel, onLogout: () -> Unit) {
                         }
                         IconBtn(SkIcons.Printer, { if (owner || user.can(Permission.PRINTER)) goPage("printer") else toastFn("Tidak ada akses printer", "error") })
                         IconBtn(SkIcons.Bell, { sheet = "notif"; vm.markNotificationsRead() }, badge = notifs.any { !it.read })
-                        IconBtn(SkIcons.Lines, { if (route == "manage") goTab(lastTab) else goManage() })
                     }
                 }
                 Box(Modifier.fillMaxWidth().height(1.dp).background(c.border))
@@ -199,22 +199,28 @@ fun AppShell(vm: PosViewModel, onLogout: () -> Unit) {
                     }
                 }
 
-                /* ---- bottom nav (64dp, hidden on Kelola) ---- */
-                if (!inManage) {
-                    Box(Modifier.fillMaxWidth().height(1.dp).background(c.border))
-                    Row(Modifier.fillMaxWidth().height(64.dp).background(c.card).navigationBarsPadding()) {
-                        routes.forEach { r ->
-                            val icon: ImageVector = when (r) { "pos" -> SkIcons.Pos; "checkout" -> SkIcons.Bag; else -> SkIcons.Chart }
-                            val label = when (r) { "pos" -> "Kasir"; "checkout" -> "Checkout"; else -> "Laporan" }
-                            val on = lastTab == r
-                            Column(
-                                Modifier.weight(1f).fillMaxHeight().clickable { goTab(r) }.padding(horizontal = 4.dp, vertical = 8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
-                            ) {
-                                SkIcon(icon, 22.dp, if (on) c.primary else c.textMuted)
-                                Txt(label, 11, FontWeight.Medium, if (on) c.primary else c.textMuted, lineHeight = 1.2f)
-                            }
+                /* ---- persistent bottom navigation; Kelola is the rightmost settings item ---- */
+                Box(Modifier.fillMaxWidth().height(1.dp).background(c.border))
+                Row(Modifier.fillMaxWidth().height(64.dp).background(c.card).navigationBarsPadding()) {
+                    routes.forEach { r ->
+                        val icon: ImageVector = when (r) { "pos" -> SkIcons.Pos; "checkout" -> SkIcons.Bag; else -> SkIcons.Chart }
+                        val label = when (r) { "pos" -> "Kasir"; "checkout" -> "Checkout"; else -> "Laporan" }
+                        val on = !inManage && lastTab == r
+                        Column(
+                            Modifier.weight(1f).fillMaxHeight().clickable { goTab(r) }.padding(horizontal = 4.dp, vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
+                        ) {
+                            SkIcon(icon, 22.dp, if (on) c.primary else c.textMuted)
+                            Txt(label, 11, FontWeight.Medium, if (on) c.primary else c.textMuted, lineHeight = 1.2f)
                         }
+                    }
+                    val manageSelected = inManage
+                    Column(
+                        Modifier.weight(1f).fillMaxHeight().clickable { if (inManage) goTab(lastTab) else goManage() }.padding(horizontal = 4.dp, vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
+                    ) {
+                        SkIcon(SkIcons.Settings, 22.dp, if (manageSelected) c.primary else c.textMuted)
+                        Txt("Kelola", 11, FontWeight.Medium, if (manageSelected) c.primary else c.textMuted, lineHeight = 1.2f)
                     }
                 }
             }
