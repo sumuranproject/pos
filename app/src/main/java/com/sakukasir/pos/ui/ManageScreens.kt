@@ -125,12 +125,12 @@ private data class ManageItem(val title: String, val sub: String, val route: Str
 private fun ManageRow(item: ManageItem, c: SkColors, onClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(bottom = 8.dp).clip(RMd).background(c.card).border(1.dp, c.border, RMd)
-            .clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 17.dp),
+            .clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Txt(item.title, 16, FontWeight.Medium)
-            Txt(item.sub, 13, color = c.textMuted, modifier = Modifier.padding(top = 4.dp))
+            Txt(item.title, 14, FontWeight.Medium)
+            Txt(item.sub, 12, color = c.textMuted, modifier = Modifier.padding(top = 3.dp))
         }
         if (item.meta.isNotBlank()) {
             Txt(item.meta, 11, FontWeight.SemiBold, c.textMuted, modifier = Modifier.padding(horizontal = 8.dp))

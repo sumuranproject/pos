@@ -255,16 +255,15 @@ fun SegTabs(labels: List<String>, selected: Int, onSelect: (Int) -> Unit, icons:
     val cfg = androidx.compose.ui.platform.LocalConfiguration.current
     val iconOnly = icons != null && cfg.screenWidthDp <= 480 && cfg.screenHeightDp <= 900
     Row(
-        Modifier.fillMaxWidth().padding(bottom = 16.dp).clip(RoundedCornerShape(14.dp)).background(c.surfaceAlt)
-            .border(1.dp, c.border, RoundedCornerShape(14.dp)).padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        Modifier.fillMaxWidth().padding(bottom = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         labels.forEachIndexed { i, l ->
             val on = i == selected
             val fg = if (on) Color.White else c.textMuted
             Row(
-                Modifier.weight(1f).heightIn(min = if (iconOnly) 44.dp else 40.dp).clip(RoundedCornerShape(10.dp))
-                    .background(if (on) c.primary else Color.Transparent).clickable { onSelect(i) }.padding(horizontal = 8.dp, vertical = 10.dp),
+                Modifier.weight(1f).heightIn(min = if (iconOnly) 40.dp else 38.dp).clip(RoundedCornerShape(8.dp))
+                    .background(if (on) c.primary else Color.Transparent).clickable { onSelect(i) }.padding(horizontal = 8.dp, vertical = 9.dp),
                 horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
             ) {
                 if (icons != null) SkIcon(icons[i], if (iconOnly) 20.dp else 16.dp, fg)

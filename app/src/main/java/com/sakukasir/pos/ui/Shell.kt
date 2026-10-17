@@ -129,20 +129,20 @@ fun AppShell(vm: PosViewModel, onLogout: () -> Unit) {
                 /* Prototype header: shown on Kasir only; other pages own their own headers. */
                 if (route == "pos") {
                     Row(
-                        Modifier.fillMaxWidth().height(64.dp).background(c.card).padding(horizontal = 16.dp),
+                        Modifier.fillMaxWidth().height(56.dp).background(c.card).padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Txt("SakuKasir", 20, FontWeight.Bold, lineHeight = 1.2f)
+                        Txt("SakuKasir", 18, FontWeight.SemiBold, lineHeight = 1.2f)
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Box(Modifier.size(36.dp).clip(CircleShape).background(c.surfaceAlt).clickable { sheet = "sync" }, contentAlignment = Alignment.Center) {
-                                SkIcon(SkIcons.Refresh, 20.dp, c.text)
+                            Box(Modifier.size(32.dp).clip(CircleShape).background(c.surfaceAlt).clickable { sheet = "sync" }, contentAlignment = Alignment.Center) {
+                                SkIcon(SkIcons.Refresh, 18.dp, c.text)
                                 if (!online || queue.isNotEmpty()) Box(Modifier.align(Alignment.BottomEnd).padding(5.dp).size(6.dp).background(c.warn, CircleShape))
                             }
-                            Box(Modifier.size(36.dp).clip(CircleShape).background(c.surfaceAlt).clickable { sheet = "notif"; vm.markNotificationsRead() }, contentAlignment = Alignment.Center) {
-                                SkIcon(SkIcons.Bell, 20.dp, c.text)
+                            Box(Modifier.size(32.dp).clip(CircleShape).background(c.surfaceAlt).clickable { sheet = "notif"; vm.markNotificationsRead() }, contentAlignment = Alignment.Center) {
+                                SkIcon(SkIcons.Bell, 18.dp, c.text)
                                 if (notifs.any { !it.read }) Box(Modifier.align(Alignment.TopEnd).padding(5.dp).size(6.dp).background(c.alert, CircleShape))
                             }
-                            Box(Modifier.size(36.dp).clip(CircleShape).background(c.primary).clickable { goPage("profile") }, contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(32.dp).clip(CircleShape).background(c.primary).clickable { goPage("profile") }, contentAlignment = Alignment.Center) {
                                 Txt(user.displayName.trim().firstOrNull()?.uppercase() ?: "U", 16, FontWeight.SemiBold, Color.White)
                             }
                         }
