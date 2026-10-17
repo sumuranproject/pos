@@ -126,32 +126,30 @@ fun AppShell(vm: PosViewModel, onLogout: () -> Unit) {
     CompositionLocalProvider(LocalToast provides toastFn) {
         Box(Modifier.fillMaxSize().background(c.surface)) {
             Column(Modifier.fillMaxSize()) {
-                /* ---- header (56dp, card bg, bottom border) ---- */
-                Row(
-                    Modifier.fillMaxWidth().height(56.dp).background(c.card).padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        BrandMark(32, 8)
-                        val chipMod = Modifier.widthIn(max = 180.dp).clip(RPill).background(c.surfaceAlt).border(1.dp, c.border, RPill)
-                        Row(
-                            (if (owner) chipMod.clickable { sheet = "outlet" } else chipMod).padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Txt(if (owner) s.selectedOutlet else (user.outlet.ifBlank { s.selectedOutlet }), 13, FontWeight.Medium, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
-                            if (owner) SkIcon(SkIcons.ChevronDown, 14.dp, c.text)
+                /* Prototype header: shown on Kasir only; other pages own their own headers. */
+                if (route == "pos") {
+                    Row(
+                        Modifier.fillMaxWidth().height(64.dp).background(c.card).padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Txt("SakuKasir", 20, FontWeight.Bold, lineHeight = 1.2f)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(Modifier.size(36.dp).clip(CircleShape).background(c.surfaceAlt).clickable { sheet = "sync" }, contentAlignment = Alignment.Center) {
+                                SkIcon(SkIcons.Refresh, 20.dp, c.text)
+                                if (!online || queue.isNotEmpty()) Box(Modifier.align(Alignment.BottomEnd).padding(5.dp).size(6.dp).background(c.warn, CircleShape))
+                            }
+                            Box(Modifier.size(36.dp).clip(CircleShape).background(c.surfaceAlt).clickable { sheet = "notif"; vm.markNotificationsRead() }, contentAlignment = Alignment.Center) {
+                                SkIcon(SkIcons.Bell, 20.dp, c.text)
+                                if (notifs.any { !it.read }) Box(Modifier.align(Alignment.TopEnd).padding(5.dp).size(6.dp).background(c.alert, CircleShape))
+                            }
+                            Box(Modifier.size(36.dp).clip(CircleShape).background(c.primary).clickable { goPage("profile") }, contentAlignment = Alignment.Center) {
+                                Txt(user.displayName.trim().firstOrNull()?.uppercase() ?: "U", 16, FontWeight.SemiBold, Color.White)
+                            }
                         }
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Box(Modifier.size(40.dp).clip(RSm).clickable { sheet = "sync" }, contentAlignment = Alignment.Center) {
-                            SyncDot(if (!online || queue.isNotEmpty()) "pending" else "synced")
-                        }
-                        IconBtn(SkIcons.Printer, { if (owner || user.can(Permission.PRINTER)) goPage("printer") else toastFn("Tidak ada akses printer", "error") })
-                        IconBtn(SkIcons.Bell, { sheet = "notif"; vm.markNotificationsRead() }, badge = notifs.any { !it.read })
-                    }
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(c.border))
                 }
-                Box(Modifier.fillMaxWidth().height(1.dp).background(c.border))
-                if (!online) {
+                if (route == "pos" && !online) {
                     Row(
                         Modifier.fillMaxWidth().background(c.warnSoft).padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -211,7 +209,7 @@ fun AppShell(vm: PosViewModel, onLogout: () -> Unit) {
                             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
                         ) {
                             SkIcon(icon, 22.dp, if (on) c.primary else c.textMuted)
-                            Txt(label, 11, FontWeight.Medium, if (on) c.primary else c.textMuted, lineHeight = 1.2f)
+                            Txt(label, 12, FontWeight.Medium, if (on) c.primary else c.textMuted, lineHeight = 1.2f)
                         }
                     }
                     val manageSelected = inManage
@@ -220,7 +218,7 @@ fun AppShell(vm: PosViewModel, onLogout: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
                     ) {
                         SkIcon(SkIcons.Settings, 22.dp, if (manageSelected) c.primary else c.textMuted)
-                        Txt("Kelola", 11, FontWeight.Medium, if (manageSelected) c.primary else c.textMuted, lineHeight = 1.2f)
+                        Txt("Kelola", 12, FontWeight.Medium, if (manageSelected) c.primary else c.textMuted, lineHeight = 1.2f)
                     }
                 }
             }

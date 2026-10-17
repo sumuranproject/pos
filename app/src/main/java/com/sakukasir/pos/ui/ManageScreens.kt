@@ -106,7 +106,6 @@ fun ManageScreen(vm: PosViewModel, owner: Boolean, user: User, go: (String) -> U
                 Txt("Kelola", 24, FontWeight.Bold, lineHeight = 1.2f)
                 Txt(if (owner) "Menu owner" else "Menu kasir", 14, color = c.textMuted, modifier = Modifier.padding(top = 4.dp))
             }
-            Btn("Keluar", onLogout, kind = 2)
         }
         if (owner) {
             ownerGroups.forEachIndexed { index, (title, items) ->
@@ -126,12 +125,12 @@ private data class ManageItem(val title: String, val sub: String, val route: Str
 private fun ManageRow(item: ManageItem, c: SkColors, onClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(bottom = 8.dp).clip(RMd).background(c.card).border(1.dp, c.border, RMd)
-            .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 13.dp),
+            .clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 17.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Txt(item.title, 14, FontWeight.SemiBold)
-            Txt(item.sub, 12, color = c.textMuted, modifier = Modifier.padding(top = 2.dp))
+            Txt(item.title, 16, FontWeight.Medium)
+            Txt(item.sub, 13, color = c.textMuted, modifier = Modifier.padding(top = 4.dp))
         }
         if (item.meta.isNotBlank()) {
             Txt(item.meta, 11, FontWeight.SemiBold, c.textMuted, modifier = Modifier.padding(horizontal = 8.dp))
@@ -149,18 +148,28 @@ fun ProductsPage(vm: PosViewModel, onHome: () -> Unit) {
     var edit by remember { mutableStateOf<Product?>(null) }
     var creating by remember { mutableStateOf(false) }
     var del by remember { mutableStateOf<Product?>(null) }
-    Page("Produk", "${products.size} produk", onHome, fab = { creating = true }) {
+    Screen(bottomSpace = 24.dp) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(40.dp).clip(CircleShape).background(c.surfaceAlt).clickable(onClick = onHome), contentAlignment = Alignment.Center) {
+                SkIcon(SkIcons.ArrowLeft, 22.dp, c.text)
+            }
+            Column(Modifier.weight(1f)) {
+                Txt("Produk", 22, FontWeight.Bold, lineHeight = 1.2f)
+                Txt("${products.size} produk", 13, color = c.textMuted, modifier = Modifier.padding(top = 3.dp))
+            }
+            Btn("+ Tambah", { creating = true }, kind = 0)
+        }
         SearchBox(q) { q = it }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             products.filter { it.name.contains(q, true) }.forEach { p ->
                 ListRow(onClick = { edit = p }) {
                     Column(Modifier.weight(1f)) {
-                        Txt(p.name, 14, FontWeight.Medium, maxLines = 1)
-                        Txt("${p.category} · /${p.unit}" + if (p.trackStock) " · stok ${p.stock}" else "", 12, color = c.textMuted, modifier = Modifier.padding(top = 2.dp), maxLines = 1)
+                        Txt(p.name, 16, FontWeight.Medium, maxLines = 1)
+                        Txt("${p.category} · /${p.unit}" + if (p.trackStock) " · stok ${p.stock}" else "", 13, color = c.textMuted, modifier = Modifier.padding(top = 4.dp), maxLines = 1)
                     }
-                    Txt(rupiah(p.price), 14, FontWeight.Bold, spacing = -.14f)
-                    IconBtn(SkIcons.Edit, { edit = p }, size = 16, modifier = Modifier.size(32.dp))
-                    IconBtn(SkIcons.Trash, { del = p }, size = 16, modifier = Modifier.size(32.dp))
+                    Txt(rupiah(p.price), 15, FontWeight.Bold, spacing = -.14f)
+                    IconBtn(SkIcons.Edit, { edit = p }, size = 18, modifier = Modifier.size(32.dp))
+                    IconBtn(SkIcons.Trash, { del = p }, size = 18, modifier = Modifier.size(32.dp))
                 }
             }
         }

@@ -174,10 +174,10 @@ private fun ProductCard(p: Product, modifier: Modifier, onClick: () -> Unit) {
             .clickable(enabled = !out, onClick = onClick).padding(12.dp)
     ) {
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Txt(p.name, 14, FontWeight.SemiBold, maxLines = 2, lineHeight = 1.3f)
-            Txt("/ ${p.unit}", 11, color = c.textFaint)
+            Txt(p.name, 16, FontWeight.SemiBold, maxLines = 2, lineHeight = 1.3f)
+            Txt("/ ${p.unit}", 12, color = c.textFaint)
             Spacer(Modifier.weight(1f))
-            Txt(rupiah(p.price), 14, FontWeight.Bold, c.primary, spacing = -.14f)
+            Txt(rupiah(p.price), 16, FontWeight.Bold, c.primary, spacing = -.14f)
         }
         if (p.trackStock) {
             if (p.stock == 0) Tag("Habis", c.alertSoft, c.alert, Modifier.align(Alignment.TopEnd).offset(4.dp, (-4).dp))

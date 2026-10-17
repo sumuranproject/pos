@@ -36,6 +36,7 @@ object SkIcons {
     val Search by lazy { build("search", 1.75f, circ(11, 11, 7), "m21 21-4.3-4.3") }
     val Printer by lazy { build("printer", 1.75f, "M6 9V2h12v7", "M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2", "M6 14h12v8H6z") }
     val Bell by lazy { build("bell", 1.75f, "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9", "M10.3 21a1.94 1.94 0 0 0 3.4 0") }
+    val Refresh by lazy { build("refresh", 1.9f, "M20 7v5h-5", "M4 17v-5h5", "M5.6 9A7 7 0 0 1 18 6l2 6", "M18.4 15A7 7 0 0 1 6 18l-2-6") }
     val ChevronDown by lazy { build("chevronDown", 2f, "m6 9 6 6 6-6") }
     val Close by lazy { build("close", 2f, "M18 6 6 18", "M6 6l12 12") }
     val Logout by lazy { build("logout", 2f, "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4", "m16 17 5-5-5-5", "M21 12H9") }
