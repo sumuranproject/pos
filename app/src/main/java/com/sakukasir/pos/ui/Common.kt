@@ -323,14 +323,19 @@ fun Tag(text: String, bg: Color, fg: Color, modifier: Modifier = Modifier, bold:
 fun PageHead(title: String, sub: String? = null, action: (@Composable () -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
         Column(Modifier.weight(1f)) {
-            Txt(title, 20, FontWeight.SemiBold, lineHeight = 1.3f)
-            if (sub != null) Txt(sub, 13, color = Sk.c.textMuted, modifier = Modifier.padding(top = 2.dp))
+            Txt(title, 20, FontWeight.SemiBold, lineHeight = 1.2f)
+            if (sub != null) Txt(sub, 13, color = Sk.c.textMuted, modifier = Modifier.padding(top = 3.dp), lineHeight = 1.25f)
         }
-        if (action != null) { Spacer(Modifier.width(12.dp)); action() }
+        if (action != null) { Spacer(Modifier.width(10.dp)); action() }
     }
 }
 
-@Composable fun BackHome(onClick: () -> Unit) = Btn("← Kelola", onClick, kind = 1)
+@Composable fun BackHome(onClick: () -> Unit) {
+    val c = Sk.c
+    Box(Modifier.size(36.dp).clip(CircleShape).background(c.surfaceAlt).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        SkIcon(SkIcons.ArrowLeft, 18.dp, c.text)
+    }
+}
 
 @Composable
 fun SectionTitle(text: String, first: Boolean = false) {
