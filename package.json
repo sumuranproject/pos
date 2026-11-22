@@ -29,5 +29,5 @@
     "base64-arraybuffer": "^1.0.2",
     "buffer": "^6.0.3"
   },
-  "devDependencies": { "@babel/core": "^7.25.0" }
+  "devDependencies": { "@babel/core": "^7.25.0", "babel-preset-expo": "~54.0.0" }
 }
