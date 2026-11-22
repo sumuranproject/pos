@@ -55,3 +55,6 @@ Lalu **Start new build** (variabel hanya terbaca saat build baru).
 | Tambah kasir gagal | Fungsi `manage-worker` belum di-deploy atau nama salah |
 | Data tidak muncul di Table Editor | SQL langkah 2 belum sukses; cek **Logs** › Postgres |
 | Foto bukti QRIS tidak terbuka | Bucket `qris-proofs` belum ada (jalankan bagian 0002 dari `setup-all.sql`) |
+
+## Catatan pgcrypto (Supabase)
+Di Supabase, `pgcrypto` dipasang di schema `extensions`, jadi fungsi yang memakai `crypt()`/`gen_salt()` (`create_business`, `verify_owner_pin`, `set_owner_pin`) harus ber-`search_path = public, extensions`. Ini sudah diperbaiki di `0001_init.sql` dan `setup-all.sql`. `supabase/hotfix-pgcrypto.sql` hanya dipakai bila 0001 versi lama sempat berhasil di project Anda. Bisnis baru memakai PIN owner bawaan `1234`: ganti di Kelola › Keamanan.

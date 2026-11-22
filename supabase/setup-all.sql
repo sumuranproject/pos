@@ -4,7 +4,7 @@
 -- Koleksi data (produk, transaksi, dst.) disimpan sebagai dokumen JSONB supaya cocok dengan sinkronisasi offline-first
 -- (klien membuat id sendiri, upsert idempoten).
 
-create extension if not exists pgcrypto;
+create extension if not exists pgcrypto with schema extensions;
 
 -- ---------- tabel inti ----------
 create table public.businesses (
@@ -189,7 +189,7 @@ create or replace function public.create_business(
   p_name text, p_address text, p_phone text, p_type text,
   p_display_name text, p_whatsapp text default null
 ) returns uuid
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, extensions as $$
 declare
   uid uuid := auth.uid();
   uemail text;
@@ -219,14 +219,14 @@ begin
 end $$;
 
 create or replace function public.verify_owner_pin(pin text) returns boolean
-language sql stable security definer set search_path = public as $$
+language sql stable security definer set search_path = public, extensions as $$
   select exists (
     select 1 from public.business_secrets s
     where s.business_id = public.current_business() and s.owner_pin_hash = crypt(pin, s.owner_pin_hash))
 $$;
 
 create or replace function public.set_owner_pin(new_pin text) returns void
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, extensions as $$
 begin
   if public.current_app_role() is distinct from 'owner' then raise exception 'Hanya owner'; end if;
   if new_pin !~ '^\d{4}$' then raise exception 'PIN harus 4 digit'; end if;
