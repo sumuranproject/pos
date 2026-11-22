@@ -2,6 +2,12 @@
 
 Port dari versi web/Capacitor. **Backend Supabase tidak berubah** (migrasi `0001_init.sql`, `0002_storage.sql`, edge function `manage-worker` disalin apa adanya di `supabase/`). Logika bisnis (store, sync offline-first, auth, void/refund, shift, struk ESC/POS) dipertahankan; UI ditulis ulang dengan komponen React Native. Tidak ada mode demo/data contoh: semua data dari Supabase.
 
+## Cara pakai (hanya HP, tanpa PC)
+1. Unggah proyek ke GitHub (repo yang terhubung ke Codemagic).
+2. Siapkan Supabase: ikuti **docs/SUPABASE.md**.
+3. Codemagic: isi grup env `supabase` dan buat keystore `sakukasir_keystore` (Signing identities › Android keystores › Generate).
+4. **Start new build** → unduh APK dari artefak, pasang di HP.
+
 ## Jalankan
 1. Backend: ikuti README lama (jalankan kedua migrasi, `supabase functions deploy manage-worker`).
 2. `cp .env.example .env` lalu isi URL & anon key.
@@ -24,3 +30,6 @@ Port dari versi web/Capacitor. **Backend Supabase tidak berubah** (migrasi `0001
 
 ## Build Codemagic
 `codemagic.yaml` (grup env `supabase` dengan `EXPO_PUBLIC_*`, keystore `sakukasir_keystore`). `scripts/patch-signing.mjs` memasang signing release & versionCode setelah `expo prebuild`.
+
+## Catatan build
+`scripts/fix-autolinking-version.mjs` menambahkan `version` ke android/build.gradle paket native yang tidak punya (penyebab error "Field 'version' is required ... Publication" di Gradle). Dijalankan otomatis di Codemagic.

@@ -27,12 +27,16 @@ workflows:
     scripts:
       - name: Install dependensi
         script: npm install
+      - name: Patch version paket native (autolinking Expo 54)
+        script: node scripts/fix-autolinking-version.mjs
       - name: Selaraskan versi paket dengan SDK Expo
         script: |
           npx expo install --fix
           npx expo-doctor || true
       - name: Uji logika (diff & ESC/POS)
         script: npm test
+      - name: Patch ulang version paket native
+        script: node scripts/fix-autolinking-version.mjs
       - name: Prebuild Android (native project)
         script: npx expo prebuild --platform android --clean
       - name: Diagnosis autolinking (modul tanpa version)
