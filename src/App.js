@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { ActivityIndicator, BackHandler, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { BackHandler, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { hydrate, state, commit, tryCloseSomething, useApp } from "./lib/store";
@@ -9,6 +9,7 @@ import { useC, T, Muted } from "./ui/kit";
 import { OverlayHost, Toasts } from "./ui/overlays";
 import AuthScreen from "./screens/Auth";
 import Shell from "./screens/Shell";
+import Splash from "./ui/Splash";
 
 function Root() {
   const app = useApp();
@@ -31,18 +32,20 @@ function Root() {
       </SafeAreaView>
     );
   }
-  if (app.booting) return <View style={{ flex: 1, backgroundColor: c.surface, alignItems: "center", justifyContent: "center" }}><ActivityIndicator color={c.primary} /></View>;
+  if (app.booting) return <View style={{ flex: 1, backgroundColor: "#2563EB" }} />;
   return app.authView === "app" && app.user ? <Shell /> : <AuthScreen />;
 }
 
 export default function App() {
   const app = useApp();
+  const [splash, setSplash] = useState(true);
   return (
     <SafeAreaProvider>
-      <StatusBar style={app.theme === "dark" ? "light" : "dark"} />
+      <StatusBar style={splash ? "light" : app.theme === "dark" ? "light" : "dark"} />
       <Root />
       <OverlayHost />
       <Toasts />
+      {splash ? <Splash ready={!app.booting} onDone={() => setSplash(false)} /> : null}
     </SafeAreaProvider>
   );
 }

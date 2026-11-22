@@ -5,7 +5,7 @@ import {
   closeSheet, commit, currentTab, doLogout, goRoute, goTab, hasPerm, isOwner, openSheet, state, toast, useApp,
 } from '../lib/store';
 import { signOut } from '../lib/auth';
-import { setForcedOffline, syncNow } from '../lib/sync';
+import { syncNow } from '../lib/sync';
 import { Btn, Dot, Icon, IconBtn, ListRow, Muted, SummaryRow, T, Empty, useC, useWide, useSidebarW } from '../ui/kit';
 import { Image } from 'react-native';
 import { goToManage, goToPrinterSettings } from '../lib/store';
@@ -27,9 +27,6 @@ function SyncSheet() {
       <Muted size={13}>Status: {app.online ? 'Online' : 'Offline'}</Muted>
       <SummaryRow label="Pending" value={String(app.syncQueue.length)} />
       <Btn title={app.online ? 'Sync sekarang' : 'Offline'} block disabled={!app.online} onPress={() => syncNow(true)} />
-      <Btn kind="ghost" block title={app.online ? 'Simulasikan offline' : 'Simulasikan online'} onPress={() => {
-        setForcedOffline(state.online); closeSheet(); toast(state.online ? 'Kembali online' : 'Mode offline aktif');
-      }} />
     </View>
   );
 }
@@ -131,22 +128,20 @@ function navItemsFor(app) {
   ].filter(Boolean);
 }
 
-function Header({ title, sub }) {
+function Header() {
   const app = useApp();
   const c = useC();
-  const syncStatus = !app.online || app.syncQueue.length > 0 ? 'pending' : 'synced';
+  const pending = !app.online || app.syncQueue.length > 0;
   const unread = app.notifications.some((n) => !n.read);
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, gap: 8, backgroundColor: c.card, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
-      <View style={{ flex: 1 }}>
-        <T size={18} weight="700" numberOfLines={1}>{title || 'SakuKasir'}</T>
-        {!title && app.outlet.name ? <Muted numberOfLines={1}>{app.outlet.name}</Muted> : sub ? <Muted>{sub}</Muted> : null}
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6, gap: 8, backgroundColor: c.card }}>
+      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Image source={require('../../assets/icon.png')} style={{ width: 30, height: 30, borderRadius: 8 }} />
+        <T size={22} weight="700" numberOfLines={1}>SakuKasir</T>
       </View>
-      <Pressable onPress={openSyncSheet} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8 }}>
-        <Dot status={syncStatus} /><Icon name="sync-outline" size={20} />
-      </Pressable>
-      <IconBtn name="notifications-outline" onPress={openNotifSheet} badge={unread} />
-      <Pressable onPress={openAccountSheet} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}>
+      <IconBtn name="sync-outline" size={19} onPress={openSyncSheet} badge={pending} badgeColor={c.warn} />
+      <IconBtn name="notifications-outline" size={19} onPress={openNotifSheet} badge={unread} />
+      <Pressable onPress={openAccountSheet} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}>
         <T weight="700" color="#fff">{app.user.displayName.charAt(0).toUpperCase()}</T>
       </Pressable>
     </View>
@@ -214,13 +209,13 @@ function BottomNav() {
   if (app.hideNav) return null;
   const items = [...navItemsFor(app), { id: 'manage', label: 'Kelola' }];
   return (
-    <View style={{ flexDirection: 'row', backgroundColor: c.card, borderTopWidth: 0.5, borderTopColor: c.border, paddingBottom: insets.bottom }}>
+    <View style={{ flexDirection: 'row', backgroundColor: c.card, borderTopWidth: 1, borderTopColor: c.border, paddingBottom: insets.bottom }}>
       {items.map((it) => {
         const active = tab === it.id;
         return (
           <Pressable key={it.id} onPress={() => goTab(it.id)} style={{ flex: 1, alignItems: 'center', paddingVertical: 8, gap: 2 }}>
-            <Icon name={NAV_ICON[it.id]} size={22} color={active ? c.primary : c.faint} />
-            <T size={11} weight={active ? '700' : '500'} color={active ? c.primary : c.faint}>{it.label}</T>
+            <Icon name={NAV_ICON[it.id]} size={22} color={active ? c.primary : c.muted} />
+            <T size={11} weight={active ? '700' : '500'} color={active ? c.primary : c.muted}>{it.label}</T>
           </Pressable>
         );
       })}
@@ -251,9 +246,7 @@ export default function Shell() {
   const wide = useWide();
   if (!app.user) return null;
   const tab = currentTab();
-  let title = null;
-  if (app.manageRoute) title = ROUTE_TITLES[app.manageRoute] || null;
-  else if (tab !== 'pos') title = PAGE_TITLES[tab] || null;
+  const showHeader = tab === 'pos' && !app.manageRoute && !app.success;
   const pending = app.syncQueue.length;
   const showBanner = !app.online || pending > 0;
   const banner = showBanner && (
@@ -277,7 +270,7 @@ export default function Shell() {
   }
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.card }}>
-      <Header title={title} sub={title ? app.pageSub : ''} />
+      {showHeader ? <Header /> : null}
       {banner}
       <View style={{ flex: 1, backgroundColor: c.surface }}><MainRouter /></View>
       <BottomNav />

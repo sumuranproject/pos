@@ -13,7 +13,7 @@ import {
 import { verifyOwnerPin } from '../lib/auth';
 import { transactionReceiptText } from '../lib/receipt';
 import { printTransactionReal } from '../lib/printer';
-import { Btn, Icon, R, Row2, T, Muted, useC, Banner } from './kit';
+import { Btn, Icon, KbScrollView, R, Row2, T, Muted, useC, Banner } from './kit';
 
 // ---------- toast ----------
 export function Toasts() {
@@ -42,17 +42,16 @@ export function OverlayHost() {
   const scrollRef = useRef(null);
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={() => { tryCloseSomething(); }}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: sheet ? c.scrim : 'transparent' }} behavior="padding">
+        <View style={{ flex: 1 }}>
         {sheet && (
-          <View style={StyleSheet.absoluteFill}>
-            <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }]} onPress={closeSheet} />
-            <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center' }}>
-              <View style={{ width: '100%', maxWidth: 640, maxHeight: height * 0.9, backgroundColor: c.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 8 }}>
-                <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: c.borderStrong, marginBottom: 6 }} />
-                <ScrollView ref={scrollRef} key={sheet.key} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: 24 + insets.bottom }}>
-                  {sheet.el}
-                </ScrollView>
-              </View>
+          <View style={[StyleSheet.absoluteFill, { justifyContent: 'flex-end', alignItems: 'center' }]}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet} />
+            <View style={{ width: '100%', maxWidth: 640, maxHeight: '92%', backgroundColor: c.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 8 }}>
+              <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: c.borderStrong, marginBottom: 6 }} />
+              <KbScrollView ref={scrollRef} key={sheet.key} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: 24 + insets.bottom }}>
+                {sheet.el}
+              </KbScrollView>
             </View>
           </View>
         )}
@@ -67,6 +66,7 @@ export function OverlayHost() {
           </View>
         )}
         <Toasts />
+        </View>
       </KeyboardAvoidingView>
     </Modal>
   );

@@ -1,16 +1,20 @@
 import React, { useState } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { closeSheet, commit, openSheet, state, toast, useApp } from "../lib/store";
 import { rupiah } from "../lib/format";
-import { Btn, Empty, Field, IconBtn, Kpi, ListRow, Muted, NumField, Page, PageHead, Pill, Row2, RupiahInput, Select, SwitchRow, T, useC } from "../ui/kit";
+import { Btn, Empty, Field, Icon, IconBtn, Kpi, ListRow, Muted, NumField, Page, PageHead, Pill, Row2, RupiahInput, Select, SwitchRow, T, useC, R } from "../ui/kit";
 import { confirmModal, promptModal } from "../ui/overlays";
 
-export const RowActions = ({ onEdit, onDelete }) => (
-  <View style={{ flexDirection: "row", gap: 6 }}>
-    {onEdit ? <IconBtn name="create-outline" size={18} onPress={onEdit} style={{ width: 34, height: 34 }} /> : null}
-    {onDelete ? <IconBtn name="trash-outline" size={18} onPress={onDelete} style={{ width: 34, height: 34 }} /> : null}
-  </View>
-);
+export const RowActions = ({ onEdit, onDelete, onToggle }) => {
+  const c = useC();
+  return (
+    <View style={{ flexDirection: "row", gap: 14, alignItems: "center", paddingLeft: 4 }}>
+      {onEdit ? <Pressable onPress={onEdit} hitSlop={10}><Icon name="create-outline" size={17} color={c.text} /></Pressable> : null}
+      {onToggle ? <Pressable onPress={onToggle} hitSlop={10}><Icon name="checkmark-circle-outline" size={18} color={c.text} /></Pressable> : null}
+      {onDelete ? <Pressable onPress={onDelete} hitSlop={10}><Icon name="trash-outline" size={17} color={c.text} /></Pressable> : null}
+    </View>
+  );
+};
 
 function ProductForm({ id }) {
   const app = useApp();
@@ -47,7 +51,7 @@ export function ProductsPage() {
   const remove = (p) => confirmModal("Hapus produk?", "\"" + p.name + "\" akan dihapus permanen.", "Hapus", () => { state.products = state.products.filter((x) => x.id !== p.id); commit(); toast("Produk dihapus"); });
   return (
     <Page>
-      <PageHead title="Produk" sub={app.products.length + " produk"} back right={<Btn title="+ Tambah" onPress={() => { if (!app.categories.length) return toast("Buat kategori dulu", "error"); openSheet(<ProductForm id={null} />); }} />} />
+      <PageHead title="Produk" sub={app.products.length + " produk"} back right={<Btn icon="add" title="Tambah" onPress={() => { if (!app.categories.length) return toast("Buat kategori dulu", "error"); openSheet(<ProductForm id={null} />); }} />} />
       <Field placeholder="Cari produk…" icon="search" value={q} onChangeText={setQ} />
       {list.length ? list.map((p) => (
         <ListRow key={p.id} title={p.name} sub={p.cat + " · " + (p.track ? "stok " + p.stock + " " + p.unit : "tanpa stok") + (p.active ? "" : " · nonaktif")}
@@ -68,7 +72,7 @@ export function CategoriesPage() {
   };
   return (
     <Page>
-      <PageHead title="Kategori" sub={app.categories.length + " kategori"} back right={<Btn title="+ Tambah" onPress={add} />} />
+      <PageHead title="Kategori" sub={app.categories.length + " kategori"} back right={<Btn icon="add" title="Tambah" onPress={add} />} />
       {app.categories.length ? app.categories.map((c) => <ListRow key={c.id} title={c.name} sub={app.products.filter((p) => p.cat === c.name).length + " produk"} right={<RowActions onEdit={() => edit(c)} onDelete={() => remove(c)} />} />) : <Empty title="Belum ada kategori" />}
     </Page>
   );
@@ -89,7 +93,7 @@ function AdjustSheet({ id }) {
     <View style={{ gap: 12 }}>
       <T size={17} weight="700">{p.name}</T>
       <Muted size={13}>Stok saat ini: {p.stock} {p.unit}</Muted>
-      <Row2><Btn title="+ Tambah" kind={mode === "plus" ? "primary" : "ghost"} onPress={() => setMode("plus")} /><Btn title="− Kurang" kind={mode === "minus" ? "primary" : "ghost"} onPress={() => setMode("minus")} /></Row2>
+      <Row2><Btn icon="add" title="Tambah" kind={mode === "plus" ? "primary" : "ghost"} onPress={() => setMode("plus")} /><Btn title="− Kurang" kind={mode === "minus" ? "primary" : "ghost"} onPress={() => setMode("minus")} /></Row2>
       <NumField label="Jumlah" value={qty} onChange={setQty} />
       <Row2><Btn kind="ghost" title="Batal" onPress={closeSheet} /><Btn title="Simpan" onPress={save} /></Row2>
     </View>
@@ -105,13 +109,16 @@ export function InventoryPage() {
   return (
     <Page>
       <PageHead title="Stok" sub={tracked.length + " produk dilacak"} back />
-      <View style={{ flexDirection: "row", gap: 10 }}><Kpi label="Low stock" value={String(low.length)} color={c.warn} /><Kpi label="Out of stock" value={String(out.length)} color={c.alert} /></View>
+      <View style={{ flexDirection: "row", backgroundColor: c.card, borderRadius: R.lg, borderWidth: 1, borderColor: c.border }}>
+        <View style={{ flex: 1, padding: 12 }}><Muted size={12}>Low stock</Muted><T size={20} weight="700" color={c.warn}>{String(low.length)}</T></View>
+        <View style={{ width: 1, backgroundColor: c.border }} />
+        <View style={{ flex: 1, padding: 12 }}><Muted size={12}>Out of stock</Muted><T size={20} weight="700" color={c.alert}>{String(out.length)}</T></View>
+      </View>
       {tracked.length ? tracked.map((p) => (
-        <ListRow key={p.id} title={p.name} sub={p.cat + " · low threshold " + p.low}
-          right={<View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            {p.stock === 0 ? <Pill text="Habis" tone="alert" /> : p.stock <= p.low ? <Pill text="Low" tone="warn" /> : null}
-            <T weight="600">{p.stock} {p.unit}</T>
-            <IconBtn name="add" size={18} onPress={() => openSheet(<AdjustSheet id={p.id} />)} style={{ width: 34, height: 34 }} />
+        <ListRow key={p.id} title={<View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}><T weight="600">{p.name}</T>{p.stock === 0 ? <Pill text="Habis" tone="alert" /> : p.stock <= p.low ? <Pill text="Low" tone="warn" /> : null}</View>} sub={p.cat + " · low threshold " + p.low}
+          right={<View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <T weight="700">{p.stock} {p.unit}</T>
+            <Pressable onPress={() => openSheet(<AdjustSheet id={p.id} />)} hitSlop={10}><Icon name="add" size={18} /></Pressable>
           </View>} />
       )) : <Empty title="Belum ada produk tracked" />}
     </Page>

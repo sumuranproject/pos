@@ -2,12 +2,32 @@ import React, { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { closeSheet, commit, openSheet, state, toast, useApp } from "../lib/store";
 import { computeGrowth, dateStr, getPrevPeriodRange, growthIcon, netOf, nowDateTime, periodLabel, periodRange, rupiah, todayStr, uid } from "../lib/format";
-import { Btn, Card, Chip, Empty, Field, Icon, IconBtn, Kpi, ListRow, Muted, Page, PageHead, Row2, RupiahInput, Section, Select, SummaryRow, T, useC, R } from "../ui/kit";
+import { Btn, Card, Chip, Empty, Field, Icon, IconBtn, Kpi, ListRow, Muted, Page, PageHead, Row2, RupiahInput, Section, Select, SummaryRow, T, useC, useWide, R } from "../ui/kit";
 import { confirmModal } from "../ui/overlays";
 import { TxItem } from "./Transactions";
 
 export const EXPENSE_CATS = ["Bahan", "Operasional", "Gaji", "Lainnya"];
 const sum = (list, fn) => list.reduce((s, t) => s + fn(t), 0);
+
+// Kartu ringkasan: label, angka besar, sub hijau, garis, lalu baris pembanding (sesuai screenshot).
+function HeroCard({ label, value, valueColor, sub, growth, growthBad, rows = [], style }) {
+  const c = useC();
+  const gcol = growthBad ? c.alert : c.cash;
+  return (
+    <View style={[{ backgroundColor: c.card, borderRadius: R.lg, borderWidth: 1, borderColor: c.border, padding: 14 }, style]}>
+      <T size={12} color={c.muted}>{label}</T>
+      <T size={28} weight="700" color={valueColor || c.text} style={{ marginTop: 2 }}>{value}</T>
+      {sub ? <T size={13} weight="600" color={c.cash}>{sub}</T> : null}
+      <View style={{ height: 1, backgroundColor: c.border, marginVertical: 12 }} />
+      {growth ? <T size={12} weight="700" color={gcol} style={{ marginBottom: 6 }}>{growth}</T> : null}
+      {rows.map(([k, v], i) => (
+        <View key={k + i} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 }}>
+          <T size={13} color={c.muted}>{k}</T><T size={13} weight="600">{v}</T>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 // ---------------- Dashboard kasir (hari ini) ----------------
 export function DashboardPage() {
@@ -30,20 +50,23 @@ export function DashboardPage() {
   return (
     <Page>
       <PageHead title="Laporan" sub="Ringkasan & riwayat hari ini" />
-      <Kpi hero label="Ringkasan Penjualan · Hari ini" value={rupiah(totalSales)} sub={active.length + " transaksi · " + growthIcon(growth.direction) + " " + growth.pct.toFixed(0) + "% dari kemarin (" + rupiah(ySales) + ")"} />
+      <HeroCard label="Ringkasan Penjualan · Hari ini" value={rupiah(totalSales)} sub={active.length + " transaksi"}
+        growth={growthIcon(growth.direction) + " " + growth.pct.toFixed(0) + "% dari kemarin"} growthBad={growth.direction === "down"}
+        rows={[["Kemarin", rupiah(ySales)]]} />
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
         <Kpi label="Cash" value={rupiah(cash)} /><Kpi label="QRIS" value={rupiah(qris)} />
         <Kpi label="Void" value={rupiah(voidAmount)} color={c.alert} /><Kpi label="Refund" value={rupiah(refundAmount)} color={c.warn} />
       </View>
       {sh && (
-        <Card>
-          <T weight="700" color={c.cash}>Shift aktif</T><Muted size={13}>Mulai {sh.startTime}</Muted>
-          <SummaryRow label="Transaksi shift ini" value={String(sh.transactions)} />
-          <SummaryRow label="Cash" value={rupiah(sh.cashSales)} /><SummaryRow label="QRIS" value={rupiah(sh.qrisSales)} />
-          <SummaryRow strong label="Total" value={rupiah(sh.cashSales + sh.qrisSales)} />
+        <Card style={{ gap: 4, padding: 16 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.cash }} /><T size={12} weight="700" color={c.cash} style={{ letterSpacing: 0.6 }}>SHIFT AKTIF</T></View>
+          <Muted size={13} style={{ marginVertical: 6 }}>Mulai {sh.startTime}</Muted>
+          <SummaryRow line label="Transaksi shift ini" value={String(sh.transactions)} />
+          <SummaryRow line label="Cash" value={rupiah(sh.cashSales)} /><SummaryRow line label="QRIS" value={rupiah(sh.qrisSales)} />
+          <SummaryRow strong label="Total" value={rupiah(sh.cashSales + sh.qrisSales)} color={c.primary} />
         </Card>
       )}
-      <Section title={"Riwayat Transaksi Hari Ini (" + todayTx.length + ")"} />
+      <Section title={"Riwayat Transaksi Hari Ini (" + todayTx.length + ")"} style={{ marginTop: 14 }} />
       {todayTx.length ? todayTx.map((tx) => <TxItem key={tx.id} tx={tx} />) : <Empty title="Belum ada transaksi hari ini" sub="Transaksi yang kamu buat hari ini akan muncul di sini." />}
     </Page>
   );
@@ -117,19 +140,20 @@ export function ExpenseRows({ list }) {
   const c = useC();
   return list.length ? list.map((e) => (
     <ListRow key={e.id} title={e.note || e.category} sub={e.category + " · " + e.date + " · " + e.by}
-      right={<View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-        <T weight="600" color={c.alert}>-{rupiah(e.amount)}</T>
-        <IconBtn name="create-outline" size={18} onPress={() => openExpenseForm(e.id)} style={{ width: 34, height: 34 }} />
-        <IconBtn name="trash-outline" size={18} onPress={() => deleteExpense(e)} style={{ width: 34, height: 34 }} />
+      right={<View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <T weight="700" color={c.alert}>-{rupiah(e.amount)}</T>
+        <Pressable onPress={() => openExpenseForm(e.id)} hitSlop={10}><Icon name="create-outline" size={17} /></Pressable>
+        <Pressable onPress={() => deleteExpense(e)} hitSlop={10}><Icon name="trash-outline" size={17} /></Pressable>
       </View>} />
   )) : <Empty title="Belum ada pengeluaran di periode ini" />;
 }
 
 // ---------------- Laporan owner ----------------
-const TABS = [["transactions", "Transaksi"], ["expenses", "Pengeluaran"], ["reports", "Laporan"]];
+const TABS = [["transactions", "Transaksi", "document-text-outline"], ["expenses", "Pengeluaran", "wallet-outline"], ["reports", "Laporan", "bar-chart-outline"]];
 export function ReportsPage() {
   const app = useApp();
   const c = useC();
+  const wide = useWide();
   const [tab, setTab] = useState("transactions");
   const rf = app.reportFilter;
   const range = periodRange(rf.period, rf.dateFrom, rf.dateTo);
@@ -179,23 +203,29 @@ export function ReportsPage() {
 
   return (
     <Page>
-      <PageHead title="Laporan" sub={periodText + " · " + userText} right={<Btn kind="ghost" icon="filter" title="Filter" onPress={openFilterSheet} />} />
-      <View style={{ flexDirection: "row", backgroundColor: c.surfaceAlt, borderRadius: R.md, padding: 4 }}>
-        {TABS.map(([id, label]) => (
-          <Pressable key={id} onPress={() => setTab(id)} style={{ flex: 1, paddingVertical: 8, borderRadius: R.sm, alignItems: "center", backgroundColor: tab === id ? c.card : "transparent" }}>
-            <T size={13} weight={tab === id ? "700" : "500"} color={tab === id ? c.primary : c.muted}>{label}</T>
-          </Pressable>
-        ))}
+      <PageHead title="Laporan" sub={periodText + " · " + userText} right={<View style={{ flexDirection: "row", gap: 8 }}><Btn sm kind="ghost" icon="filter" title="Filter" onPress={openFilterSheet} /><Btn sm kind="ghost" title="Export" onPress={() => toast("Export belum tersedia di versi ini")} /></View>} />
+      <View style={{ flexDirection: "row", backgroundColor: wide ? c.surfaceAlt : "transparent", borderRadius: R.lg, padding: wide ? 4 : 0, gap: wide ? 0 : 8 }}>
+        {TABS.map(([id, label, icon]) => {
+          const on = tab === id;
+          return (
+            <Pressable key={id} onPress={() => setTab(id)} style={{ flex: 1, height: 40, borderRadius: 12, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", backgroundColor: on ? c.primary : wide ? "transparent" : c.card, borderWidth: !wide && !on ? 1 : 0, borderColor: c.border }}>
+              <Icon name={icon} size={17} color={on ? "#fff" : c.muted} />
+              {wide ? <T size={13} weight={on ? "700" : "500"} color={on ? "#fff" : c.muted}>{label}</T> : null}
+            </Pressable>
+          );
+        })}
       </View>
 
       {tab === "transactions" && (userList.length ? userList.map((tx) => <TxItem key={tx.id} tx={tx} />) : <Empty title="Belum ada transaksi" sub="Coba ubah filter atau periode." />)}
 
       {tab === "expenses" && (
         <>
-          <Kpi hero label={"Total Pengeluaran · " + periodText} value={rupiah(expenseInPeriod)} sub={expensesInPeriod.length + " catatan · " + growthIcon(expenseGrowth.direction) + " " + expenseGrowth.pct.toFixed(0) + "% dari periode lalu"} />
-          <Card>{expenseByCat.map((row) => <SummaryRow key={row.cat} label={row.cat} value={rupiah(row.total)} />)}</Card>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <Section title="Daftar pengeluaran" /><Btn title="+ Tambah" onPress={() => openExpenseForm(null)} />
+          <HeroCard label={"Total Pengeluaran · " + periodLabel(rf.period)} value={rupiah(expenseInPeriod)} valueColor={c.alert} sub={expensesInPeriod.length + " catatan"}
+            growth={growthIcon(expenseGrowth.direction) + " " + expenseGrowth.pct.toFixed(0) + "% dari periode lalu"} growthBad
+            rows={expenseByCat.map((row) => [row.cat, rupiah(row.total)])} />
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
+            <View><T weight="700" size={15}>Daftar pengeluaran</T><Muted>{expensesInPeriod.length} catatan di periode ini</Muted></View>
+            <Btn sm icon="add" title="Tambah" onPress={() => openExpenseForm(null)} />
           </View>
           <ExpenseRows list={expensesInPeriod} />
         </>
@@ -203,55 +233,58 @@ export function ReportsPage() {
 
       {tab === "reports" && (
         <>
-          <Kpi hero label={"Ringkasan Penjualan · " + periodText} value={rupiah(sales)} sub={active.length + " transaksi · " + growthIcon(salesGrowth.direction) + " " + salesGrowth.pct.toFixed(0) + "% dari periode lalu (" + rupiah(prevSales) + ", " + prevActive.length + " trx)"} />
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-            <Kpi label="Cash" value={rupiah(cash)} /><Kpi label="QRIS" value={rupiah(qris)} />
-            <Kpi label="Void" value={rupiah(voidAmount)} color={c.alert} /><Kpi label="Refund" value={rupiah(refundAmount)} color={c.warn} />
-            <Kpi label="Pengeluaran" value={rupiah(expenseInPeriod)} color={c.alert} /><Kpi label="Laba bersih" value={rupiah(net)} color={c.cash} />
+          <View style={{ flexDirection: wide ? "row" : "column", gap: 10, alignItems: "stretch" }}>
+            <HeroCard style={wide ? { flex: 1 } : undefined} label={"Ringkasan Penjualan · " + periodText.replace(/^\w/, (m) => m.toUpperCase()).split(" · ")[0]} value={rupiah(sales)} sub={active.length + " transaksi"}
+              growth={growthIcon(salesGrowth.direction) + " " + salesGrowth.pct.toFixed(0) + "% dari periode lalu"} growthBad={salesGrowth.direction === "down"}
+              rows={[["Periode lalu", rupiah(prevSales)], ["Transaksi lalu", String(prevActive.length)]]} />
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, flex: wide ? 1.1 : undefined }}>
+              <Kpi label="Cash" value={rupiah(cash)} /><Kpi label="QRIS" value={rupiah(qris)} />
+              <Kpi label="Void" value={rupiah(voidAmount)} color={c.alert} /><Kpi label="Refund" value={rupiah(refundAmount)} color={c.warn} />
+              <Kpi label="Pengeluaran" value={rupiah(expenseInPeriod)} color={c.alert} /><Kpi label="Laba bersih" value={rupiah(net)} color={net < 0 ? c.alert : c.cash} />
+            </View>
           </View>
-          <Card>
-            <T weight="700" style={{ marginBottom: 10 }}>7 hari terakhir</T>
+          <View style={{ flexDirection: wide ? "row" : "column", gap: 10, alignItems: "stretch" }}>
+          <Card style={wide ? { flex: 1 } : undefined}>
+            <T weight="500" color={c.muted} style={{ marginBottom: 10 }}>7 hari terakhir</T>
             <View style={{ flexDirection: "row", alignItems: "flex-end", height: 120, gap: 8 }}>
               {last7.map((d) => (
                 <View key={d.date} style={{ flex: 1, alignItems: "center", height: "100%", justifyContent: "flex-end" }}>
-                  <View style={{ width: "100%", height: Math.max(6, (d.total / maxDay) * 96), borderRadius: 4, backgroundColor: d.isToday ? c.primary : c.primarySoft, borderWidth: d.isToday ? 0 : 1, borderColor: c.primary }} />
-                  <Muted size={11} style={{ marginTop: 4 }}>{d.label}</Muted>
+                  <View style={{ width: "100%", height: d.total ? Math.max(6, (d.total / maxDay) * 96) : 5, borderRadius: 3, backgroundColor: d.isToday ? c.primary : c.surfaceAlt }} />
+                  <Muted size={11} style={{ marginTop: 6 }}>{d.label}</Muted>
                 </View>
               ))}
             </View>
           </Card>
-          <Card style={{ gap: 10 }}>
-            <T weight="700">Metode pembayaran</T>
+          <Card style={[{ gap: 10 }, wide ? { flex: 1 } : null]}>
+            <T weight="500" color={c.muted}>Metode pembayaran</T>
             {[["Cash", cash, c.cash], ["QRIS", qris, c.qris]].map(([name, val, col]) => (
               <View key={name} style={{ gap: 4 }}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between" }}><T weight="500">{name}</T><T weight="600">{rupiah(val)}</T></View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}><T weight="700">{name}</T><T weight="700">{rupiah(val)}</T></View>
                 <View style={{ height: 8, borderRadius: 4, backgroundColor: c.surfaceAlt }}><View style={{ height: 8, borderRadius: 4, backgroundColor: col, width: (sales ? (val / sales) * 100 : 0) + "%" }} /></View>
               </View>
             ))}
           </Card>
+          </View>
           <Section title="Ringkasan keuangan" />
           <Card>
-            <SummaryRow label="Gross sales" value={rupiah(gross)} />
-            <SummaryRow label="Diskon" value={"- " + rupiah(discount)} color={c.alert} />
-            <SummaryRow label="Refund" value={"- " + rupiah(refundAmount)} color={c.warn} />
-            <SummaryRow label="Pajak (tercatat)" value={rupiah(tax)} />
-            <SummaryRow strong label="Penjualan bersih" value={rupiah(sales)} />
-            <SummaryRow label="Pengeluaran" value={"- " + rupiah(expenseInPeriod)} color={c.alert} />
-            <SummaryRow strong label="Laba bersih" value={rupiah(net)} color={c.cash} />
+            <SummaryRow line label="Gross sales" value={rupiah(gross)} />
+            <SummaryRow line label="Diskon" value={"- " + rupiah(discount)} color={c.alert} />
+            <SummaryRow line label="Pajak" value={"- " + rupiah(tax)} color={c.alert} />
+            <SummaryRow line label="Net sales" value={rupiah(sales)} />
+            <SummaryRow line label="Pengeluaran" value={"- " + rupiah(expenseInPeriod)} color={c.alert} />
+            <SummaryRow strong label="Net profit" value={rupiah(net)} color={net < 0 ? c.alert : c.primary} />
           </Card>
-          <Section title="Per outlet" />
-          <Card>{Object.keys(byOutlet).length ? Object.entries(byOutlet).map(([k, v]) => <SummaryRow key={k} label={k} value={rupiah(v)} />) : <Muted>Belum ada data.</Muted>}</Card>
-          <Section title="Per kasir" />
-          <Card>{Object.keys(byCashier).length ? Object.entries(byCashier).map(([k, v]) => <SummaryRow key={k} label={k} value={rupiah(v)} />) : <Muted>Belum ada data.</Muted>}</Card>
-          <Section title="Rekap void & refund per kasir" />
-          <Card>
-            {Object.keys(cashierRecap).length ? Object.entries(cashierRecap).map(([k, r]) => (
-              <View key={k} style={{ paddingVertical: 6 }}>
-                <T weight="600">{k}</T>
-                <Muted>Void {r.voidCount}× ({rupiah(r.voidAmount)}) · Refund {r.refundCount}× ({rupiah(r.refundAmount)})</Muted>
-              </View>
-            )) : <Muted>Belum ada data.</Muted>}
-          </Card>
+          <Section title="Rekap void/refund per kasir" />
+          {Object.keys(cashierRecap).length ? Object.entries(cashierRecap).map(([k, r]) => (
+            <Card key={k} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10 }}>
+              <View><T weight="600">{k}</T><Muted size={11}>Void {r.voidCount}× · Refund {r.refundCount}×</Muted></View>
+              <T weight="700" color={c.alert}>{rupiah(r.voidAmount + r.refundAmount)}</T>
+            </Card>
+          )) : <Card><Muted>Belum ada data.</Muted></Card>}
+          <Section title="Penjualan per outlet" />
+          {Object.keys(byOutlet).length ? Object.entries(byOutlet).map(([k, v]) => <Card key={k} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 12 }}><T weight="500">{k}</T><T weight="700">{rupiah(v)}</T></Card>) : <Card><Muted>Belum ada data.</Muted></Card>}
+          <Section title="Penjualan per kasir" />
+          {Object.keys(byCashier).length ? Object.entries(byCashier).map(([k, v]) => <Card key={k} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 12 }}><T weight="500">{k}</T><T weight="700">{rupiah(v)}</T></Card>) : <Card><Muted>Belum ada data.</Muted></Card>}
         </>
       )}
     </Page>

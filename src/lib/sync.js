@@ -2,6 +2,7 @@
 //  - UI memutasi `state` lalu commit(); perubahan dihitung (diff per id) dan masuk "outbox".
 //  - Outbox disimpan di AsyncStorage, dikirim saat online (upsert/delete idempoten, id dibuat klien).
 //  - Saat outbox kosong, data ditarik ulang berkala supaya perubahan dari perangkat lain muncul (last-write-wins).
+import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { decode as b64decode } from 'base64-arraybuffer';
 import { state, commit, subscribe, toast, closeSheet } from './store';
@@ -27,7 +28,6 @@ let diffTimer = null;
 let pulling = false;
 let started = false;
 let netOnline = true;
-let forcedOffline = false;
 
 const outboxKey = () => `sk-outbox:${userKey}`;
 
@@ -82,13 +82,13 @@ export async function flush() {
       if (table === 'transactions') for (const o of ups) await attachProof(o);
       if (ups.length) {
         const { error } = await supabase.from(table).upsert(ups.map((o) => o.row), { onConflict: table === SETTINGS_TABLE ? 'business_id' : 'business_id,id' });
-        if (error) { if (isNetworkError(error)) throw error; toast('Gagal sinkron ' + table + ': ' + error.message, 'error'); }
-        ups.forEach((o) => done.add(o)); // error non-jaringan (mis. RLS) -> buang agar tidak macet selamanya
+        if (error) { if (isNetworkError(error)) throw error; ups.forEach((o) => failOp(o, table, error, done)); }
+        else ups.forEach((o) => done.add(o));
       }
       if (dels.length) {
         const { error } = await supabase.from(table).delete().eq('business_id', businessId).in('id', dels.map((o) => o.id));
-        if (error) { if (isNetworkError(error)) throw error; toast('Gagal hapus ' + table + ': ' + error.message, 'error'); }
-        dels.forEach((o) => done.add(o));
+        if (error) { if (isNetworkError(error)) throw error; dels.forEach((o) => failOp(o, table, error, done)); }
+        else dels.forEach((o) => done.add(o));
       }
     }
     outbox = outbox.filter((o) => !done.has(o));
@@ -101,7 +101,15 @@ export async function flush() {
     persistOutbox();
     state.syncQueue = [...outbox];
     commit();
-  } catch { /* offline: coba lagi nanti */ } finally { flushing = false; }
+    if (outbox.length) scheduleFlush(15000); // masih ada yang gagal (non-jaringan) -> coba lagi
+  } catch { scheduleFlush(5000); /* jaringan putus: coba lagi sebentar lagi */ } finally { flushing = false; }
+}
+
+const MAX_ATTEMPTS = 5;
+/** Error non-jaringan (mis. RLS/validasi): tetap di antrean dan dicoba lagi; baru dibuang setelah MAX_ATTEMPTS. */
+function failOp(o, table, error, done) {
+  o.attempts = (o.attempts || 0) + 1;
+  if (o.attempts >= MAX_ATTEMPTS) { done.add(o); toast('Gagal sinkron ' + table + ': ' + error.message, 'error'); }
 }
 
 /** Unggah foto bukti QRIS ke Storage, lalu ganti data URL di dokumen dengan path-nya. */
@@ -186,13 +194,23 @@ export async function startSync(bid, uid) {
   started = true;
   unsub = subscribe(() => { if (started) { clearTimeout(diffTimer); diffTimer = setTimeout(diffAndQueue, 250); } });
 
-  const applyNet = () => { state.online = !forcedOffline && netOnline; commit(); if (state.online) flush(); };
+  let wasOnline = netOnline;
+  const applyNet = () => {
+    const regained = netOnline && !wasOnline;
+    wasOnline = netOnline;
+    state.online = netOnline; commit();
+    if (!state.online) return;
+    if (regained && outbox.length) toast('Kembali online, menyinkronkan…');
+    flush().then(() => { if (regained && !outbox.length) toast('Sinkronisasi selesai', 'success'); return pull(); });
+  };
   const offNet = NetInfo.addEventListener((s) => {
     netOnline = Boolean(s.isConnected) && s.isInternetReachable !== false;
     applyNet();
   });
   timers.push(setInterval(() => { flush(); pull(); }, 30000));
   timers.push(offNet);
+  const appSub = AppState.addEventListener('change', (st) => { if (st === 'active') { NetInfo.refresh().catch(() => {}); flush().then(pull); } });
+  timers.push(() => appSub.remove());
   publishQueue();
   flush();
 }
@@ -207,9 +225,6 @@ export async function stopSync(flushFirst = true) {
   businessId = null; snapshots = {}; outbox = [];
 }
 
-// ---- simulasi offline manual (tombol di sheet Sinkronisasi) ----
-export function setForcedOffline(v) { forcedOffline = v; state.online = !v && netOnline; commit(); if (state.online) flush(); }
-export const isForcedOffline = () => forcedOffline;
 export const syncNowReal = () => flush().then(() => pull());
 
 /** Sync manual dengan umpan balik toast. */
