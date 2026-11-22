@@ -1,0 +1,42 @@
+# Codemagic CI/CD — SakuKasir (Expo / React Native), mesin Mac mini M2. Android dulu; iOS ditunda.
+# Siapkan di Codemagic:
+#   grup env "supabase"  : EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY
+#   Android keystore     : Teams > Code signing identities > Android keystores, referensi "sakukasir_keystore"
+# Folder android/ dibuat ulang tiap build lewat `expo prebuild` (tidak di-commit).
+
+definitions:
+  env_versions: &env_versions
+    node: 22
+    java: 17
+
+workflows:
+  android-release:
+    name: SakuKasir Android (AAB + APK)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      <<: *env_versions
+      groups:
+        - supabase
+      android_signing:
+        - sakukasir_keystore
+    triggering:
+      events: [push]
+      branch_patterns:
+        - { pattern: main, include: true }
+    scripts:
+      - name: Install dependensi
+        script: npm install
+      - name: Uji logika (diff & ESC/POS)
+        script: npm test
+      - name: Prebuild Android (native project)
+        script: npx expo prebuild --platform android --clean
+      - name: Patch signing & versionCode
+        script: BUILD_NUMBER=$BUILD_NUMBER node scripts/patch-signing.mjs
+      - name: Build AAB & APK release
+        script: |
+          cd android
+          ./gradlew bundleRelease assembleRelease
+    artifacts:
+      - android/app/build/outputs/**/*.aab
+      - android/app/build/outputs/**/*.apk

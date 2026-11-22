@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "SakuKasir",
+    "slug": "sakukasir",
+    "version": "0.2.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": { "image": "./assets/splash.png", "resizeMode": "contain", "backgroundColor": "#0F5132" },
+    "android": {
+      "package": "com.sakukasir.app",
+      "adaptiveIcon": { "foregroundImage": "./assets/icon.png", "backgroundImage": "./assets/adaptive-background.png" },
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.sakukasir.app",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "SakuKasir memakai Bluetooth untuk mencetak struk ke printer thermal.",
+        "NSCameraUsageDescription": "Kamera dipakai untuk memotret bukti pembayaran QRIS."
+      }
+    },
+    "plugins": [
+      ["expo-build-properties", { "android": { "minSdkVersion": 24, "compileSdkVersion": 35, "targetSdkVersion": 35 } }],
+      ["react-native-ble-plx", { "isBackgroundEnabled": false, "neverForLocation": true, "bluetoothAlwaysPermission": "SakuKasir memakai Bluetooth untuk mencetak struk ke printer thermal." }],
+      ["expo-image-picker", { "cameraPermission": "Kamera dipakai untuk memotret bukti pembayaran QRIS." }]
+    ]
+  }
+}
