@@ -9,14 +9,14 @@ import { formatRupiahInput, parseRupiahInput } from '../lib/format';
 
 export const palettes = {
   light: {
-    primary: '#0F5132', primaryHover: '#0A3D26', primarySoft: '#E7F0EA', onPrimary: '#FFFFFF',
+    primary: '#2563EB', primaryHover: '#1D4ED8', primarySoft: '#E8EFFD', onPrimary: '#FFFFFF',
     cash: '#16A34A', cashSoft: '#DCFCE7', qris: '#7C3AED', qrisSoft: '#EDE9FE',
     alert: '#DC2626', alertSoft: '#FEE2E2', warn: '#D97706', warnSoft: '#FEF3C7',
     surface: '#FAFAF7', surfaceAlt: '#F1F0EA', card: '#FFFFFF', border: '#E5E3DA', borderStrong: '#D6D4C9',
     text: '#1A1A1A', muted: '#6B6B63', faint: '#9A9A90', scrim: 'rgba(0,0,0,0.45)',
   },
   dark: {
-    primary: '#22A06B', primaryHover: '#2BB97C', primarySoft: '#0F2A1E', onPrimary: '#FFFFFF',
+    primary: '#3B82F6', primaryHover: '#60A5FA', primarySoft: '#14233F', onPrimary: '#FFFFFF',
     cash: '#34D399', cashSoft: '#064E3B', qris: '#A78BFA', qrisSoft: '#3B2A63',
     alert: '#F87171', alertSoft: '#4C1D1D', warn: '#FBBF24', warnSoft: '#4A3410',
     surface: '#0F0F0D', surfaceAlt: '#1A1A17', card: '#17171A', border: '#2A2A26', borderStrong: '#3A3A34',
