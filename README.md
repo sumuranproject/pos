@@ -5,7 +5,7 @@ Port dari versi web/Capacitor. **Backend Supabase tidak berubah** (migrasi `0001
 ## Jalankan
 1. Backend: ikuti README lama (jalankan kedua migrasi, `supabase functions deploy manage-worker`).
 2. `cp .env.example .env` lalu isi URL & anon key.
-3. `npm install` lalu `npx expo install --fix` (menyelaraskan versi dengan SDK Expo yang terpasang).
+3. `npm install` lalu `npx expo install --fix` (WAJIB, lalu commit package.json + package-lock.json) (menyelaraskan versi dengan SDK Expo yang terpasang).
 4. **Wajib development build** (bukan Expo Go) karena Bluetooth memakai modul native:
    `npx expo run:android` (perangkat fisik; emulator tidak punya Bluetooth).
 5. `npm test` menjalankan uji diff/outbox dan ESC/POS.
@@ -24,5 +24,3 @@ Port dari versi web/Capacitor. **Backend Supabase tidak berubah** (migrasi `0001
 
 ## Build Codemagic
 `codemagic.yaml` (grup env `supabase` dengan `EXPO_PUBLIC_*`, keystore `sakukasir_keystore`). `scripts/patch-signing.mjs` memasang signing release & versionCode setelah `expo prebuild`.
-# pos
-# pos

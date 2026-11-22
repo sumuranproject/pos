@@ -27,10 +27,19 @@ workflows:
     scripts:
       - name: Install dependensi
         script: npm install
+      - name: Selaraskan versi paket dengan SDK Expo
+        script: |
+          npx expo install --fix
+          npx expo-doctor || true
       - name: Uji logika (diff & ESC/POS)
         script: npm test
       - name: Prebuild Android (native project)
         script: npx expo prebuild --platform android --clean
+      - name: Diagnosis autolinking (modul tanpa version)
+        script: |
+          cd android && cd ..
+          npx expo-modules-autolinking resolve --platform android --json > /tmp/al.json || true
+          node -e "const j=JSON.parse(require('fs').readFileSync('/tmp/al.json','utf8'));(j.modules||[]).forEach((m,i)=>(m.projects||[]).forEach(p=>{if(!p.publication||!p.publication.version)console.log('TANPA VERSION: modules['+i+'] '+m.packageName+' / '+p.name)}));console.log('expo', require('expo/package.json').version)" || true
       - name: Patch signing & versionCode
         script: BUILD_NUMBER=$BUILD_NUMBER node scripts/patch-signing.mjs
       - name: Build AAB & APK release
