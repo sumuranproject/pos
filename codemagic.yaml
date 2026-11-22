@@ -43,6 +43,8 @@ workflows:
         script: BUILD_NUMBER=$BUILD_NUMBER node scripts/patch-signing.mjs
       - name: Build AAB & APK release
         script: |
+          # ulangi diagnosis di sini supaya satu log ini sudah memuat nama modul bermasalah
+          node scripts/diagnose-autolinking.mjs || true
           cd android
           ./gradlew bundleRelease assembleRelease
     artifacts:

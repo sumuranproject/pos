@@ -7,6 +7,9 @@ try { j = JSON.parse(execSync('npx expo-modules-autolinking resolve --platform a
 catch (e) { console.log('resolve gagal:', String(e.message).slice(0, 400)); process.exit(0); }
 console.log('expo', JSON.parse(fs.readFileSync('node_modules/expo/package.json', 'utf8')).version,
   '| autolinking', JSON.parse(fs.readFileSync('node_modules/expo-modules-autolinking/package.json', 'utf8')).version);
+const m4 = (j.modules || [])[4];
+if (m4) console.log('modules[4] =', JSON.stringify({ packageName: m4.packageName, packageVersion: m4.packageVersion, projects: (m4.projects || []).map((p) => ({ name: p.name, publication: p.publication })) }));
+console.log('jumlah modul:', (j.modules || []).length, '|', (j.modules || []).map((m) => m.packageName).join(', '));
 (j.modules || []).forEach((m, i) => (m.projects || []).forEach((p) => {
   const ok = p.publication && p.publication.version;
   if (ok) return;

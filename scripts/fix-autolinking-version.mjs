@@ -48,4 +48,19 @@ for (const dir of new Set(found)) {
     patched++;
   }
 }
+// --- Dugaan ke-2: `publication.version` autolinking dibaca dari expo-module.config.json (android.publication) ---
+let cfgPatched = 0;
+for (const dir of new Set(found)) {
+  const cfgFile = path.join(dir, 'expo-module.config.json');
+  if (!fs.existsSync(cfgFile)) continue;
+  let cfg; try { cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8')); } catch { continue; }
+  const pub = cfg.android && cfg.android.publication;
+  if (!pub || pub.version) continue;
+  const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
+  pub.version = pkg.version;
+  fs.writeFileSync(cfgFile, JSON.stringify(cfg, null, 2));
+  console.log(`patched publication.version ${pkg.name}@${pkg.version} (expo-module.config.json)`);
+  cfgPatched++;
+}
+console.log(`expo-module.config.json dipatch: ${cfgPatched}`);
 console.log(`fix-autolinking-version: ${checked} paket native diperiksa, ${patched} dipatch`);
