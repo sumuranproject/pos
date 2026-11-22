@@ -25,3 +25,4 @@ Port dari versi web/Capacitor. **Backend Supabase tidak berubah** (migrasi `0001
 ## Build Codemagic
 `codemagic.yaml` (grup env `supabase` dengan `EXPO_PUBLIC_*`, keystore `sakukasir_keystore`). `scripts/patch-signing.mjs` memasang signing release & versionCode setelah `expo prebuild`.
 # pos
+# pos
