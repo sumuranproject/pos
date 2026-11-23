@@ -133,7 +133,7 @@ function Header() {
   const c = useC();
   const pending = !app.online || app.syncQueue.length > 0;
   const unread = app.notifications.some((n) => !n.read);
-  const btnBg = app.theme === 'dark' ? '#2A2A2E' : c.surfaceAlt; // di dark mode surfaceAlt nyaris sama dengan header, jadi dibuat lebih terang
+  const btnBg = c.surfaceAlt;
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6, gap: 8, backgroundColor: c.card }}>
       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>

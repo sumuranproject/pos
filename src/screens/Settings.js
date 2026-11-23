@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Image, Pressable, View } from "react-native";
 import { backToManage, closeSheet, commit, applyTheme, openSheet, state, toast, useApp } from "../lib/store";
 import { changePassword, saveOwnerPin, saveProfile } from "../lib/auth";
-import { syncNow } from "../lib/sync";
+import { purgeExpiredProofs, syncNow } from "../lib/sync";
 import {
   connectBlePrinter, connectClassicPrinter, disconnectPrinter, discoverClassicPrinters, listClassicPrinters,
   pairClassicPrinter, printTestPage, scanBlePrinters, setPaperCols, supportsClassic,
@@ -170,9 +170,10 @@ export function QrisPage() {
         </Row2>
       </Card>
       <Card style={{ gap: 12 }}>
-        <Banner tone="info"><T size={12} color={c.muted}><T size={12} weight="700" color={c.muted}>Retensi bukti QRIS{"\n"}</T>Bukti QRIS otomatis dihapus setelah {q.retentionDays} hari. Data transaksi tetap tersimpan.</T></Banner>
+        <Banner tone="info"><T size={12} color={c.muted}><T size={12} weight="700" color={c.muted}>Retensi bukti QRIS{"\n"}</T>Foto bukti QRIS dihapus otomatis setelah {q.retentionDays} hari (dicek tiap app dibuka dan tiap sinkronisasi, dijalankan dari perangkat owner). Data transaksi tetap tersimpan.</T></Banner>
         <NumField label="Retensi (hari)" value={days} onChange={setDays} maxLength={3} />
-        <Btn block title="Simpan retensi" onPress={() => { q.retentionDays = Math.max(1, Math.min(365, parseInt(days, 10) || 35)); setDays(String(q.retentionDays)); commit(); toast("Retensi disimpan", "success"); }} />
+        <Btn block kind="ghost" title="Hapus bukti kadaluarsa sekarang" onPress={async () => { const n = await purgeExpiredProofs(); toast(n ? n + " foto bukti dihapus" : "Tidak ada bukti yang kadaluarsa", n ? "success" : undefined); }} />
+        <Btn block title="Simpan retensi" onPress={() => { q.retentionDays = Math.max(1, Math.min(365, parseInt(days, 10) || 7)); setDays(String(q.retentionDays)); commit(); toast("Retensi disimpan", "success"); }} />
       </Card>
     </Page>
   );

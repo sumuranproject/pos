@@ -19,7 +19,7 @@ export const palettes = {
     primary: '#3B82F6', primaryHover: '#60A5FA', primarySoft: '#14233F', onPrimary: '#FFFFFF',
     cash: '#60A5FA', cashSoft: '#064E3B', qris: '#A78BFA', qrisSoft: '#3B2A63',
     alert: '#F87171', alertSoft: '#4C1D1D', warn: '#FBBF24', warnSoft: '#4A3410',
-    surface: '#0F0F0D', surfaceAlt: '#1A1A17', card: '#17171A', border: '#2A2A26', borderStrong: '#3A3A34',
+    surface: '#0F0F0D', surfaceAlt: '#26262B', card: '#17171A', border: '#2A2A26', borderStrong: '#3A3A34',
     text: '#F5F5F0', muted: '#A0A09A', faint: '#6E6E68', scrim: 'rgba(0,0,0,0.65)',
   },
 };

@@ -45,7 +45,7 @@ export const state = {
   workers: [],
   notifications: [],
   settings: {
-    qris: { image: null, active: true, outlet: '', retentionDays: 35 },
+    qris: { image: null, active: true, outlet: '', retentionDays: 7 },
     // printer disimpan per perangkat (bukan di server)
     printer: { connected: false, device: '', deviceId: '', transport: null, cols: 32 },
     receipt: { bizName: '', showOutlet: true, showTxNumber: true, showCashier: true, showPayment: true, showChange: true, footer: 'Terima kasih sudah berbelanja' },
@@ -73,7 +73,7 @@ export function resetData() {
     workers: [], notifications: [], syncQueue: [], cart: [], activeShift: null, outlet: { id: 0, name: '' },
     reportFilter: emptyFilter(),
   });
-  state.settings.qris = { image: null, active: true, outlet: '', retentionDays: 35 };
+  state.settings.qris = { image: null, active: true, outlet: '', retentionDays: 7 };
   state.settings.security.ownerPin = '';
   state.settings.receipt.bizName = '';
 }

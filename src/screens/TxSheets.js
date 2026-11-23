@@ -1,4 +1,5 @@
 // Sheet detail transaksi, void, dan refund (aturan sama dengan versi web).
+import { isProofExpired } from "../lib/proof";
 import React, { useEffect, useState } from "react";
 import { Image, Pressable, View } from "react-native";
 import { supabase } from "../lib/supabase";
@@ -41,9 +42,12 @@ function QrisProof({ tx }) {
   const proofUrl = useProofUrl(tx.qrisProof);
   if (tx.method !== "qris") return null;
   const proof = tx.qrisProof;
+  if (proof?.purgedAt) {
+    return <Banner tone="warn"><T size={13} color={c.warn}>Foto bukti QRIS sudah dihapus otomatis · retensi {state.settings.qris.retentionDays} hari</T></Banner>;
+  }
   if (proof && (proof.dataUrl || proof.path)) {
-    if (proof.expiredAt && Date.now() > proof.expiredAt) {
-      return <Banner tone="warn"><T size={13} color={c.warn}>Bukti QRIS kadaluarsa · retensi {state.settings.qris.retentionDays} hari</T></Banner>;
+    if (isProofExpired(proof, state.settings.qris.retentionDays)) {
+      return <Banner tone="warn"><T size={13} color={c.warn}>Bukti QRIS melewati retensi {state.settings.qris.retentionDays} hari dan akan dihapus otomatis</T></Banner>;
     }
     return (
       <View style={{ gap: 6 }}>

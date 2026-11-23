@@ -9,6 +9,7 @@ import { state, commit, subscribe, toast, closeSheet } from './store';
 import { supabase } from './supabase';
 import { computeOps, coalesce, ser } from './diff';
 import { kv } from './storage';
+import { expiredProofTx, purgedProof } from './proof';
 
 const COLLECTIONS = [
   ['outlets', 'outlets'], ['categories', 'categories'], ['products', 'products'], ['transactions', 'transactions'],
@@ -175,6 +176,39 @@ async function pull() {
   if (pulling || !state.online || outbox.length || flushing) return;
   pulling = true;
   try { await loadAll(); commit(); } catch { /* abaikan */ } finally { pulling = false; }
+  purgeExpiredProofs();
+}
+
+let purging = false;
+/**
+ * Hapus foto bukti QRIS yang melewati masa retensi: file di Storage (hanya owner yang boleh menghapus, sesuai policy)
+ * dan salinan lokal. Dokumen transaksi tetap ada; hanya foto/path yang diganti penanda "purgedAt".
+ * Mengembalikan jumlah bukti yang dihapus.
+ */
+export async function purgeExpiredProofs() {
+  if (purging) return 0;
+  purging = true;
+  try {
+    const now = Date.now();
+    const list = expiredProofTx(state.transactions, state.settings.qris.retentionDays, now);
+    if (!list.length) return 0;
+    const isOwner = state.user?.role === 'owner';
+    // foto yang sudah di Storage: hanya dihapus oleh owner yang sedang online
+    const remote = list.filter((t) => t.qrisProof.path);
+    const doneIds = new Set(list.filter((t) => !t.qrisProof.path).map((t) => t.id)); // hanya salinan lokal
+    if (remote.length && isOwner && supabase && state.online) {
+      for (let i = 0; i < remote.length; i += 100) {
+        const chunk = remote.slice(i, i + 100);
+        const { error } = await supabase.storage.from('qris-proofs').remove(chunk.map((t) => t.qrisProof.path));
+        if (error) break; // coba lagi di siklus berikutnya
+        chunk.forEach((t) => doneIds.add(t.id));
+      }
+    }
+    if (!doneIds.size) return 0;
+    state.transactions.forEach((t) => { if (doneIds.has(t.id) && t.qrisProof) t.qrisProof = purgedProof(t.qrisProof, now); });
+    commit();
+    return doneIds.size;
+  } catch { return 0; } finally { purging = false; }
 }
 
 /** Mulai sinkronisasi untuk bisnis ini (dipanggil setelah login). */
@@ -208,6 +242,7 @@ export async function startSync(bid, uid) {
     applyNet();
   });
   timers.push(setInterval(() => { flush(); pull(); }, 30000));
+  purgeExpiredProofs(); // bersihkan bukti kadaluarsa saat app dibuka
   timers.push(offNet);
   const appSub = AppState.addEventListener('change', (st) => { if (st === 'active') { NetInfo.refresh().catch(() => {}); flush().then(pull); } });
   timers.push(() => appSub.remove());
