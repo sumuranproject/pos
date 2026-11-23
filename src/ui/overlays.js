@@ -13,7 +13,7 @@ import {
 import { verifyOwnerPin } from '../lib/auth';
 import { transactionReceiptText } from '../lib/receipt';
 import { printTransactionReal } from '../lib/printer';
-import { Btn, Icon, KbScrollView, R, Row2, T, Muted, useC, Banner } from './kit';
+import { Btn, Icon, KbScrollView, R, Row2, T, Muted, useC, Banner, ReceiptText } from './kit';
 
 // ---------- toast ----------
 export function Toasts() {
@@ -219,7 +219,7 @@ function ReceiptModal({ tx }) {
     <>
       <T size={15} weight="700" style={{ marginBottom: 10 }}>Preview struk</T>
       <ScrollView style={{ maxHeight: 360, backgroundColor: c.surfaceAlt, borderRadius: R.sm }} contentContainerStyle={{ padding: 12 }}>
-        <T style={{ fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', fontSize: 12, lineHeight: 17 }}>{transactionReceiptText(tx, state.settings.receipt)}</T>
+        <ReceiptText text={transactionReceiptText(tx, state.settings.receipt, state.settings.printer.cols || 32)} />
       </ScrollView>
       <Row2 style={{ marginTop: 14 }}>
         <Btn kind="ghost" title="Tutup" onPress={closeReceiptModal} />

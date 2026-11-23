@@ -352,3 +352,15 @@ export function CartCta({ count, total, label, onPress, bottom = 12 }) {
     </Pressable>
   );
 }
+
+/** Teks struk monospace: tiap baris tidak dibungkus; mengecil otomatis bila layar sempit. */
+export function ReceiptText({ text, size = 12 }) {
+  const c = useC();
+  return (
+    <View>
+      {String(text).split('\n').map((ln, i) => (
+        <Text key={i} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={{ fontFamily: 'monospace', fontSize: size, lineHeight: size + 5, color: c.text }}>{ln || ' '}</Text>
+      ))}
+    </View>
+  );
+}

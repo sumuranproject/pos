@@ -42,7 +42,7 @@ export function buildReceipt(tx, r, cols = 32) {
   p.align('left').line();
   if (r.showTxNumber) p.text(tx.id);
   p.text(`${tx.date} ${tx.time}`);
-  if (r.showOutlet) p.text(tx.outlet);
+  if (r.showOutlet && tx.outlet && tx.outlet.trim().toLowerCase() !== String(r.bizName || '').trim().toLowerCase()) p.text(tx.outlet);
   if (r.showCashier) p.text('Kasir: ' + tx.cashier);
   p.line();
   tx.items.forEach((i) => { p.text(i.name); p.row(`  ${i.qty} x ${fmt(i.price)}`, fmt(i.price * i.qty)); });

@@ -9,7 +9,7 @@ import {
 } from "../lib/printer";
 import { formatTimestamp, rupiah } from "../lib/format";
 import { sampleReceiptText } from "../lib/receipt";
-import { Banner, Btn, Card, Dot, Empty, Field, IconBtn, ListRow, Muted, NumField, Page, PageHead, Pill, Row2, RupiahInput, Section, Select, SummaryRow, SwitchRow, T, useC, R } from "../ui/kit";
+import { Banner, Btn, Card, Dot, ReceiptText, Empty, Field, IconBtn, ListRow, Muted, NumField, Page, PageHead, Pill, Row2, RupiahInput, Section, Select, SummaryRow, SwitchRow, T, useC, R } from "../ui/kit";
 import { confirmModal, pickImageDataUrl } from "../ui/overlays";
 import { ExpenseRows, openExpenseForm } from "./Reports";
 
@@ -130,7 +130,7 @@ export function ReceiptPage() {
       <Section title="Preview struk" />
       <Card style={{ padding: 16 }}>
         <View style={{ backgroundColor: c.card, borderRadius: R.sm, borderWidth: 1, borderColor: c.border, padding: 14 }}>
-          <T size={12} style={{ fontFamily: "monospace", lineHeight: 17 }}>{sampleReceiptText(r, app.outlet.name)}</T>
+          <ReceiptText text={sampleReceiptText(r, app.outlet.name, app.settings.printer.cols || 32)} />
         </View>
       </Card>
       <Btn block title="Simpan" onPress={() => toast("Pengaturan struk disimpan", "success")} />
