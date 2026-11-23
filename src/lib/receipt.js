@@ -56,6 +56,16 @@ export function receiptBlocks(tx, r0, info = {}) {
   return B;
 }
 
+/** Bungkus teks panjang per kata sesuai lebar kolom (kata yang lebih panjang dari lebar dipotong). */
+export function wrap(s, width) {
+  const out = []; let cur = '';
+  for (let w of String(s).split(/\s+/).filter(Boolean)) {
+    while (w.length > width) { if (cur) { out.push(cur); cur = ''; } out.push(w.slice(0, width)); w = w.slice(width); }
+    if (!cur) cur = w; else if ((cur + ' ' + w).length <= width) cur += ' ' + w; else { out.push(cur); cur = w; }
+  }
+  if (cur) out.push(cur);
+  return out.length ? out : [''];
+}
 const center = (s, cols) => (s.length >= cols ? s : ' '.repeat(Math.floor((cols - s.length) / 2)) + s);
 function rowText(l, rr, cols) {
   const room = cols - rr.length - 1;
@@ -68,7 +78,7 @@ export function blocksToText(blocks, cols = 32) {
   blocks.forEach((b) => {
     if (b.k === 'line') L.push('-'.repeat(cols));
     else if (b.k === 'row') L.push(...rowText(b.l, b.r, cols));
-    else L.push(b.align === 'center' ? center(b.s, cols) : b.s);
+    else wrap(b.s, cols).forEach((ln) => L.push(b.align === 'center' ? center(ln, cols) : ln));
   });
   return L.join('\n');
 }

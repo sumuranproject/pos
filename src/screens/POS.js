@@ -86,7 +86,7 @@ export default function POSPage() {
       <View style={{ backgroundColor: wide ? "transparent" : c.card, borderBottomWidth: wide ? 0 : 1, borderBottomColor: c.border, paddingTop: wide ? 16 : 4, paddingBottom: wide ? 4 : 12, gap: 10 }}>
         <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: c.card, borderWidth: 1, borderColor: c.borderStrong, borderRadius: 22, paddingHorizontal: 14, minHeight: 44, marginHorizontal: pad }}>
           <Icon name="search" size={18} color={c.faint} style={{ marginRight: 8 }} />
-          <TextInput value={q} onChangeText={setQ} placeholder="Cari produk…" placeholderTextColor={c.faint} style={{ flex: 1, color: c.text, fontSize: 15 }} />
+          <TextInput value={q} onChangeText={setQ} placeholder="Cari produk…" placeholderTextColor={c.faint} style={{ flex: 1, color: c.text, fontSize: 15, fontFamily: "inter_regular" }} />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: pad }}>
           {cats.map((x) => <Chip key={x} label={x} active={x === cat} onPress={() => setCat(x)} />)}

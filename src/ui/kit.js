@@ -36,9 +36,14 @@ export function useSidebarW() { return useWindowDimensions().width >= 900 ? 260 
 export const R = { sm: 8, md: 12, lg: 14 };
 
 // ---------- teks ----------
+// Font: Inter (4 bobot) & JetBrains Mono, ditanam lewat plugin expo-font (app.json). Di Android tiap bobot = satu family.
+export const MONO = 'jetbrains_mono_regular';
+export const fontFor = (weight) => { const w = String(weight); return w === 'bold' || +w >= 700 ? 'inter_bold' : +w >= 600 ? 'inter_semibold' : +w >= 500 ? 'inter_medium' : 'inter_regular'; };
 export function T({ children, size = 14, weight = '400', color, style, ...rest }) {
   const c = useC();
-  return <Text {...rest} style={[{ fontSize: size, fontWeight: weight, color: color || c.text }, style]}>{children}</Text>;
+  const st = StyleSheet.flatten(style) || {};
+  const family = st.fontFamily === 'monospace' ? MONO : fontFor(weight);
+  return <Text {...rest} style={[{ fontSize: size, color: color || c.text }, style, { fontFamily: family }]}>{children}</Text>;
 }
 export const Muted = ({ children, size = 12, style, ...r }) => { const c = useC(); return <T size={size} color={c.muted} style={style} {...r}>{children}</T>; };
 
@@ -131,7 +136,7 @@ export function Field({ label, value, onChangeText, placeholder, secure, keyboar
           maxLength={maxLength} autoCapitalize={autoCapitalize} autoCorrect={false}
           autoComplete={secure ? 'off' : undefined} importantForAutofill={secure ? 'no' : undefined}
           onSubmitEditing={onSubmitEditing} returnKeyType={returnKeyType}
-          style={{ flex: 1, color: c.text, fontSize: 15, paddingVertical: 10 }}
+          style={{ flex: 1, color: c.text, fontSize: 15, paddingVertical: 10, fontFamily: 'inter_regular' }}
         />
         {secure ? <Pressable onPress={() => setShow((s) => !s)} hitSlop={8}><Icon name={show ? 'eye-off-outline' : 'eye-outline'} size={18} color={c.faint} /></Pressable> : null}
         {right}
@@ -362,7 +367,7 @@ export function ReceiptText({ text, size = 12 }) {
   return (
     <View>
       {String(text).split('\n').map((ln, i) => (
-        <Text key={i} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={{ fontFamily: 'monospace', fontSize: size, lineHeight: size + 5, color: c.text }}>{ln || ' '}</Text>
+        <Text key={i} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={{ fontFamily: MONO, fontSize: size, lineHeight: size + 5, color: c.text }}>{ln || ' '}</Text>
       ))}
     </View>
   );

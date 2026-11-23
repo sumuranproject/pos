@@ -45,8 +45,8 @@ export default function Splash({ ready, onDone }) {
     <Animated.View pointerEvents="auto" style={[StyleSheet.absoluteFill, { backgroundColor: '#2563EB', alignItems: 'center', justifyContent: 'center', opacity: fade }]}>
       <Animated.Image source={require('../../assets/icon.png')} style={{ width: size, height: size, transform: [{ scale }] }} resizeMode="contain" />
       <Animated.View style={{ position: 'absolute', top: '50%', marginTop: size / 2 + 18, alignItems: 'center', opacity: label, transform: [{ translateY: label.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] }}>
-        <Text style={{ color: '#fff', fontSize: 26, fontWeight: '700', letterSpacing: 0.3 }}>SakuKasir</Text>
-        <Text style={{ color: 'rgba(255,255,255,.75)', fontSize: 13, marginTop: 4 }}>Kasir simpel, tetap jalan saat offline</Text>
+        <Text style={{ color: '#fff', fontSize: 26, fontFamily: 'inter_bold', letterSpacing: 0.3 }}>SakuKasir</Text>
+        <Text style={{ color: 'rgba(255,255,255,.75)', fontSize: 13, marginTop: 4, fontFamily: 'inter_regular' }}>Kasir simpel, tetap jalan saat offline</Text>
       </Animated.View>
     </Animated.View>
   );

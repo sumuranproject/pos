@@ -112,7 +112,7 @@ function PromptModal({ title, label, def, numeric, onConfirm }) {
         <T weight="500">{label}</T>
         <TextInput
           autoFocus value={v} onChangeText={setV} keyboardType={numeric ? 'number-pad' : 'default'}
-          style={{ borderWidth: 1, borderColor: c.borderStrong, borderRadius: R.md, paddingHorizontal: 12, minHeight: 48, color: c.text, fontSize: 15 }}
+          style={{ borderWidth: 1, borderColor: c.borderStrong, borderRadius: R.md, paddingHorizontal: 12, minHeight: 48, color: c.text, fontSize: 15, fontFamily: 'inter_regular' }}
         />
       </View>
       <Row2>
@@ -149,7 +149,7 @@ function PinModal({ title, hint, onConfirm }) {
       <TextInput
         autoFocus secureTextEntry keyboardType="number-pad" maxLength={4} value={pin}
         onChangeText={(t) => { const v = t.replace(/\D/g, ''); setPin(v); setError(''); if (v.length === 4) check(v); }}
-        style={{ marginVertical: 14, borderWidth: 1, borderColor: c.borderStrong, borderRadius: R.md, textAlign: 'center', fontSize: 28, letterSpacing: 14, minHeight: 56, color: c.text }}
+        style={{ marginVertical: 14, borderWidth: 1, borderColor: c.borderStrong, borderRadius: R.md, textAlign: 'center', fontSize: 28, letterSpacing: 14, minHeight: 56, color: c.text, fontFamily: 'inter_semibold' }}
       />
       {error ? <T size={13} color={c.alert} style={{ marginBottom: 8 }}>{error}</T> : null}
       <Row2>

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { receiptBlocks, sampleReceiptText, withDefaults } from '../src/lib/receipt.js';
+import { receiptBlocks, sampleReceiptText, withDefaults, wrap } from '../src/lib/receipt.js';
 
 const tx = { id: 'TRX-1', date: '2026-11-22', time: '10:00', outlet: 'Es Teh', cashier: 'Andi', discount: 0, tax: 0, total: 36000,
   items: [{ name: 'Kopi', qty: 2, price: 18000 }], method: 'cash', received: 50000, change: 14000, status: 'completed' };
@@ -20,4 +20,9 @@ test('tidak ada teks BILL di struk', () => assert.ok(!sampleReceiptText({ bizNam
 test('jumlah barang hanya muncul bila diaktifkan', () => {
   assert.ok(!sampleReceiptText({ bizName: 'X' }, {}).includes('Jml barang'));
   assert.ok(sampleReceiptText({ bizName: 'X', showItemCount: true }, {}).includes('Jml barang'));
+});
+test('alamat panjang dibungkus per kata, tiap baris <= lebar kolom', () => {
+  const out = sampleReceiptText({ bizName: 'X' }, { name: 'Y', address: 'Jl. Raya Darmo Permai Selatan Blok A No. 21 Surabaya Jawa Timur' }, 32);
+  out.split('\n').forEach((ln) => assert.ok(ln.length <= 32, ln));
+  assert.deepEqual(wrap('aaaa bbbb cccc', 9), ['aaaa bbbb', 'cccc']);
 });
