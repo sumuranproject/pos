@@ -89,26 +89,3 @@ function CloseShiftSheet() {
 }
 export const openCloseShiftSheet = () => { if (state.activeShift) openSheet(<CloseShiftSheet />); };
 
-export function ShiftPage() {
-  const app = useApp();
-  const c = useC();
-  const s = app.activeShift;
-  const mine = app.user.role === "owner" ? app.shiftHistory : app.shiftHistory.filter((x) => x.cashierId === app.user.username);
-  return (
-    <Page>
-      <PageHead title="Shift" sub="Riwayat & status" />
-      {s ? (
-        <Card>
-          <T weight="700" color={c.cash}>Shift aktif</T>
-          <Muted size={13} style={{ marginBottom: 8 }}>Mulai {s.startTime} · {app.user.displayName}</Muted>
-          <ShiftRows s={s} />
-          <Btn block title="Tutup shift" style={{ marginTop: 10 }} onPress={() => openCloseShiftSheet()} />
-        </Card>
-      ) : <Empty icon="time-outline" title="Belum ada shift aktif" sub="Mulai shift dari halaman Kasir." />}
-      <Section title="Riwayat shift" />
-      {mine.length ? mine.map((sh) => (
-        <ListRow key={sh.id} title={sh.id + " · " + sh.start + "–" + sh.end} sub={sh.tx + " transaksi · Selisih " + rupiah(sh.variance)} amount={rupiah(sh.cash + sh.qris)} />
-      )) : <Muted size={13}>Belum ada riwayat.</Muted>}
-    </Page>
-  );
-}
