@@ -265,7 +265,7 @@ export function ListRow({ title, sub, amount, right, onPress, danger, badge, bad
         {sub ? <Muted>{sub}</Muted> : null}
       </View>
       {amount != null ? <T weight="700">{amount}</T> : null}
-      {badge != null ? <Pill text={String(badge)} tone={badgeTone} /> : null}
+      {badge != null ? <Pill text={String(badge)} tone={badgeTone} style={{ alignSelf: 'center' }} /> : null}
       {right}
       {onPress && !right ? <Icon name="chevron-forward" size={18} color={c.faint} /> : null}
     </Pressable>
@@ -294,11 +294,11 @@ export function Empty({ icon = 'file-tray-outline', title, sub, action }) {
   );
 }
 
-export function Pill({ text, tone = 'cash', icon }) {
+export function Pill({ text, tone = 'cash', icon, style }) {
   const c = useC();
   const bg = { cash: c.cashSoft, qris: c.qrisSoft, warn: c.warnSoft, alert: c.alertSoft, muted: c.surfaceAlt, primary: c.primarySoft }[tone];
   const fg = { cash: c.cash, qris: c.qris, warn: c.warn, alert: c.alert, muted: c.muted, primary: c.primary }[tone];
-  return <View style={{ backgroundColor: bg, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 7, alignSelf: 'flex-start' }}><T size={10} weight="700" color={fg} style={{ letterSpacing: 0.4 }}>{(icon ? icon + ' ' : '') + String(text).toUpperCase()}</T></View>;
+  return <View style={[{ backgroundColor: bg, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 7, alignSelf: 'flex-start' }, style]}><T size={10} weight="700" color={fg} style={{ letterSpacing: 0.4 }}>{(icon ? icon + ' ' : '') + String(text).toUpperCase()}</T></View>;
 }
 
 export function Dot({ status }) {

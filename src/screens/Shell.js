@@ -133,14 +133,15 @@ function Header() {
   const c = useC();
   const pending = !app.online || app.syncQueue.length > 0;
   const unread = app.notifications.some((n) => !n.read);
+  const btnBg = app.theme === 'dark' ? '#2A2A2E' : c.surfaceAlt; // di dark mode surfaceAlt nyaris sama dengan header, jadi dibuat lebih terang
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6, gap: 8, backgroundColor: c.card }}>
       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Image source={require('../../assets/icon.png')} style={{ width: 30, height: 30, borderRadius: 8 }} />
         <T size={22} weight="700" numberOfLines={1}>SakuKasir</T>
       </View>
-      <IconBtn name="sync-outline" size={19} onPress={openSyncSheet} badge={pending} badgeColor={c.warn} />
-      <IconBtn name="notifications-outline" size={19} onPress={openNotifSheet} badge={unread} />
+      <IconBtn name="sync-outline" size={19} style={{ backgroundColor: btnBg }} onPress={openSyncSheet} badge={pending} badgeColor={c.warn} />
+      <IconBtn name="notifications-outline" size={19} style={{ backgroundColor: btnBg }} onPress={openNotifSheet} badge={unread} />
       <Pressable onPress={openAccountSheet} style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}>
         <T weight="700" color="#fff">{app.user.displayName.charAt(0).toUpperCase()}</T>
       </Pressable>
