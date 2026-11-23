@@ -8,7 +8,7 @@ import {
   pairClassicPrinter, printTestPage, scanBlePrinters, setPaperCols, supportsClassic,
 } from "../lib/printer";
 import { formatTimestamp, rupiah } from "../lib/format";
-import { sampleReceiptText } from "../lib/receipt";
+import { sampleReceiptText, withDefaults } from "../lib/receipt";
 import { Banner, Btn, Card, Dot, ReceiptText, Empty, Field, IconBtn, ListRow, Muted, NumField, Page, PageHead, Pill, Row2, RupiahInput, Section, Select, SummaryRow, SwitchRow, T, useC, R } from "../ui/kit";
 import { confirmModal, pickImageDataUrl } from "../ui/overlays";
 import { ExpenseRows, openExpenseForm } from "./Reports";
@@ -114,31 +114,43 @@ export function PrinterPage() {
 }
 
 // ---------------- STRUK ----------------
-const RECEIPT_SWITCHES = [["showOutlet", "Tampilkan outlet"], ["showTxNumber", "Tampilkan nomor transaksi"], ["showCashier", "Tampilkan kasir"], ["showPayment", "Tampilkan metode bayar"], ["showChange", "Tampilkan kembalian"]];
+const RECEIPT_GROUPS = [
+  ["Header", [["showTagline", "Baris di atas nama bisnis"], ["showAddress", "Alamat outlet"], ["showPhone", "Telepon outlet"]]],
+  ["Info transaksi", [["showTxNumber", "Nomor transaksi"], ["showDateTime", "Tanggal & jam"], ["showOutlet", "Nama outlet"], ["showCashier", "Nama kasir"]]],
+  ["Rincian", [["showItemPrice", "Qty x harga per item"], ["showSubtotal", "Subtotal, diskon & pajak"], ["showItemCount", "Jumlah barang"], ["showPayment", "Metode bayar"], ["showChange", "Kembalian"]]],
+  ["Footer", [["showFooter", "Tampilkan footer"]]],
+];
 export function ReceiptPage() {
   const app = useApp();
   const c = useC();
-  const r = app.settings.receipt;
+  const r = withDefaults(app.settings.receipt);
+  const set = (k, v) => { app.settings.receipt[k] = v; commit(); };
+  const outlet = app.outlets.find((o) => o.name === app.outlet.name) || app.outlet;
   return (
     <Page>
       <PageHead title="Struk" sub="Format & konten" back />
       <Card style={{ gap: 10 }}>
-        <Field label="Nama bisnis (header)" value={r.bizName} onChangeText={(v) => { r.bizName = v; commit(); }} autoCapitalize="words" />
-        {RECEIPT_SWITCHES.map(([k, label]) => <SwitchRow key={k} title={label} on={r[k]} onChange={(v) => { r[k] = v; commit(); }} />)}
-        <Field label="Footer (max 120 karakter)" maxLength={120} value={r.footer} onChangeText={(v) => { r.footer = v; commit(); }} autoCapitalize="sentences" />
+        <Field label="Nama bisnis (header)" value={r.bizName} onChangeText={(v) => set("bizName", v)} autoCapitalize="words" />
+        {r.showTagline ? <Field label="Baris di atas nama bisnis" maxLength={40} value={r.tagline} onChangeText={(v) => set("tagline", v)} placeholder="mis. RUMAH MAKAN AYAM" autoCapitalize="characters" /> : null}
+        {r.showFooter ? <Field label="Footer (max 120 karakter)" maxLength={120} value={r.footer} onChangeText={(v) => set("footer", v)} autoCapitalize="sentences" /> : null}
       </Card>
+      {RECEIPT_GROUPS.map(([title, items]) => (
+        <View key={title} style={{ gap: 6 }}>
+          <Section title={title} />
+          <Card>{items.map(([k, label]) => <SwitchRow key={k} title={label} on={r[k]} onChange={(v) => set(k, v)} />)}</Card>
+        </View>
+      ))}
+      <Muted size={12}>Alamat & telepon diambil dari data outlet (Kelola &gt; Outlet).</Muted>
       <Section title="Preview struk" />
       <Card style={{ padding: 16 }}>
         <View style={{ backgroundColor: c.card, borderRadius: R.sm, borderWidth: 1, borderColor: c.border, padding: 14 }}>
-          <ReceiptText text={sampleReceiptText(r, app.outlet.name, app.settings.printer.cols || 32)} />
+          <ReceiptText text={sampleReceiptText(r, { name: outlet.name, address: outlet.address || "Jl. Contoh No. 1, Surabaya", phone: outlet.phone || "031-5345270" }, app.settings.printer.cols || 32)} />
         </View>
       </Card>
-      <Btn block title="Simpan" onPress={() => toast("Pengaturan struk disimpan", "success")} />
     </Page>
   );
 }
 
-// ---------------- QRIS ----------------
 export function QrisPage() {
   const app = useApp();
   const c = useC();

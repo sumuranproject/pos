@@ -219,7 +219,7 @@ function ReceiptModal({ tx }) {
     <>
       <T size={15} weight="700" style={{ marginBottom: 10 }}>Preview struk</T>
       <ScrollView style={{ maxHeight: 360, backgroundColor: c.surfaceAlt, borderRadius: R.sm }} contentContainerStyle={{ padding: 12 }}>
-        <ReceiptText text={transactionReceiptText(tx, state.settings.receipt, state.settings.printer.cols || 32)} />
+        <ReceiptText text={transactionReceiptText(tx, state.settings.receipt, state.settings.printer.cols || 32, (() => { const o = (state.outlets || []).find((x) => x.name === tx.outlet) || {}; return { address: o.address, phone: o.phone }; })())} />
       </ScrollView>
       <Row2 style={{ marginTop: 14 }}>
         <Btn kind="ghost" title="Tutup" onPress={closeReceiptModal} />

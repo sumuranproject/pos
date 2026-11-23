@@ -243,15 +243,18 @@ export function Section({ title, style }) {
 }
 
 /** Judul halaman: bar putih ber-border di ponsel, polos di tablet (seperti screenshot). Tombol di kanan otomatis kecil. */
-export function PageHead({ title, sub, back, right }) {
+export function PageHead({ title, sub, back, right, footer }) {
   const c = useC();
   const wide = useWide();
   const rightEl = React.isValidElement(right) && right.type === Btn ? React.cloneElement(right, { sm: true }) : right;
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: wide ? 14 : 10, backgroundColor: wide ? 'transparent' : c.card, borderBottomWidth: wide ? 0 : 1, borderBottomColor: c.border }}>
-      {back ? <IconBtn name="chevron-back" onPress={back === true ? backToManage : back} /> : null}
-      <View style={{ flex: 1 }}><T size={20} weight="700">{title}</T>{sub ? <Muted size={12}>{sub}</Muted> : null}</View>
-      {rightEl}
+    <View style={{ backgroundColor: wide ? 'transparent' : c.card, borderBottomWidth: wide ? 0 : 1, borderBottomColor: c.border }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: wide ? 14 : 10 }}>
+        {back ? <IconBtn name="chevron-back" onPress={back === true ? backToManage : back} /> : null}
+        <View style={{ flex: 1 }}><T size={20} weight="700">{title}</T>{sub ? <Muted size={12}>{sub}</Muted> : null}</View>
+        {rightEl}
+      </View>
+      {footer ? <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>{footer}</View> : null}
     </View>
   );
 }

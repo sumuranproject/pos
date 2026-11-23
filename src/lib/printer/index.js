@@ -70,5 +70,6 @@ function send(bytes) {
   return job;
 }
 
-export const printTransactionReal = (tx) => send(buildReceipt(tx, state.settings.receipt, cols()));
+export const printTransactionReal = (tx) => send(buildReceipt(tx, state.settings.receipt, cols(), outletInfo(tx.outlet)));
+const outletInfo = (name) => { const o = (state.outlets || []).find((x) => x.name === name) || {}; return { address: o.address, phone: o.phone }; };
 export const printTestPage = () => send(buildTestPage(cur().device, cols()));

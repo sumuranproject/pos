@@ -201,20 +201,23 @@ export function ReportsPage() {
   const periodText = rf.period === "custom" ? rf.dateFrom + " → " + rf.dateTo : periodLabel(rf.period);
   const userText = rf.user === "all" ? "Semua kasir" : app.workers.find((w) => w.username === rf.user)?.displayName || rf.user;
 
+  const tabsEl = (
+<View style={{ flexDirection: "row", backgroundColor: wide ? c.surfaceAlt : "transparent", borderRadius: R.lg, padding: wide ? 4 : 0, gap: wide ? 0 : 8 }}>
+      {TABS.map(([id, label, icon]) => {
+        const on = tab === id;
+        return (
+          <Pressable key={id} onPress={() => setTab(id)} style={{ flex: 1, height: 40, borderRadius: 12, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", backgroundColor: on ? c.primary : wide ? "transparent" : c.card, borderWidth: !wide && !on ? 1 : 0, borderColor: c.border }}>
+            <Icon name={icon} size={17} color={on ? "#fff" : c.muted} />
+            {wide ? <T size={13} weight={on ? "700" : "500"} color={on ? "#fff" : c.muted}>{label}</T> : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
   return (
     <Page>
-      <PageHead title="Laporan" sub={periodText + " · " + userText} right={<View style={{ flexDirection: "row", gap: 8 }}><Btn sm kind="ghost" icon="filter" title="Filter" onPress={openFilterSheet} /><Btn sm kind="ghost" title="Export" onPress={() => toast("Export belum tersedia di versi ini")} /></View>} />
-      <View style={{ flexDirection: "row", backgroundColor: wide ? c.surfaceAlt : "transparent", borderRadius: R.lg, padding: wide ? 4 : 0, gap: wide ? 0 : 8 }}>
-        {TABS.map(([id, label, icon]) => {
-          const on = tab === id;
-          return (
-            <Pressable key={id} onPress={() => setTab(id)} style={{ flex: 1, height: 40, borderRadius: 12, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", backgroundColor: on ? c.primary : wide ? "transparent" : c.card, borderWidth: !wide && !on ? 1 : 0, borderColor: c.border }}>
-              <Icon name={icon} size={17} color={on ? "#fff" : c.muted} />
-              {wide ? <T size={13} weight={on ? "700" : "500"} color={on ? "#fff" : c.muted}>{label}</T> : null}
-            </Pressable>
-          );
-        })}
-      </View>
+      <PageHead title="Laporan" sub={periodText + " · " + userText} right={<View style={{ flexDirection: "row", gap: 8 }}><Btn sm kind="ghost" icon="filter" title="Filter" onPress={openFilterSheet} /><Btn sm kind="ghost" title="Export" onPress={() => toast("Export belum tersedia di versi ini")} /></View>} footer={wide ? undefined : tabsEl} />
+      {wide ? tabsEl : null}
 
       {tab === "transactions" && (userList.length ? userList.map((tx) => <TxItem key={tx.id} tx={tx} />) : <Empty title="Belum ada transaksi" sub="Coba ubah filter atau periode." />)}
 

@@ -1,5 +1,6 @@
 // Pembuat perintah ESC/POS untuk printer thermal 58mm (32 kolom) / 80mm (48 kolom).
 // Teks dipaksa ASCII agar aman di semua printer & transport (tanpa code page).
+import { receiptBlocks } from '../receipt';
 const ESC = 0x1b; const GS = 0x1d; const LF = 0x0a;
 
 const MAP = { '─': '-', '—': '-', '–': '-', '×': 'x', '·': '-', '•': '*', '’': "'", '‘': "'", '“': '"', '”': '"', '…': '...' };
@@ -35,29 +36,19 @@ export class EscPos {
 
 const fmt = (n) => Math.round(n).toLocaleString('id-ID');
 
-/** Struk transaksi sesuai pengaturan Struk (r = state.settings.receipt). */
-export function buildReceipt(tx, r, cols = 32) {
+/** Struk transaksi sesuai pengaturan Struk (r = state.settings.receipt); tata letak dari lib/receipt.js. */
+export function buildReceipt(tx, r, cols = 32, info = {}) {
   const p = new EscPos(cols);
-  p.align('center').bold(true).size(2).text(r.bizName).size(1).bold(false);
-  p.align('left').line();
-  if (r.showTxNumber) p.text(tx.id);
-  p.text(`${tx.date} ${tx.time}`);
-  if (r.showOutlet && tx.outlet && tx.outlet.trim().toLowerCase() !== String(r.bizName || '').trim().toLowerCase()) p.text(tx.outlet);
-  if (r.showCashier) p.text('Kasir: ' + tx.cashier);
-  p.line();
-  tx.items.forEach((i) => { p.text(i.name); p.row(`  ${i.qty} x ${fmt(i.price)}`, fmt(i.price * i.qty)); });
-  p.line();
-  p.row('Subtotal', fmt(tx.items.reduce((s, i) => s + i.price * i.qty, 0)));
-  if (tx.discount) p.row('Diskon', '-' + fmt(tx.discount));
-  if (tx.tax) p.row(`Pajak ${tx.taxPct}%`, fmt(tx.tax));
-  p.bold(true).row('TOTAL', fmt(tx.total)).bold(false);
-  if (r.showPayment) p.row(tx.method === 'cash' ? 'Cash' : 'QRIS', fmt(tx.received || tx.total));
-  if (r.showChange && tx.method === 'cash') p.row('Kembali', fmt(tx.change));
-  if (tx.status === 'void') p.align('center').bold(true).text('*** VOID ***').bold(false).align('left');
-  if (tx.status === 'refunded') p.align('center').bold(true).text('*** REFUND ***').bold(false).align('left');
-  if (tx.status === 'partial_refund') p.align('center').bold(true).text('*** REFUND SEBAGIAN ***').bold(false).align('left');
-  p.line();
-  p.align('center').text(r.footer).feed(4).cut();
+  receiptBlocks(tx, r, info).forEach((b) => {
+    if (b.k === 'line') { p.align('left').line(); return; }
+    if (b.k === 'row') { p.align('left').bold(!!b.bold).row(b.l, b.r).bold(false); return; }
+    p.align(b.align || 'left').bold(!!b.bold);
+    if (b.big) p.size(2);
+    p.text(b.s);
+    if (b.big) p.size(1);
+    p.bold(false);
+  });
+  p.align('left').feed(4).cut();
   return p.bytes();
 }
 
