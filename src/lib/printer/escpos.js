@@ -1,6 +1,6 @@
 // Pembuat perintah ESC/POS untuk printer thermal 58mm (32 kolom) / 80mm (48 kolom).
 // Teks dipaksa ASCII agar aman di semua printer & transport (tanpa code page).
-import { receiptBlocks } from '../receipt';
+import { receiptBlocks } from '../receipt.js';
 const ESC = 0x1b; const GS = 0x1d; const LF = 0x0a;
 
 const MAP = { '─': '-', '—': '-', '–': '-', '×': 'x', '·': '-', '•': '*', '’': "'", '‘': "'", '“': '"', '”': '"', '…': '...' };
