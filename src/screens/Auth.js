@@ -1,21 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { Image, KeyboardAvoidingView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showAuthView, state, toast, useApp } from '../lib/store';
 import { createBusiness, resetPassword, signIn, signUpOwner } from '../lib/auth';
 import { Btn, Field, IconBtn, KbScrollView, LinkBtn, Muted, Select, T, useC } from '../ui/kit';
 
 const Wrap = ({ children, back }) => {
   const c = useC();
+  // Inset diambil dari context (sudah tersedia sejak frame pertama), bukan SafeAreaView yang mengukur belakangan
+  // dan membuat isi layar "turun" setelah pindah halaman.
+  const insets = useSafeAreaInsets();
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.surface }}>
+    <View style={{ flex: 1, backgroundColor: c.surface, paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <KbScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 24, gap: 16, width: '100%', maxWidth: 460, alignSelf: 'center', flexGrow: 1 }}>
           {back ? <IconBtn name="arrow-back" size={20} onPress={back} style={{ width: 38, height: 38, borderRadius: 19 }} /> : null}
           {children}
         </KbScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 

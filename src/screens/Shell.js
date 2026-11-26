@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   closeSheet, commit, currentTab, doLogout, goRoute, goTab, hasPerm, isOwner, openSheet, state, toast, useApp,
 } from '../lib/store';
@@ -245,6 +245,7 @@ export default function Shell() {
   const app = useApp();
   const c = useC();
   const wide = useWide();
+  const insets = useSafeAreaInsets();
   if (!app.user) return null;
   const tab = currentTab();
   const showHeader = tab === 'pos' && !app.manageRoute && !app.success;
@@ -260,21 +261,21 @@ export default function Shell() {
   if (wide) {
     // Tablet: sidebar kiri, tanpa header atas & bottom-nav (judul halaman sudah ada di tiap halaman).
     return (
-      <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, flexDirection: 'row', backgroundColor: c.card }}>
+      <View style={{ flex: 1, flexDirection: 'row', backgroundColor: c.card, paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }}>
         <Sidebar />
         <View style={{ flex: 1, backgroundColor: c.surface }}>
           {banner}
           <MainRouter />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.card }}>
+    <View style={{ flex: 1, backgroundColor: c.card, paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right }}>
       {showHeader ? <Header /> : null}
       {banner}
       <View style={{ flex: 1, backgroundColor: c.surface }}><MainRouter /></View>
       <BottomNav />
-    </SafeAreaView>
+    </View>
   );
 }
