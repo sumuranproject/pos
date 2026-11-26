@@ -41,7 +41,7 @@ export function OverlayHost() {
   const visible = Boolean(sheet || modal || receipt || imageViewer);
   const scrollRef = useRef(null);
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={() => { tryCloseSomething(); }}>
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={() => { tryCloseSomething(); }}>
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: sheet ? c.scrim : 'transparent' }} behavior="padding">
         <View style={{ flex: 1 }}>
         {sheet && (

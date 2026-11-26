@@ -4,7 +4,7 @@ import {
   ActivityIndicator, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Switch as RNSwitch, Text, TextInput, View, useWindowDimensions,
 } from 'react-native';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { state, useApp, backToManage } from '../lib/store';
+import { state, useApp, backToManage, openSheet, closeSheet } from '../lib/store';
 import { formatRupiahInput, parseRupiahInput } from '../lib/format';
 
 export const palettes = {
@@ -115,7 +115,7 @@ function applyMaskedEdit(prevReal, newText) {
   return prevReal.slice(0, a) + inserted + prevReal.slice(prevLen - b);
 }
 
-export function Field({ label, value, onChangeText, placeholder, secure, keyboardType, multiline, editable = true, maxLength, icon, right, autoCapitalize = 'none', style, onSubmitEditing, returnKeyType }) {
+export function Field({ label, value, onChangeText, placeholder, secure, keyboardType, multiline, editable = true, readOnly, maxLength, icon, right, autoCapitalize = 'none', style, onSubmitEditing, returnKeyType }) {
   const c = useC();
   const [show, setShow] = React.useState(false);
   // Android menahan huruf terakhir tetap terlihat ~1,5 detik pada secureTextEntry. Supaya langsung jadi titik,
@@ -128,11 +128,11 @@ export function Field({ label, value, onChangeText, placeholder, secure, keyboar
   return (
     <View style={[{ gap: 6 }, style]}>
       {label ? <T weight="500" size={14}>{label}</T> : null}
-      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: c.card, borderWidth: 1, borderColor: c.borderStrong, borderRadius: R.md, paddingHorizontal: 12, minHeight: 48, opacity: editable ? 1 : 0.6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: c.card, borderWidth: 1, borderColor: c.borderStrong, borderRadius: R.md, paddingHorizontal: 12, minHeight: 48, opacity: editable || readOnly ? 1 : 0.6 }}>
         {icon ? <Icon name={icon} size={18} color={c.faint} style={{ marginRight: 8 }} /> : null}
         <TextInput
           value={shown} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={c.faint}
-          keyboardType={kt} multiline={multiline} editable={editable}
+          keyboardType={kt} multiline={multiline} editable={editable && !readOnly}
           maxLength={maxLength} autoCapitalize={autoCapitalize} autoCorrect={false}
           autoComplete={secure ? 'off' : undefined} importantForAutofill={secure ? 'no' : undefined}
           onSubmitEditing={onSubmitEditing} returnKeyType={returnKeyType}
@@ -160,15 +160,49 @@ export function NumField({ label, value, onChange, ...r }) {
 }
 
 /** Pilihan satu dari banyak (chip yang membungkus) — pengganti <select>. */
-export function Select({ label, value, options, onChange }) {
+function DropdownSheet({ title, options, value, onChange }) {
+  const c = useC();
+  return (
+    <View style={{ gap: 4 }}>
+      <T size={17} weight="700" style={{ marginBottom: 8 }}>{title}</T>
+      {options.map((o) => {
+        const v = typeof o === 'string' ? o : o.value; const l = typeof o === 'string' ? o : o.label;
+        const on = v === value;
+        return (
+          <Pressable key={String(v)} onPress={() => { onChange(v); closeSheet(); }} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border }}>
+            <T weight={on ? '700' : '400'} color={on ? c.primary : c.text} style={{ flex: 1 }}>{l}</T>
+            {on ? <Icon name="checkmark" size={18} color={c.primary} /> : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Pilihan satu dari banyak. Default: chip yang membungkus; dropdown: kolom berpanah yang membuka daftar. */
+export function Select({ label, value, options, onChange, dropdown, placeholder = 'Pilih', icon }) {
+  const c = useC();
+  const lab = (o) => (typeof o === 'string' ? o : o.label);
+  const val = (o) => (typeof o === 'string' ? o : o.value);
+  if (dropdown) {
+    const cur = options.find((o) => val(o) === value);
+    return (
+      <View style={{ gap: 6 }}>
+        {label ? <T weight="500" size={14}>{label}</T> : null}
+        <Pressable onPress={() => openSheet(<DropdownSheet title={label || placeholder} options={options} value={value} onChange={onChange} />)}
+          style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: c.card, borderWidth: 1, borderColor: c.borderStrong, borderRadius: R.md, paddingHorizontal: 12, minHeight: 48 }}>
+          {icon ? <Icon name={icon} size={18} color={c.faint} style={{ marginRight: 8 }} /> : null}
+          <T size={15} color={cur ? c.text : c.faint} style={{ flex: 1 }}>{cur ? lab(cur) : placeholder}</T>
+          <Icon name="chevron-down" size={18} color={c.muted} />
+        </Pressable>
+      </View>
+    );
+  }
   return (
     <View style={{ gap: 6 }}>
       {label ? <T weight="500">{label}</T> : null}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {options.map((o) => {
-          const v = typeof o === 'string' ? o : o.value; const l = typeof o === 'string' ? o : o.label;
-          return <Chip key={String(v)} label={l} active={v === value} onPress={() => onChange(v)} />;
-        })}
+        {options.map((o) => <Chip key={String(val(o))} label={lab(o)} active={val(o) === value} onPress={() => onChange(val(o))} />)}
       </View>
     </View>
   );
@@ -210,7 +244,7 @@ export const KbScrollView = React.forwardRef(function KbScrollView({ onScroll, .
         if (!el || !el.measureInWindow) return;
         el.measureInWindow((x, y, w, h) => {
           const limit = e.endCoordinates.screenY - 24;
-          if (y + h > limit && ref.current) ref.current.scrollTo({ y: off.current + (y + h - limit), animated: true });
+          if (y + h > limit && ref.current) ref.current.scrollTo({ y: off.current + (y + h - limit), animated: false });
         });
       }, 150);
     });

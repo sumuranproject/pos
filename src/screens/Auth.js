@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Image, KeyboardAvoidingView, Pressable, View } from 'react-native';
+import { Image, KeyboardAvoidingView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showAuthView, state, toast, useApp } from '../lib/store';
 import { createBusiness, resetPassword, signIn, signUpOwner } from '../lib/auth';
@@ -11,7 +11,7 @@ const Wrap = ({ children, back }) => {
     <SafeAreaView style={{ flex: 1, backgroundColor: c.surface }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <KbScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 24, gap: 16, width: '100%', maxWidth: 460, alignSelf: 'center', flexGrow: 1 }}>
-          {back ? <IconBtn name="chevron-back" onPress={back} /> : null}
+          {back ? <IconBtn name="arrow-back" size={20} onPress={back} style={{ width: 38, height: 38, borderRadius: 19 }} /> : null}
           {children}
         </KbScrollView>
       </KeyboardAvoidingView>
@@ -72,8 +72,7 @@ function Register() {
   };
   return (
     <Wrap back={() => showAuthView('login')}>
-      <Image source={require('../../assets/icon.png')} style={{ width: 48, height: 48, borderRadius: 12 }} />
-      <T size={28} weight="700">Buat Akun</T>
+      <T size={28} weight="700" style={{ marginTop: 18 }}>Buat Akun</T>
       <Muted size={14}>Daftarkan bisnis Anda untuk menyimpan data di cloud dan tetap bisa digunakan secara offline.</Muted>
       <Field label="Nama Lengkap / Bisnis *" icon="person-outline" placeholder="Nama Anda atau Bisnis" value={f.name} onChangeText={set('name')} autoCapitalize="words" />
       <Field label="Email *" icon="mail-outline" placeholder="contoh@email.com" value={f.email} onChangeText={set('email')} keyboardType="email-address" />
@@ -82,7 +81,7 @@ function Register() {
       <Field label="WhatsApp (Opsional)" icon="logo-whatsapp" placeholder="08123456789" keyboardType="phone-pad" value={f.whatsapp} onChangeText={set('whatsapp')} />
       <ErrorText>{error}</ErrorText>
       <Btn title="Daftar" block loading={busy} onPress={submit} />
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 4 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 'auto', paddingTop: 16 }}>
         <Muted size={14}>Sudah punya akun?</Muted><LinkBtn title="Masuk disini" onPress={() => showAuthView('login')} />
       </View>
     </Wrap>
@@ -106,14 +105,13 @@ function Setup() {
   };
   return (
     <Wrap back={() => showAuthView('register')}>
-      <Image source={require('../../assets/icon.png')} style={{ width: 48, height: 48, borderRadius: 12 }} />
-      <T size={28} weight="700">Setup Bisnis</T>
+      <T size={28} weight="700" style={{ marginTop: 18 }}>Setup Bisnis</T>
       <Muted size={14}>Lengkapi informasi bisnis Anda</Muted>
       <Field label="Nama Bisnis *" placeholder="Nama bisnis" value={f.name} onChangeText={set('name')} autoCapitalize="words" />
       <Field label="Alamat Bisnis *" placeholder="Alamat lengkap" value={f.address} onChangeText={set('address')} autoCapitalize="sentences" />
       <Field label="No Telepon Bisnis *" placeholder="Nomor telepon" keyboardType="phone-pad" value={f.phone} onChangeText={set('phone')} />
-      <Field label="Email Bisnis" value={pending?.email || ''} editable={false} />
-      <Select label="Jenis Bisnis *" value={f.type} options={BUSINESS_TYPES} onChange={set('type')} />
+      <Field label="Email Bisnis" value={pending?.email || ''} readOnly />
+      <Select dropdown icon="storefront-outline" label="Jenis Bisnis *" placeholder="Pilih jenis bisnis" value={f.type} options={BUSINESS_TYPES} onChange={set('type')} />
       <Btn title="Selesai Setup" block loading={busy} onPress={submit} />
     </Wrap>
   );
@@ -131,8 +129,7 @@ function Forgot() {
   };
   return (
     <Wrap back={() => showAuthView('login')}>
-      <Image source={require('../../assets/icon.png')} style={{ width: 48, height: 48, borderRadius: 12 }} />
-      <T size={28} weight="700">Lupa Password?</T>
+      <T size={28} weight="700" style={{ marginTop: 18 }}>Lupa Password?</T>
       <Muted size={14}>Masukkan email yang terdaftar. Kami akan mengirimkan token untuk mereset password Anda.</Muted>
       {done ? <T size={14}>Tautan reset dikirim ke {email}. Cek inbox Anda.</T> : (
         <>
@@ -140,7 +137,6 @@ function Forgot() {
           <Btn title="Kirim Instruksi" block loading={busy} onPress={submit} />
         </>
       )}
-      <LinkBtn title="Kembali ke login" onPress={() => showAuthView('login')} />
     </Wrap>
   );
 }
